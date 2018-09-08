@@ -164,6 +164,12 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\grammarlib\grammarlib.vcxproj">
+      <Project>{dbaa527c-b389-4ede-972c-bc3bb6a87c95}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\Lexer\Lexer.vcxproj">
+      <Project>{85b3880a-a822-4353-aef9-ebdd931b391f}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\Parser\Parser.vcxproj">
       <Project>{2f19c90d-1b93-4386-a7f7-93515c6dbde3}</Project>
     </ProjectReference>

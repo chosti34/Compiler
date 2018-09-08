@@ -12,6 +12,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Lexer", "Lexer\Lexer.vcxpro
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Parser", "Parser\Parser.vcxproj", "{2F19C90D-1B93-4386-A7F7-93515C6DBDE3}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "grammarlib", "grammarlib\grammarlib.vcxproj", "{DBAA527C-B389-4EDE-972C-BC3BB6A87C95}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -44,6 +46,14 @@ Global
 		{2F19C90D-1B93-4386-A7F7-93515C6DBDE3}.Release|x64.Build.0 = Release|x64
 		{2F19C90D-1B93-4386-A7F7-93515C6DBDE3}.Release|x86.ActiveCfg = Release|Win32
 		{2F19C90D-1B93-4386-A7F7-93515C6DBDE3}.Release|x86.Build.0 = Release|Win32
+		{DBAA527C-B389-4EDE-972C-BC3BB6A87C95}.Debug|x64.ActiveCfg = Debug|x64
+		{DBAA527C-B389-4EDE-972C-BC3BB6A87C95}.Debug|x64.Build.0 = Debug|x64
+		{DBAA527C-B389-4EDE-972C-BC3BB6A87C95}.Debug|x86.ActiveCfg = Debug|Win32
+		{DBAA527C-B389-4EDE-972C-BC3BB6A87C95}.Debug|x86.Build.0 = Debug|Win32
+		{DBAA527C-B389-4EDE-972C-BC3BB6A87C95}.Release|x64.ActiveCfg = Release|x64
+		{DBAA527C-B389-4EDE-972C-BC3BB6A87C95}.Release|x64.Build.0 = Release|x64
+		{DBAA527C-B389-4EDE-972C-BC3BB6A87C95}.Release|x86.ActiveCfg = Release|Win32
+		{DBAA527C-B389-4EDE-972C-BC3BB6A87C95}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
