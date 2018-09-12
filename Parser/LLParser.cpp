@@ -1,9 +1,61 @@
 ﻿#include "stdafx.h"
 #include "LLParser.h"
 
+#include "../grammarlib/GrammarUtils.h"
+
+#include <stack>
+#include <sstream>
+
 namespace
 {
 const std::string END_OF_CHAIN_SYMBOL = "end";
+
+bool ProductionHasAlternative(const Grammar& grammar, size_t index)
+{
+	const auto lhs = grammar.GetProduction(index++);
+	while (index < grammar.GetProductionsCount())
+	{
+		const auto rhs = grammar.GetProduction(index++);
+		if (lhs->GetLeftPart() == rhs->GetLeftPart())
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+size_t GetProductionIndex(const Grammar& grammar, const std::string& nonterminal)
+{
+	for (size_t i = 0; i < grammar.GetProductionsCount(); ++i)
+	{
+		if (grammar.GetProduction(i)->GetLeftPart() == nonterminal)
+		{
+			return i;
+		}
+	}
+	throw std::invalid_argument("grammar doesn't have such nonterminal");
+}
+
+// Получить направляющее множестводля нетерминала, и, если он может быть пустым, добавить к направляющему множеству символы следователи
+std::set<std::string> GatherBeginningsAndFollowingsOnEmptiness(const Grammar& grammar, const std::string& nonterminal)
+{
+	std::set<std::string> symbols;
+
+	if (NonterminalHasEmptiness(grammar, nonterminal))
+	{
+		const auto followings = GatherFollowingSymbols(grammar, nonterminal);
+		symbols.insert(followings.begin(), followings.end());
+	}
+
+	const auto beginnings = GatherBeginningSymbolsOfNonterminal(grammar, nonterminal);
+	symbols.insert(beginnings.begin(), beginnings.end());
+	return symbols;
+}
+}
+
+LLParser::LLParser(std::unique_ptr<ILexer>&& lexer)
+	: m_lexer(std::move(lexer))
+{
 }
 
 void LLParser::AddState(std::shared_ptr<LLParser::State> state)
@@ -34,24 +86,75 @@ size_t LLParser::GetStatesCount()const
 	return m_states.size();
 }
 
+// TODO: use lexer instead of operator >>
 bool LLParser::Parse(const std::string& text)
 {
-	(void)text;
-	return false;
+	std::istringstream strm(text);
+	std::stack<size_t> stack;
+	std::string lex;
+
+	size_t index = 0u;
+	strm >> lex;
+
+	while (true)
+	{
+		const auto state = m_states[index];
+
+		if (state->beginnings.find(lex) == state->beginnings.end())
+		{
+			if (!state->error)
+			{
+				++index;
+				continue;
+			}
+			else
+			{
+				return false;
+			}
+		}
+
+		if (state->end)
+		{
+			assert(stack.empty());
+			return true;
+		}
+
+		if (state->push)
+		{
+			stack.push(index + 1);
+		}
+
+		if (state->shift)
+		{
+			strm >> lex;
+		}
+
+		if (state->next != std::nullopt)
+		{
+			index = *state->next;
+		}
+		else
+		{
+			assert(!stack.empty());
+			index = stack.top();
+			stack.pop();
+		}
+	}
 }
 
 std::unique_ptr<LLParser> CreateLLParser(const Grammar& grammar)
 {
-	auto parser = std::make_unique<LLParser>();
+	auto parser = std::make_unique<LLParser>(nullptr);
 
 	for (size_t i = 0; i < grammar.GetProductionsCount(); ++i)
 	{
 		auto state = std::make_shared<LLParser::State>();
+		state->name = grammar.GetProduction(i)->GetLeftPart();
 		state->shift = false;
 		state->push = false;
-		state->error = !ProductionHasNextAlternative(grammar, i);
+		state->error = !ProductionHasAlternative(grammar, i);
 		state->end = false;
-		state->beginnings = GatherBeginningSymbolsOfProduction(grammar, int(i));
+		state->beginnings = GatherBeginningSymbolsOfProduction(grammar, static_cast<int>(i));
 		state->next = std::nullopt; // will be added later
 		parser->AddState(std::move(state));
 	}
@@ -68,6 +171,7 @@ std::unique_ptr<LLParser> CreateLLParser(const Grammar& grammar)
 			switch (symbol.GetType())
 			{
 			case GrammarSymbolType::Terminal:
+				state->name = symbol.GetText();
 				state->shift = true;
 				state->push = false;
 				state->error = true;
@@ -77,19 +181,23 @@ std::unique_ptr<LLParser> CreateLLParser(const Grammar& grammar)
 				state->beginnings = { symbol.GetText() };
 				break;
 			case GrammarSymbolType::Nonterminal:
+				state->name = symbol.GetText();
 				state->shift = false;
 				state->push = col < (production->GetSymbolsCount() - 1u);
 				state->error = true;
 				state->end = false;
 				state->next = GetProductionIndex(grammar, symbol.GetText());
-				state->beginnings = GatherBeginningSymbolsOfNonterminalEx(grammar, symbol.GetText());
+				state->beginnings = GatherBeginningsAndFollowingsOnEmptiness(grammar, symbol.GetText());
+				break;
 			case GrammarSymbolType::Epsilon:
+				state->name = symbol.GetText();
 				state->shift = false;
 				state->push = false;
 				state->error = true;
 				state->end = false;
 				state->next = std::nullopt;
-				state->beginnings = GatherBeginningSymbolsOfProduction(grammar, int(row));
+				state->beginnings = GatherBeginningSymbolsOfProduction(grammar, static_cast<int>(row));
+				break;
 			default:
 				assert(false);
 				throw std::logic_error("CreateParser: default switch branch should be unreachable");

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "IParser.h"
+#include "../Lexer/ILexer.h"
 #include "../grammarlib/Grammar.h"
 
 #include <set>
@@ -13,6 +14,7 @@ class LLParser : public IParser
 public:
 	struct State
 	{
+		std::string name;
 		bool shift;
 		bool error;
 		bool push;
@@ -22,6 +24,8 @@ public:
 	};
 
 public:
+	LLParser(std::unique_ptr<ILexer>&& lexer);
+
 	void AddState(std::shared_ptr<State> state);
 	std::shared_ptr<State> GetState(size_t index);
 	std::shared_ptr<const State> GetState(size_t index)const;
@@ -31,6 +35,7 @@ public:
 
 private:
 	std::vector<std::shared_ptr<State>> m_states;
+	std::unique_ptr<ILexer> m_lexer;
 };
 
 std::unique_ptr<LLParser> CreateLLParser(const Grammar& grammar);
