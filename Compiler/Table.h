@@ -33,7 +33,6 @@ public:
 	void Append(const std::vector<std::string>& values);
 	void SetColumnAlignment(size_t col, Alignment alignment);
 	void SetColumnPadding(size_t col, unsigned padding);
-	void ShowLineSeparators(bool toggle);
 	void Clear();
 
 	const std::string& GetValue(size_t row, size_t col)const;
@@ -47,7 +46,6 @@ public:
 	size_t GetColumnWidth(size_t col)const;
 	Alignment GetColumnAlignment(size_t col)const;
 	unsigned GetColumnPadding(size_t col)const;
-	bool ShowLineSeparators()const;
 
 private:
 	void VerifyColumnsCount(size_t count)const;
@@ -57,7 +55,6 @@ private:
 	std::vector<std::vector<std::string>> m_table;
 	std::vector<ColumnProperties> m_columnProperties;
 	BorderStyle m_borders;
-	bool m_showLineSeparators;
 };
 }
 

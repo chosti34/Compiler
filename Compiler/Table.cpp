@@ -14,7 +14,6 @@ namespace
 
 Table::Table(const BorderStyle& borders)
 	: m_borders(borders)
-	, m_showLineSeparators(true)
 {
 }
 
@@ -73,11 +72,6 @@ void Table::SetColumnPadding(size_t col, unsigned padding)
 		throw std::out_of_range("column's index must be less than columns count");
 	}
 	m_columnProperties[col].padding = padding;
-}
-
-void FormatUtils::Table::ShowLineSeparators(bool toggle)
-{
-	m_showLineSeparators = toggle;
 }
 
 void Table::Clear()
@@ -205,32 +199,14 @@ unsigned Table::GetColumnPadding(size_t col)const
 	return m_columnProperties[col].padding;
 }
 
-bool FormatUtils::Table::ShowLineSeparators()const
-{
-	return m_showLineSeparators;
-}
-
 std::ostream& operator <<(std::ostream& os, const Table& table)
 {
 	const std::string lineSeparator = table.CreateLineSeparator();
 	const Table::BorderStyle& borders = table.GetBorders();
-	bool separatorShown = false;
 
 	for (size_t row = 0; row < table.GetRowsCount(); ++row)
 	{
-		if (table.ShowLineSeparators())
-		{
-			os << lineSeparator << "\n" << borders.vertical;
-		}
-		else
-		{
-			if (!separatorShown)
-			{
-				os << lineSeparator << "\n";
-			}
-			os << borders.vertical;
-		}
-		separatorShown = true;
+		os << lineSeparator << "\n" << borders.vertical;
 
 		for (size_t col = 0; col < table.GetColumnsCount(); ++col)
 		{
