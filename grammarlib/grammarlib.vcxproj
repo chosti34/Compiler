@@ -153,6 +153,7 @@
   <ItemGroup>
     <ClInclude Include="Grammar.h" />
     <ClInclude Include="GrammarProduction.h" />
+    <ClInclude Include="GrammarProductionFactory.h" />
     <ClInclude Include="GrammarSymbol.h" />
     <ClInclude Include="GrammarUtils.h" />
     <ClInclude Include="stdafx.h" />
@@ -161,6 +162,7 @@
   <ItemGroup>
     <ClCompile Include="Grammar.cpp" />
     <ClCompile Include="GrammarProduction.cpp" />
+    <ClCompile Include="GrammarProductionFactory.cpp" />
     <ClCompile Include="GrammarSymbol.cpp" />
     <ClCompile Include="GrammarUtils.cpp" />
     <ClCompile Include="stdafx.cpp">
