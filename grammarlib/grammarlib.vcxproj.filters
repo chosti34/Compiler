@@ -24,9 +24,36 @@
     <ClInclude Include="Grammar.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="GrammarSymbol.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GrammarProduction.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GrammarUtils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GrammarProductionFactory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GrammarSymbol.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GrammarProduction.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Grammar.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GrammarUtils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GrammarProductionFactory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

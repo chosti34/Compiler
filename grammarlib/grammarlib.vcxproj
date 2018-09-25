@@ -23,7 +23,7 @@
     <ProjectGuid>{DBAA527C-B389-4EDE-972C-BC3BB6A87C95}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>grammarlib</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -152,10 +152,19 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Grammar.h" />
+    <ClInclude Include="GrammarProduction.h" />
+    <ClInclude Include="GrammarProductionFactory.h" />
+    <ClInclude Include="GrammarSymbol.h" />
+    <ClInclude Include="GrammarUtils.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Grammar.cpp" />
+    <ClCompile Include="GrammarProduction.cpp" />
+    <ClCompile Include="GrammarProductionFactory.cpp" />
+    <ClCompile Include="GrammarSymbol.cpp" />
+    <ClCompile Include="GrammarUtils.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

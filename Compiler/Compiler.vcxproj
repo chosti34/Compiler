@@ -23,7 +23,7 @@
     <ProjectGuid>{BAFDEF48-C700-48FB-A50F-38B1C2DFFACB}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>Compiler</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -151,10 +151,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="FileUtils.h" />
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="Table.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="FileUtils.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -162,6 +165,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Table.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\grammarlib\grammarlib.vcxproj">
