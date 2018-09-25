@@ -1,10 +1,34 @@
-<S>  -> <E> end
-<E>  -> <T> <Ex>
-<Ex> -> + <T> <Ex>
-<Ex> -> #Eps#
-<T>  -> <F> <Tx>
-<Tx> -> * <F> <Tx>
-<Tx> -> #Eps#
-<F>  -> ( <E> )
-<F>  -> id
-<F>  -> - <F>
+<Program> -> <FunctionList> end
+<FunctionList> -> <Function> <FunctionList>
+<FunctionList> -> #Eps#
+<Function> -> fun identifier lparen <ParamList> rparen arrow <Type> colon <Statement>
+<ParamList> -> <Param> <TailParamList>
+<ParamList> -> #Eps#
+<TailParamList> -> comma <Param> <TailParamList>
+<TailParamList> -> #Eps#
+<Param> -> identifier colon <Type>
+<Type> -> int
+<Type> -> float
+<Type> -> bool
+<Type> -> array langlebracket <Type> ranglebracket
+<Statement> -> <Condition>
+<Statement> -> <Loop>
+<Statement> -> <Decl>
+<Statement> -> <Assign>
+<Statement> -> <Return>
+<Statement> -> <Composite>
+<Condition> -> if lparen <Expression> rparen <Statement> <OptionalElse>
+<OptionalElse> -> else <Statement>
+<OptionalElse> -> #Eps#
+<Loop> -> while lparen <Expression> rparen <Statement>
+<Decl> -> var identifier colon <Type> semicolon
+<Assign> -> identifier assign <Expression> semicolon
+<Return> -> return <Expression> semicolon
+<Composite> -> lcurly <StatementList> rcurly
+<StatementList> -> <Statement> <StatementList>
+<StatementList> -> #Eps#
+<Expression> -> identifier
+<Expression> -> integralnum
+<Expression> -> floatnum
+<Expression> -> true
+<Expression> -> false
