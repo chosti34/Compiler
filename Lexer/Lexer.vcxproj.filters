@@ -41,5 +41,8 @@
     <ClCompile Include="Lexer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="TokenType.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

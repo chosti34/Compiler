@@ -2,6 +2,7 @@
 
 #include "IParser.h"
 #include "../Lexer/ILexer.h"
+#include "../Lexer/TokenType.h"
 #include "../grammarlib/Grammar.h"
 
 #include <set>
@@ -20,12 +21,10 @@ public:
 		bool push;
 		bool end;
 		std::optional<size_t> next;
-		std::set<std::string> beginnings;
+		std::set<TokenType> beginnings;
 	};
 
 public:
-	LLParser();
-
 	void AddState(std::shared_ptr<State> state);
 	std::shared_ptr<State> GetState(size_t index);
 	std::shared_ptr<const State> GetState(size_t index)const;

@@ -52,10 +52,16 @@ std::set<std::string> GatherBeginningsAndFollowingsOnEmptiness(const Grammar& gr
 	symbols.insert(beginnings.begin(), beginnings.end());
 	return symbols;
 }
-}
 
-LLParser::LLParser()
+std::set<TokenType> ConvertToTokenTypes(const std::set<std::string>& terms)
 {
+	std::set<TokenType> types;
+	for (const auto& term : terms)
+	{
+		types.insert(StringToTokenType(term));
+	}
+	return types;
+}
 }
 
 void LLParser::AddState(std::shared_ptr<LLParser::State> state)
@@ -91,18 +97,15 @@ bool LLParser::Parse(const std::string& text)
 {
 	auto lexer = std::make_unique<Lexer>(text);
 
-	std::istringstream strm(text);
+	size_t index = 0;
 	std::stack<size_t> stack;
-	std::string lex;
-
-	size_t index = 0u;
-	strm >> lex;
+	Token token = lexer->Advance();
 
 	while (true)
 	{
 		const auto state = m_states[index];
 
-		if (state->beginnings.find(lex) == state->beginnings.end())
+		if (state->beginnings.find(token.type) == state->beginnings.end())
 		{
 			if (!state->error)
 			{
@@ -128,7 +131,7 @@ bool LLParser::Parse(const std::string& text)
 
 		if (state->shift)
 		{
-			strm >> lex;
+			token = lexer->Advance();
 		}
 
 		if (state->next != std::nullopt)
@@ -156,7 +159,7 @@ std::unique_ptr<LLParser> CreateLLParser(const Grammar& grammar)
 		state->push = false;
 		state->error = !ProductionHasAlternative(grammar, i);
 		state->end = false;
-		state->beginnings = GatherBeginningSymbolsOfProduction(grammar, static_cast<int>(i));
+		state->beginnings = ConvertToTokenTypes(GatherBeginningSymbolsOfProduction(grammar, static_cast<int>(i)));
 		state->next = std::nullopt; // will be added later
 		parser->AddState(std::move(state));
 	}
@@ -180,7 +183,7 @@ std::unique_ptr<LLParser> CreateLLParser(const Grammar& grammar)
 				state->end = symbol.GetText() == END_OF_CHAIN_SYMBOL;
 				state->next = (col == production->GetSymbolsCount() - 1u) ?
 					std::nullopt : std::make_optional<size_t>(parser->GetStatesCount() + 1u);
-				state->beginnings = { symbol.GetText() };
+				state->beginnings = ConvertToTokenTypes({ symbol.GetText() });
 				break;
 			case GrammarSymbolType::Nonterminal:
 				state->name = symbol.GetText();
@@ -189,7 +192,7 @@ std::unique_ptr<LLParser> CreateLLParser(const Grammar& grammar)
 				state->error = true;
 				state->end = false;
 				state->next = GetProductionIndex(grammar, symbol.GetText());
-				state->beginnings = GatherBeginningsAndFollowingsOnEmptiness(grammar, symbol.GetText());
+				state->beginnings = ConvertToTokenTypes(GatherBeginningsAndFollowingsOnEmptiness(grammar, symbol.GetText()));
 				break;
 			case GrammarSymbolType::Epsilon:
 				state->name = symbol.GetText();
@@ -198,7 +201,7 @@ std::unique_ptr<LLParser> CreateLLParser(const Grammar& grammar)
 				state->error = true;
 				state->end = false;
 				state->next = std::nullopt;
-				state->beginnings = GatherBeginningSymbolsOfProduction(grammar, static_cast<int>(row));
+				state->beginnings = ConvertToTokenTypes(GatherBeginningSymbolsOfProduction(grammar, static_cast<int>(row)));
 				break;
 			default:
 				assert(false);
