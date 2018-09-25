@@ -2,6 +2,7 @@
 #include "LLParser.h"
 
 #include "../grammarlib/GrammarUtils.h"
+#include "../Lexer/Lexer.h"
 
 #include <stack>
 #include <sstream>
@@ -53,8 +54,7 @@ std::set<std::string> GatherBeginningsAndFollowingsOnEmptiness(const Grammar& gr
 }
 }
 
-LLParser::LLParser(std::unique_ptr<ILexer>&& lexer)
-	: m_lexer(std::move(lexer))
+LLParser::LLParser()
 {
 }
 
@@ -89,6 +89,8 @@ size_t LLParser::GetStatesCount()const
 // TODO: use lexer instead of operator >>
 bool LLParser::Parse(const std::string& text)
 {
+	auto lexer = std::make_unique<Lexer>(text);
+
 	std::istringstream strm(text);
 	std::stack<size_t> stack;
 	std::string lex;
@@ -144,7 +146,7 @@ bool LLParser::Parse(const std::string& text)
 
 std::unique_ptr<LLParser> CreateLLParser(const Grammar& grammar)
 {
-	auto parser = std::make_unique<LLParser>(nullptr);
+	auto parser = std::make_unique<LLParser>();
 
 	for (size_t i = 0; i < grammar.GetProductionsCount(); ++i)
 	{

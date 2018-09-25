@@ -24,7 +24,7 @@ public:
 	};
 
 public:
-	LLParser(std::unique_ptr<ILexer>&& lexer);
+	LLParser();
 
 	void AddState(std::shared_ptr<State> state);
 	std::shared_ptr<State> GetState(size_t index);

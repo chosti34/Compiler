@@ -31,6 +31,3 @@ enum class TokenType
 	AssignOperator,
 	End
 };
-
-std::string TokenTypeToString(TokenType type);
-TokenType StringToTokenType(const std::string& str);

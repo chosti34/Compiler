@@ -1,9 +1,14 @@
 #pragma once
 #include "ILexer.h"
 #include <cctype>
+#include <vector>
+#include <algorithm>
 
 class Lexer : public ILexer
 {
+public:
+	static const std::vector<std::pair<std::string, TokenType>> TOKENS;
+
 public:
 	Lexer() = default;
 
@@ -24,16 +29,105 @@ public:
 			}
 			if (std::isdigit(ch))
 			{
-				// int, float
+				std::string value(1, mText[mPos++]);
+				while (std::isdigit(mText[mPos]))
+				{
+					value += mText[mPos++];
+				}
+
+				if (mPos < mText.length() && mText[mPos] == '.')
+				{
+					value += mText[mPos++];
+					while (std::isdigit(mText[mPos]))
+					{
+						value += mText[mPos++];
+					}
+					return Token(TokenType::FloatLiteral, value);
+				}
+
+				return Token(TokenType::IntegerLiteral, value);
 			}
 			if (std::isalpha(ch))
 			{
-				// identifier, keyword
+				std::string value(1, mText[mPos++]);
+				while (std::isalnum(mText[mPos]))
+				{
+					value += mText[mPos++];
+				}
+
+				auto found = std::find_if(TOKENS.begin(), TOKENS.end(), [&value](const auto& pair) {
+					return value == pair.first;
+				});
+
+				if (found != TOKENS.end())
+				{
+					return Token(found->second);
+				}
+				return Token(TokenType::Identifier, value);
 			}
 			if (std::ispunct(ch))
 			{
-				// operator, separator
+				if (ch == ';')
+				{
+					++mPos;
+					return Token(TokenType::SemicolonSeparator);
+				}
+				if (ch == ':')
+				{
+					++mPos;
+					return Token(TokenType::ColonSeparator);
+				}
+				if (ch == '=')
+				{
+					++mPos;
+					return Token(TokenType::AssignOperator);
+				}
+				if (ch == ',')
+				{
+					++mPos;
+					return Token(TokenType::CommaSeparator);
+				}
+				if (ch == '(')
+				{
+					++mPos;
+					return Token(TokenType::LeftParenthesis);
+				}
+				if (ch == ')')
+				{
+					++mPos;
+					return Token(TokenType::RightParenthesis);
+				}
+				if (ch == '{')
+				{
+					++mPos;
+					return Token(TokenType::LeftCurly);
+				}
+				if (ch == '}')
+				{
+					++mPos;
+					return Token(TokenType::RightCurly);
+				}
+				if (ch == '<')
+				{
+					++mPos;
+					return Token(TokenType::LeftAngleBracket);
+				}
+				if (ch == '>')
+				{
+					++mPos;
+					return Token(TokenType::RightAngleBracket);
+				}
+				if (ch == '-')
+				{
+					++mPos;
+					if (mPos < mText.length() && mText[mPos] == '>')
+					{
+						++mPos;
+						return Token(TokenType::ArrowSeparator);
+					}
+				}
 			}
+			throw std::runtime_error("illegal character at pos " + std::to_string(mPos) + ": " + mText[mPos]);
 		}
 		return Token(TokenType::End);
 	}
