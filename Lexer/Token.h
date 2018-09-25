@@ -1,14 +1,18 @@
 #pragma once
+#include "TokenType.h"
+#include <optional>
 #include <string>
-
-enum class TokenKind
-{
-	EndOfFile,
-	Regular
-};
 
 struct Token
 {
-	TokenKind kind;
-	std::string text;
+public:
+	explicit Token(TokenType type, std::optional<std::string> value = std::nullopt)
+		: type(type)
+		, value(std::move(value))
+	{
+	}
+
+	// TODO: add offset, line, column properties
+	TokenType type;
+	std::optional<std::string> value;
 };
