@@ -1,8 +1,5 @@
 #pragma once
 #include "ILexer.h"
-#include <cctype>
-#include <vector>
-#include <algorithm>
 
 class Lexer : public ILexer
 {

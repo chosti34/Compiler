@@ -1,6 +1,10 @@
 #include "stdafx.h"
 #include "Lexer.h"
 
+#include <cctype>
+#include <vector>
+#include <algorithm>
+
 namespace
 {
 const std::unordered_map<std::string, TokenType> KEYWORDS = {

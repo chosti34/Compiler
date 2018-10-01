@@ -135,6 +135,8 @@ void DumpParser(const LLParser& parser)
 			JoinIterable(ConvertToStrings(state->beginnings), ", ", "{", "}")});
 	}
 
+	using namespace FormatUtils;
+	table.SetDisplayStrategy(std::make_shared<HeaderSeparatorDisplayStrategy>());
 	std::cout << table << std::endl;
 }
 }
