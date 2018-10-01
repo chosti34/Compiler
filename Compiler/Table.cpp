@@ -10,11 +10,96 @@ namespace
 const unsigned MIN_COLUMNS_COUNT = 1u;
 const unsigned DEFAULT_PADDING = 1u;
 const Table::Alignment DEFAULT_ALIGNMENT = Table::Alignment::Right;
+
+void DisplayWithoutLineSeparators(const Table& table, std::ostream& os)
+{
+	const std::string lineSeparator = table.CreateLineSeparator();
+	const Table::BorderStyle& borders = table.GetBorderStyle();
+
+	if (!table.IsEmpty())
+	{
+		os << lineSeparator << "\n";
+	}
+
+	for (size_t row = 0; row < table.GetRowsCount(); ++row)
+	{
+		os << borders.vertical;
+		for (size_t col = 0; col < table.GetColumnsCount(); ++col)
+		{
+			const auto& alignment = (table.GetColumnAlignment(col) == Table::Alignment::Left) ? std::left : std::right;
+			os << std::string(table.GetColumnPadding(col), ' ') << alignment << std::setw(static_cast<int>(table.GetColumnWidth(col)))
+				<< table.GetValue(row, col) << std::string(table.GetColumnPadding(col), ' ') << borders.vertical;
+		}
+
+		os << "\n";
+		if (row == table.GetRowsCount() - 1)
+		{
+			os << lineSeparator;
+		}
+	}
+}
+
+void DisplayWithLineSeparators(const Table& table, std::ostream& os)
+{
+	const std::string lineSeparator = table.CreateLineSeparator();
+	const Table::BorderStyle& borders = table.GetBorderStyle();
+
+	for (size_t row = 0; row < table.GetRowsCount(); ++row)
+	{
+		os << lineSeparator << "\n" << borders.vertical;
+
+		for (size_t col = 0; col < table.GetColumnsCount(); ++col)
+		{
+			const auto& alignment = (table.GetColumnAlignment(col) == Table::Alignment::Left) ? std::left : std::right;
+			os << std::string(table.GetColumnPadding(col), ' ') << alignment << std::setw(static_cast<int>(table.GetColumnWidth(col)))
+				<< table.GetValue(row, col) << std::string(table.GetColumnPadding(col), ' ') << borders.vertical;
+		}
+
+		os << "\n";
+		if (row == table.GetRowsCount() - 1)
+		{
+			os << lineSeparator;
+		}
+	}
+}
+
+void DisplayColumnsLineSeparated(const Table& table, std::ostream& os)
+{
+	const std::string lineSeparator = table.CreateLineSeparator();
+	const Table::BorderStyle& borders = table.GetBorderStyle();
+
+	if (!table.IsEmpty())
+	{
+		os << lineSeparator << "\n";
+	}
+
+	for (size_t row = 0; row < table.GetRowsCount(); ++row)
+	{
+		os << borders.vertical;
+
+		for (size_t col = 0; col < table.GetColumnsCount(); ++col)
+		{
+			const auto& alignment = (table.GetColumnAlignment(col) == Table::Alignment::Left) ? std::left : std::right;
+			os << std::string(table.GetColumnPadding(col), ' ') << alignment << std::setw(static_cast<int>(table.GetColumnWidth(col)))
+				<< table.GetValue(row, col) << std::string(table.GetColumnPadding(col), ' ') << borders.vertical;
+		}
+
+		os << "\n";
+		if (row == 0)
+		{
+			os << lineSeparator << "\n";
+		}
+		if (row == table.GetRowsCount() - 1)
+		{
+			os << lineSeparator;
+		}
+	}
+}
 }
 
 Table::Table(const BorderStyle& borders)
 	: m_borderStyle(borders)
-	, m_displayStrategy(std::make_shared<SeparatorsEverywhereDisplayStrategy>())
+	, m_displayMethod(DisplayMethod::WithLineSeparators)
 {
 }
 
@@ -75,13 +160,9 @@ void Table::SetColumnPadding(size_t col, unsigned padding)
 	m_columnProperties[col].padding = padding;
 }
 
-void FormatUtils::Table::SetDisplayStrategy(std::shared_ptr<IDisplayStrategy> strategy)
+void FormatUtils::Table::SetDisplayMethod(DisplayMethod method)
 {
-	if (strategy == nullptr)
-	{
-		throw std::logic_error("display strategy can't be set to null");
-	}
-	m_displayStrategy = std::move(strategy);
+	m_displayMethod = method;
 }
 
 void Table::Clear()
@@ -90,14 +171,9 @@ void Table::Clear()
 	m_columnProperties.clear();
 }
 
-std::shared_ptr<IDisplayStrategy> FormatUtils::Table::GetDisplayStrategy()
+Table::DisplayMethod Table::GetDisplayMethod()const
 {
-	return m_displayStrategy;
-}
-
-std::shared_ptr<const IDisplayStrategy> FormatUtils::Table::GetDisplayStrategy()const
-{
-	return m_displayStrategy;
+	return m_displayMethod;
 }
 
 const std::string& Table::GetValue(size_t row, size_t col)const
@@ -221,92 +297,20 @@ unsigned Table::GetColumnPadding(size_t col)const
 
 std::ostream& operator <<(std::ostream& os, const Table& table)
 {
-	auto strategy = table.GetDisplayStrategy();
-	strategy->Display(table, os);
+	switch (table.GetDisplayMethod())
+	{
+	case Table::DisplayMethod::WithLineSeparators:
+		DisplayWithLineSeparators(table, os);
+		break;
+	case Table::DisplayMethod::WithoutLineSeparators:
+		DisplayWithoutLineSeparators(table, os);
+		break;
+	case Table::DisplayMethod::ColumnsLineSeparated:
+		DisplayColumnsLineSeparated(table, os);
+		break;
+	default:
+		assert(false);
+		break;
+	}
 	return os;
-}
-
-void FormatUtils::NoSeparatorDisplayStrategy::Display(const Table& table, std::ostream& os)const
-{
-	const std::string lineSeparator = table.CreateLineSeparator();
-	const Table::BorderStyle& borders = table.GetBorderStyle();
-
-	if (!table.IsEmpty())
-	{
-		os << lineSeparator << "\n";
-	}
-
-	for (size_t row = 0; row < table.GetRowsCount(); ++row)
-	{
-		os << borders.vertical;
-		for (size_t col = 0; col < table.GetColumnsCount(); ++col)
-		{
-			const auto& alignment = (table.GetColumnAlignment(col) == Table::Alignment::Left) ? std::left : std::right;
-			os << std::string(table.GetColumnPadding(col), ' ') << alignment << std::setw(static_cast<int>(table.GetColumnWidth(col)))
-				<< table.GetValue(row, col) << std::string(table.GetColumnPadding(col), ' ') << borders.vertical;
-		}
-
-		os << "\n";
-		if (row == table.GetRowsCount() - 1)
-		{
-			os << lineSeparator;
-		}
-	}
-}
-
-void FormatUtils::HeaderSeparatorDisplayStrategy::Display(const Table& table, std::ostream& os)const
-{
-	const std::string lineSeparator = table.CreateLineSeparator();
-	const Table::BorderStyle& borders = table.GetBorderStyle();
-
-	if (!table.IsEmpty())
-	{
-		os << lineSeparator << "\n";
-	}
-
-	for (size_t row = 0; row < table.GetRowsCount(); ++row)
-	{
-		os << borders.vertical;
-
-		for (size_t col = 0; col < table.GetColumnsCount(); ++col)
-		{
-			const auto& alignment = (table.GetColumnAlignment(col) == Table::Alignment::Left) ? std::left : std::right;
-			os << std::string(table.GetColumnPadding(col), ' ') << alignment << std::setw(static_cast<int>(table.GetColumnWidth(col)))
-				<< table.GetValue(row, col) << std::string(table.GetColumnPadding(col), ' ') << borders.vertical;
-		}
-
-		os << "\n";
-		if (row == 0)
-		{
-			os << lineSeparator << "\n";
-		}
-		if (row == table.GetRowsCount() - 1)
-		{
-			os << lineSeparator;
-		}
-	}
-}
-
-void FormatUtils::SeparatorsEverywhereDisplayStrategy::Display(const Table& table, std::ostream& os) const
-{
-	const std::string lineSeparator = table.CreateLineSeparator();
-	const Table::BorderStyle& borders = table.GetBorderStyle();
-
-	for (size_t row = 0; row < table.GetRowsCount(); ++row)
-	{
-		os << lineSeparator << "\n" << borders.vertical;
-
-		for (size_t col = 0; col < table.GetColumnsCount(); ++col)
-		{
-			const auto& alignment = (table.GetColumnAlignment(col) == Table::Alignment::Left) ? std::left : std::right;
-			os << std::string(table.GetColumnPadding(col), ' ') << alignment << std::setw(static_cast<int>(table.GetColumnWidth(col)))
-				<< table.GetValue(row, col) << std::string(table.GetColumnPadding(col), ' ') << borders.vertical;
-		}
-
-		os << "\n";
-		if (row == table.GetRowsCount() - 1)
-		{
-			os << lineSeparator;
-		}
-	}
 }

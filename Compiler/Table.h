@@ -5,37 +5,16 @@
 
 namespace FormatUtils
 {
-// fwd
-class Table;
-
-class IDisplayStrategy
-{
-public:
-	virtual ~IDisplayStrategy() = default;
-	virtual void Display(const Table& table, std::ostream& os)const = 0;
-};
-
-class NoSeparatorDisplayStrategy : public IDisplayStrategy
-{
-public:
-	void Display(const Table& table, std::ostream& os)const override;
-};
-
-class HeaderSeparatorDisplayStrategy : public IDisplayStrategy
-{
-public:
-	void Display(const Table& table, std::ostream& os)const override;
-};
-
-class SeparatorsEverywhereDisplayStrategy : public IDisplayStrategy
-{
-public:
-	void Display(const Table& table, std::ostream& os)const override;
-};
-
 class Table
 {
 public:
+	enum class DisplayMethod
+	{
+		WithLineSeparators,
+		WithoutLineSeparators,
+		ColumnsLineSeparated
+	};
+
 	enum class Alignment
 	{
 		Left,
@@ -62,12 +41,10 @@ public:
 	void Append(const std::vector<std::string>& values);
 	void SetColumnAlignment(size_t col, Alignment alignment);
 	void SetColumnPadding(size_t col, unsigned padding);
-	void SetDisplayStrategy(std::shared_ptr<IDisplayStrategy> strategy);
+	void SetDisplayMethod(DisplayMethod method);
 	void Clear();
 
-	std::shared_ptr<IDisplayStrategy> GetDisplayStrategy();
-	std::shared_ptr<const IDisplayStrategy> GetDisplayStrategy()const;
-
+	DisplayMethod GetDisplayMethod()const;
 	const std::string& GetValue(size_t row, size_t col)const;
 	const std::vector<std::string>& GetColumns()const;
 	std::string CreateLineSeparator()const;
@@ -86,10 +63,10 @@ private:
 	void SetColumns(const std::vector<std::string>& columns);
 
 private:
-	std::shared_ptr<IDisplayStrategy> m_displayStrategy;
 	std::vector<std::vector<std::string>> m_table;
 	std::vector<ColumnProperties> m_columnProperties;
 	BorderStyle m_borderStyle;
+	DisplayMethod m_displayMethod;
 };
 }
 

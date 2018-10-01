@@ -136,7 +136,7 @@ void DumpParser(const LLParser& parser)
 	}
 
 	using namespace FormatUtils;
-	table.SetDisplayStrategy(std::make_shared<HeaderSeparatorDisplayStrategy>());
+	table.SetDisplayMethod(Table::DisplayMethod::ColumnsLineSeparated);
 	std::cout << table << std::endl;
 }
 }
