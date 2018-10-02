@@ -6,8 +6,10 @@
 #include "../grammarlib/GrammarProductionFactory.h"
 #include "../Lexer/Lexer.h"
 
-#include "Table.h"
-#include "FileUtils.h"
+#include "FormattingTable.h"
+#include "FileUtil.h"
+#include "StringUtil.h"
+#include "StreamUtil.h"
 
 namespace
 {
@@ -28,54 +30,12 @@ std::unique_ptr<Grammar> CreateGrammar(std::istream& strm)
 // Чтобы файл был закрыт после выхода из функции
 std::unique_ptr<Grammar> CreateGrammarFromFile(const std::string& filepath)
 {
-	auto input = FileUtils::OpenFileForReading(filepath);
+	using namespace FileUtil;
+	const auto input = OpenFileForReading(filepath);
 	return CreateGrammar(*input);
 }
 
-template <typename Iterable>
-void PrintIterable(
-	std::ostream& output,
-	const Iterable& iterable,
-	const std::string& separator = " ",
-	const std::string& prefix = "",
-	const std::string& suffix = "",
-	bool newline = true)
-{
-	output << prefix;
-	for (auto it = iterable.cbegin(); it != iterable.cend(); ++it)
-	{
-		output << *it;
-		if (std::next(it) != iterable.cend())
-		{
-			output << separator;
-		}
-	}
-	output << suffix;
-	if (newline)
-	{
-		output << "\n";
-	}
-}
-
-std::string JoinIterable(
-	const std::set<std::string>& iterable,
-	const std::string& separator = ",",
-	const std::string& prefix = "",
-	const std::string& suffix = "")
-{
-	std::string result(prefix);
-	for (auto it = iterable.cbegin(); it != iterable.cend(); ++it)
-	{
-		result.append(*it);
-		if (std::next(it) != iterable.cend())
-		{
-			result.append(separator);
-		}
-	}
-	return result + suffix;
-}
-
-void DumpGrammar(const Grammar& grammar)
+void PrintGrammarToStdout(const Grammar& grammar)
 {
 	for (size_t row = 0; row < grammar.GetProductionsCount(); ++row)
 	{
@@ -100,7 +60,7 @@ void DumpGrammar(const Grammar& grammar)
 			}
 		}
 
-		PrintIterable(std::cout, GatherBeginningSymbolsOfProduction(grammar, int(row)), ", ", " / {", "}");
+		StreamUtil::PrintIterable(std::cout, GatherBeginningSymbolsOfProduction(grammar, int(row)), ", ", " / {", "}");
 	}
 }
 
@@ -116,7 +76,7 @@ std::set<std::string> ConvertToStrings(const std::set<TokenType>& beginnings)
 
 void DumpParser(const LLParser& parser)
 {
-	FormatUtils::Table table;
+	FormatUtils::FormattingTable table;
 	table.Append({ "Index", "Name", "Shift", "Push", "Error", "End", "Next", "Beginnings" });
 
 	const auto boolalpha = [](bool value) -> std::string
@@ -132,13 +92,28 @@ void DumpParser(const LLParser& parser)
 			boolalpha(state->shift), boolalpha(state->push),
 			boolalpha(state->error), boolalpha(state->end),
 			state->next ? std::to_string(*state->next) : "none",
-			JoinIterable(ConvertToStrings(state->beginnings), ", ", "{", "}")});
+			StringUtil::Join(ConvertToStrings(state->beginnings), ", ", "{", "}")});
 	}
 
 	using namespace FormatUtils;
-	table.SetDisplayMethod(Table::DisplayMethod::ColumnsLineSeparated);
+	table.SetDisplayMethod(FormattingTable::DisplayMethod::ColumnsLineSeparated);
 	std::cout << table << std::endl;
 }
+
+const std::string TEST_CODE_EXAMPLE = R"(
+
+fun AlwaysTrueFunc() -> Bool: return True;
+
+fun Main(args: Array<Int>) -> Int:
+{
+	if (True)
+	{
+		return 0;
+	}
+	return 1;
+}
+
+)";
 }
 
 int main(int argc, char* argv[])
@@ -149,20 +124,16 @@ int main(int argc, char* argv[])
 
 	try
 	{
+		// Чтение грамматики из файла
 		auto grammar = CreateGrammarFromFile("misc/input.txt");
-		DumpGrammar(*grammar);
+		PrintGrammarToStdout(*grammar);
+
+		// Генерация парсера
 		auto parser = CreateLLParser(*grammar);
 		DumpParser(*parser);
-		std::cout << std::boolalpha << parser->Parse(R"(
-fun yo() -> Bool: return true;
 
-fun main(args: Array<Int>) -> Int:
-{
-	var a: Float;
-	a = 3.2;
-	return 0;
-}
-)") << std::endl;
+		// Запускаем парсер
+		std::cout << std::boolalpha << parser->Parse(TEST_CODE_EXAMPLE) << std::endl;
 	}
 	catch (const std::exception& ex)
 	{

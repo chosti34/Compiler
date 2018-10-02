@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "Table.h"
+#include "FormattingTable.h"
 #include <cassert>
 #include <iomanip>
 
@@ -9,12 +9,12 @@ namespace
 {
 const unsigned MIN_COLUMNS_COUNT = 1u;
 const unsigned DEFAULT_PADDING = 1u;
-const Table::Alignment DEFAULT_ALIGNMENT = Table::Alignment::Right;
+const FormattingTable::Alignment DEFAULT_ALIGNMENT = FormattingTable::Alignment::Right;
 
-void DisplayWithoutLineSeparators(const Table& table, std::ostream& os)
+void DisplayWithoutLineSeparators(const FormattingTable& table, std::ostream& os)
 {
 	const std::string lineSeparator = table.CreateLineSeparator();
-	const Table::BorderStyle& borders = table.GetBorderStyle();
+	const FormattingTable::BorderStyle& borders = table.GetBorderStyle();
 
 	if (!table.IsEmpty())
 	{
@@ -26,7 +26,7 @@ void DisplayWithoutLineSeparators(const Table& table, std::ostream& os)
 		os << borders.vertical;
 		for (size_t col = 0; col < table.GetColumnsCount(); ++col)
 		{
-			const auto& alignment = (table.GetColumnAlignment(col) == Table::Alignment::Left) ? std::left : std::right;
+			const auto& alignment = (table.GetColumnAlignment(col) == FormattingTable::Alignment::Left) ? std::left : std::right;
 			os << std::string(table.GetColumnPadding(col), ' ') << alignment << std::setw(static_cast<int>(table.GetColumnWidth(col)))
 				<< table.GetValue(row, col) << std::string(table.GetColumnPadding(col), ' ') << borders.vertical;
 		}
@@ -39,10 +39,10 @@ void DisplayWithoutLineSeparators(const Table& table, std::ostream& os)
 	}
 }
 
-void DisplayWithLineSeparators(const Table& table, std::ostream& os)
+void DisplayWithLineSeparators(const FormattingTable& table, std::ostream& os)
 {
 	const std::string lineSeparator = table.CreateLineSeparator();
-	const Table::BorderStyle& borders = table.GetBorderStyle();
+	const FormattingTable::BorderStyle& borders = table.GetBorderStyle();
 
 	for (size_t row = 0; row < table.GetRowsCount(); ++row)
 	{
@@ -50,7 +50,7 @@ void DisplayWithLineSeparators(const Table& table, std::ostream& os)
 
 		for (size_t col = 0; col < table.GetColumnsCount(); ++col)
 		{
-			const auto& alignment = (table.GetColumnAlignment(col) == Table::Alignment::Left) ? std::left : std::right;
+			const auto& alignment = (table.GetColumnAlignment(col) == FormattingTable::Alignment::Left) ? std::left : std::right;
 			os << std::string(table.GetColumnPadding(col), ' ') << alignment << std::setw(static_cast<int>(table.GetColumnWidth(col)))
 				<< table.GetValue(row, col) << std::string(table.GetColumnPadding(col), ' ') << borders.vertical;
 		}
@@ -63,10 +63,10 @@ void DisplayWithLineSeparators(const Table& table, std::ostream& os)
 	}
 }
 
-void DisplayColumnsLineSeparated(const Table& table, std::ostream& os)
+void DisplayColumnsLineSeparated(const FormattingTable& table, std::ostream& os)
 {
 	const std::string lineSeparator = table.CreateLineSeparator();
-	const Table::BorderStyle& borders = table.GetBorderStyle();
+	const FormattingTable::BorderStyle& borders = table.GetBorderStyle();
 
 	if (!table.IsEmpty())
 	{
@@ -79,7 +79,7 @@ void DisplayColumnsLineSeparated(const Table& table, std::ostream& os)
 
 		for (size_t col = 0; col < table.GetColumnsCount(); ++col)
 		{
-			const auto& alignment = (table.GetColumnAlignment(col) == Table::Alignment::Left) ? std::left : std::right;
+			const auto& alignment = (table.GetColumnAlignment(col) == FormattingTable::Alignment::Left) ? std::left : std::right;
 			os << std::string(table.GetColumnPadding(col), ' ') << alignment << std::setw(static_cast<int>(table.GetColumnWidth(col)))
 				<< table.GetValue(row, col) << std::string(table.GetColumnPadding(col), ' ') << borders.vertical;
 		}
@@ -97,13 +97,13 @@ void DisplayColumnsLineSeparated(const Table& table, std::ostream& os)
 }
 }
 
-Table::Table(const BorderStyle& borders)
+FormattingTable::FormattingTable(const BorderStyle& borders)
 	: m_borderStyle(borders)
 	, m_displayMethod(DisplayMethod::WithLineSeparators)
 {
 }
 
-void Table::Append(const std::vector<std::string>& values)
+void FormattingTable::Append(const std::vector<std::string>& values)
 {
 	// Если таблица пустая, значит не было установлено ни одной колонки
 	if (IsEmpty())
@@ -130,7 +130,7 @@ void Table::Append(const std::vector<std::string>& values)
 	}
 }
 
-void Table::SetColumnAlignment(size_t col, Alignment alignment)
+void FormattingTable::SetColumnAlignment(size_t col, Alignment alignment)
 {
 	if (IsEmpty())
 	{
@@ -145,7 +145,7 @@ void Table::SetColumnAlignment(size_t col, Alignment alignment)
 	m_columnProperties[col].alignment = alignment;
 }
 
-void Table::SetColumnPadding(size_t col, unsigned padding)
+void FormattingTable::SetColumnPadding(size_t col, unsigned padding)
 {
 	if (IsEmpty())
 	{
@@ -160,23 +160,23 @@ void Table::SetColumnPadding(size_t col, unsigned padding)
 	m_columnProperties[col].padding = padding;
 }
 
-void FormatUtils::Table::SetDisplayMethod(DisplayMethod method)
+void FormatUtils::FormattingTable::SetDisplayMethod(DisplayMethod method)
 {
 	m_displayMethod = method;
 }
 
-void Table::Clear()
+void FormattingTable::Clear()
 {
 	m_table.clear();
 	m_columnProperties.clear();
 }
 
-Table::DisplayMethod Table::GetDisplayMethod()const
+FormattingTable::DisplayMethod FormattingTable::GetDisplayMethod()const
 {
 	return m_displayMethod;
 }
 
-const std::string& Table::GetValue(size_t row, size_t col)const
+const std::string& FormattingTable::GetValue(size_t row, size_t col)const
 {
 	if (row >= m_table.size())
 	{
@@ -192,7 +192,7 @@ const std::string& Table::GetValue(size_t row, size_t col)const
 	return values[col];
 }
 
-const std::vector<std::string>& Table::GetColumns()const
+const std::vector<std::string>& FormattingTable::GetColumns()const
 {
 	if (IsEmpty())
 	{
@@ -201,7 +201,7 @@ const std::vector<std::string>& Table::GetColumns()const
 	return m_table.front();
 }
 
-std::string Table::CreateLineSeparator()const
+std::string FormattingTable::CreateLineSeparator()const
 {
 	if (IsEmpty())
 	{
@@ -220,17 +220,17 @@ std::string Table::CreateLineSeparator()const
 	return separator;
 }
 
-bool Table::IsEmpty()const
+bool FormattingTable::IsEmpty()const
 {
 	return m_table.empty();
 }
 
-size_t Table::GetRowsCount()const
+size_t FormattingTable::GetRowsCount()const
 {
 	return m_table.size();
 }
 
-size_t Table::GetColumnsCount()const
+size_t FormattingTable::GetColumnsCount()const
 {
 	if (!m_table.empty())
 	{
@@ -240,12 +240,12 @@ size_t Table::GetColumnsCount()const
 	return 0;
 }
 
-const Table::BorderStyle& Table::GetBorderStyle()const
+const FormattingTable::BorderStyle& FormattingTable::GetBorderStyle()const
 {
 	return m_borderStyle;
 }
 
-void Table::VerifyColumnsCount(size_t count)const
+void FormattingTable::VerifyColumnsCount(size_t count)const
 {
 	if (count < MIN_COLUMNS_COUNT)
 	{
@@ -253,7 +253,7 @@ void Table::VerifyColumnsCount(size_t count)const
 	}
 }
 
-void Table::SetColumns(const std::vector<std::string>& columns)
+void FormattingTable::SetColumns(const std::vector<std::string>& columns)
 {
 	VerifyColumnsCount(columns.size());
 	Clear();
@@ -265,7 +265,7 @@ void Table::SetColumns(const std::vector<std::string>& columns)
 	}
 }
 
-size_t Table::GetColumnWidth(std::size_t col)const
+size_t FormattingTable::GetColumnWidth(std::size_t col)const
 {
 	const auto& columns = GetColumns();
 	if (col >= columns.size())
@@ -275,7 +275,7 @@ size_t Table::GetColumnWidth(std::size_t col)const
 	return m_columnProperties[col].width;
 }
 
-Table::Alignment Table::GetColumnAlignment(size_t col)const
+FormattingTable::Alignment FormattingTable::GetColumnAlignment(size_t col)const
 {
 	const auto& columns = GetColumns();
 	if (col >= columns.size())
@@ -285,7 +285,7 @@ Table::Alignment Table::GetColumnAlignment(size_t col)const
 	return m_columnProperties[col].alignment;
 }
 
-unsigned Table::GetColumnPadding(size_t col)const
+unsigned FormattingTable::GetColumnPadding(size_t col)const
 {
 	const auto& columns = GetColumns();
 	if (col >= columns.size())
@@ -295,17 +295,17 @@ unsigned Table::GetColumnPadding(size_t col)const
 	return m_columnProperties[col].padding;
 }
 
-std::ostream& operator <<(std::ostream& os, const Table& table)
+std::ostream& operator <<(std::ostream& os, const FormattingTable& table)
 {
 	switch (table.GetDisplayMethod())
 	{
-	case Table::DisplayMethod::WithLineSeparators:
+	case FormattingTable::DisplayMethod::WithLineSeparators:
 		DisplayWithLineSeparators(table, os);
 		break;
-	case Table::DisplayMethod::WithoutLineSeparators:
+	case FormattingTable::DisplayMethod::WithoutLineSeparators:
 		DisplayWithoutLineSeparators(table, os);
 		break;
-	case Table::DisplayMethod::ColumnsLineSeparated:
+	case FormattingTable::DisplayMethod::ColumnsLineSeparated:
 		DisplayColumnsLineSeparated(table, os);
 		break;
 	default:

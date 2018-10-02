@@ -3,7 +3,7 @@
 #include <string>
 #include <fstream>
 
-namespace FileUtils
+namespace FileUtil
 {
 std::unique_ptr<std::ifstream> OpenFileForReading(
 	const std::string& filepath, std::ios::openmode mode = std::ios::in);

@@ -5,7 +5,7 @@
 
 namespace FormatUtils
 {
-class Table
+class FormattingTable
 {
 public:
 	enum class DisplayMethod
@@ -36,7 +36,7 @@ public:
 	};
 
 public:
-	explicit Table(const BorderStyle& borders = { '|', '-', '+' });
+	explicit FormattingTable(const BorderStyle& borders = { '|', '-', '+' });
 
 	void Append(const std::vector<std::string>& values);
 	void SetColumnAlignment(size_t col, Alignment alignment);
@@ -70,4 +70,4 @@ private:
 };
 }
 
-std::ostream& operator <<(std::ostream& os, const FormatUtils::Table& table);
+std::ostream& operator <<(std::ostream& os, const FormatUtils::FormattingTable& table);

@@ -13,4 +13,5 @@ public:
 
 private:
 	std::vector<std::shared_ptr<GrammarProduction>> m_productions;
+	std::vector<std::pair<std::string, int>> m_tokens;
 };

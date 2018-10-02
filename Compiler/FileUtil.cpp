@@ -1,7 +1,7 @@
 #include "stdafx.h"
-#include "FileUtils.h"
+#include "FileUtil.h"
 
-namespace FileUtils
+namespace FileUtil
 {
 std::unique_ptr<std::ifstream> OpenFileForReading(const std::string& filepath, std::ios::openmode mode)
 {
