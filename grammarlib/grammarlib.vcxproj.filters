@@ -30,10 +30,10 @@
     <ClInclude Include="GrammarProduction.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="GrammarUtils.h">
+    <ClInclude Include="GrammarProductionFactory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="GrammarProductionFactory.h">
+    <ClInclude Include="GrammarUtil.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -50,10 +50,10 @@
     <ClCompile Include="Grammar.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="GrammarUtils.cpp">
+    <ClCompile Include="GrammarProductionFactory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="GrammarProductionFactory.cpp">
+    <ClCompile Include="GrammarUtil.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

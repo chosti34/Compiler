@@ -10,7 +10,7 @@
 #include <vector>
 #include <optional>
 
-class LLParser : public IParser
+class TableParser : public IParser
 {
 public:
 	struct State
@@ -37,4 +37,4 @@ private:
 	std::unique_ptr<ILexer> m_lexer;
 };
 
-std::unique_ptr<LLParser> CreateLLParser(const Grammar& grammar);
+std::unique_ptr<TableParser> CreateTableParser(const Grammar& grammar);

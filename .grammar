@@ -2,7 +2,7 @@
 <Program>       -> <FunctionList> EOF
 <FunctionList>  -> <Function> <FunctionList>
 <FunctionList>  -> #Eps#
-<Function>      -> FUN IDENTIFIER LPAREN <ParamList> RPAREN ARROW <Type> COLON <Statement>
+<Function>      -> FUNC IDENTIFIER LPAREN <ParamList> RPAREN ARROW <Type> COLON <Statement>
 <ParamList>     -> <Param> <TailParamList>
 <ParamList>     -> #Eps#
 <TailParamList> -> COMMA <Param> <TailParamList>
@@ -36,7 +36,7 @@
 
 ### Tokens
 EOF          = -1
-FUN          =  0
+FUNC         =  0
 IDENTIFIER   =  1
 LPAREN       =  2
 RPAREN       =  3

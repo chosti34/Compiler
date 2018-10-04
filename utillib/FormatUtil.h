@@ -3,9 +3,9 @@
 #include <vector>
 #include <memory>
 
-namespace FormatUtils
+namespace FormatUtil
 {
-class FormattingTable
+class Table
 {
 public:
 	enum class DisplayMethod
@@ -36,7 +36,7 @@ public:
 	};
 
 public:
-	explicit FormattingTable(const BorderStyle& borders = { '|', '-', '+' });
+	explicit Table(const BorderStyle& borders = { '|', '-', '+' });
 
 	void Append(const std::vector<std::string>& values);
 	void SetColumnAlignment(size_t col, Alignment alignment);
@@ -70,4 +70,4 @@ private:
 };
 }
 
-std::ostream& operator <<(std::ostream& os, const FormatUtils::FormattingTable& table);
+std::ostream& operator <<(std::ostream& os, const FormatUtil::Table& table);

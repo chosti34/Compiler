@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "GrammarUtils.h"
+#include "GrammarUtil.h"
 #include <stack>
 
 std::set<int> GatherProductionIndices(const Grammar& grammar, const std::string& nonterminal)

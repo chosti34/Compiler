@@ -21,10 +21,16 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="IParser.h">
+    <ClInclude Include="FileUtil.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TableParser.h">
+    <ClInclude Include="FormatUtil.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="StreamUtil.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="StringUtil.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -32,7 +38,10 @@
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="TableParser.cpp">
+    <ClCompile Include="FileUtil.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="FormatUtil.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

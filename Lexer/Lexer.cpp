@@ -8,7 +8,7 @@
 namespace
 {
 const std::unordered_map<std::string, TokenType> KEYWORDS = {
-	{ "fun", TokenType::FunKeyword },
+	{ "fun", TokenType::FunñKeyword },
 	{ "Int", TokenType::IntKeyword },
 	{ "Float", TokenType::FloatKeyword },
 	{ "Bool", TokenType::BoolKeyword },

@@ -5,7 +5,7 @@
 
 enum class TokenType
 {
-	FunKeyword,
+	FunñKeyword,
 	IntKeyword,
 	FloatKeyword,
 	BoolKeyword,

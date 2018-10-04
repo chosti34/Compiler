@@ -1,7 +1,7 @@
 ﻿#include "stdafx.h"
-#include "LLParser.h"
+#include "TableParser.h"
 
-#include "../grammarlib/GrammarUtils.h"
+#include "../grammarlib/GrammarUtil.h"
 #include "../Lexer/Lexer.h"
 
 #include <stack>
@@ -64,12 +64,12 @@ std::set<TokenType> ConvertToTokenTypes(const std::set<std::string>& terms)
 }
 }
 
-void LLParser::AddState(std::shared_ptr<LLParser::State> state)
+void TableParser::AddState(std::shared_ptr<TableParser::State> state)
 {
 	m_states.push_back(std::move(state));
 }
 
-std::shared_ptr<LLParser::State> LLParser::GetState(size_t index)
+std::shared_ptr<TableParser::State> TableParser::GetState(size_t index)
 {
 	if (index >= m_states.size())
 	{
@@ -78,7 +78,7 @@ std::shared_ptr<LLParser::State> LLParser::GetState(size_t index)
 	return m_states[index];
 }
 
-std::shared_ptr<const LLParser::State> LLParser::GetState(size_t index)const
+std::shared_ptr<const TableParser::State> TableParser::GetState(size_t index)const
 {
 	if (index >= m_states.size())
 	{
@@ -87,13 +87,13 @@ std::shared_ptr<const LLParser::State> LLParser::GetState(size_t index)const
 	return m_states[index];
 }
 
-size_t LLParser::GetStatesCount()const
+size_t TableParser::GetStatesCount()const
 {
 	return m_states.size();
 }
 
 // TODO: use lexer instead of operator >>
-bool LLParser::Parse(const std::string& text)
+bool TableParser::Parse(const std::string& text)
 {
 	auto lexer = std::make_unique<Lexer>(text);
 
@@ -147,13 +147,13 @@ bool LLParser::Parse(const std::string& text)
 	}
 }
 
-std::unique_ptr<LLParser> CreateLLParser(const Grammar& grammar)
+std::unique_ptr<TableParser> CreateTableParser(const Grammar& grammar)
 {
-	auto parser = std::make_unique<LLParser>();
+	auto parser = std::make_unique<TableParser>();
 
 	for (size_t i = 0; i < grammar.GetProductionsCount(); ++i)
 	{
-		auto state = std::make_shared<LLParser::State>();
+		auto state = std::make_shared<TableParser::State>();
 		state->name = grammar.GetProduction(i)->GetLeftPart();
 		state->shift = false;
 		state->push = false;
@@ -171,7 +171,7 @@ std::unique_ptr<LLParser> CreateLLParser(const Grammar& grammar)
 		for (size_t col = 0; col < production->GetSymbolsCount(); ++col)
 		{
 			const auto& symbol = production->GetSymbol(col);
-			auto state = std::make_shared<LLParser::State>();
+			auto state = std::make_shared<TableParser::State>();
 
 			switch (symbol.GetType())
 			{

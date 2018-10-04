@@ -33,9 +33,6 @@
     <ClInclude Include="TokenType.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TokenKeeper.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -45,9 +42,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="TokenType.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="TokenKeeper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

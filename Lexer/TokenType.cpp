@@ -2,7 +2,7 @@
 #include "TokenType.h"
 
 static const GrammarTokens GRAMMAR_TOKENS = {
-	{ "fun", TokenType::FunKeyword },
+	{ "fun", TokenType::FunñKeyword },
 	{ "int", TokenType::IntKeyword },
 	{ "float", TokenType::FloatKeyword },
 	{ "bool", TokenType::BoolKeyword },

@@ -1,15 +1,15 @@
 #include "stdafx.h"
 
-#include "../Parser/LLParser.h"
+#include "../Parser/TableParser.h"
 #include "../grammarlib/Grammar.h"
-#include "../grammarlib/GrammarUtils.h"
+#include "../grammarlib/GrammarUtil.h"
 #include "../grammarlib/GrammarProductionFactory.h"
 #include "../Lexer/Lexer.h"
 
-#include "FormattingTable.h"
-#include "FileUtil.h"
-#include "StringUtil.h"
-#include "StreamUtil.h"
+#include "../utillib/FileUtil.h"
+#include "../utillib/FormatUtil.h"
+#include "../utillib/StringUtil.h"
+#include "../utillib/StreamUtil.h"
 
 namespace
 {
@@ -74,9 +74,9 @@ std::set<std::string> ConvertToStrings(const std::set<TokenType>& beginnings)
 	return strings;
 }
 
-void DumpParser(const LLParser& parser)
+void DumpParser(const TableParser& parser)
 {
-	FormatUtils::FormattingTable table;
+	FormatUtil::Table table;
 	table.Append({ "Index", "Name", "Shift", "Push", "Error", "End", "Next", "Beginnings" });
 
 	const auto boolalpha = [](bool value) -> std::string
@@ -95,16 +95,16 @@ void DumpParser(const LLParser& parser)
 			StringUtil::Join(ConvertToStrings(state->beginnings), ", ", "{", "}")});
 	}
 
-	using namespace FormatUtils;
-	table.SetDisplayMethod(FormattingTable::DisplayMethod::ColumnsLineSeparated);
+	using namespace FormatUtil;
+	table.SetDisplayMethod(Table::DisplayMethod::ColumnsLineSeparated);
 	std::cout << table << std::endl;
 }
 
 const std::string TEST_CODE_EXAMPLE = R"(
 
-fun AlwaysTrueFunc() -> Bool: return True;
+func AlwaysTrueFunc() -> Bool: return True;
 
-fun Main(args: Array<Int>) -> Int:
+func Main(args: Array<Int>) -> Int:
 {
 	if (True)
 	{
@@ -129,7 +129,7 @@ int main(int argc, char* argv[])
 		PrintGrammarToStdout(*grammar);
 
 		// Генерация парсера
-		auto parser = CreateLLParser(*grammar);
+		auto parser = CreateTableParser(*grammar);
 		DumpParser(*parser);
 
 		// Запускаем парсер
