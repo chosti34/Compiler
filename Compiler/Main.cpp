@@ -80,7 +80,7 @@ const std::unordered_map<std::string, TokenKind> TERMINAL_TO_TOKEN_KIND_MAP = {
 	{ "FALSE", TokenKind::FALSE_KEYWORD }
 };
 
-const std::string TEST_CODE_EXAMPLE = "fun AlwaysTrueFunc() -> Bool: return True;";
+const std::string TEST_CODE_EXAMPLE = "func AlwaysTrueFunc() -> Bool: return True;";
 
 std::unique_ptr<Grammar> CreateGrammar(std::istream& strm)
 {
