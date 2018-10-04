@@ -28,3 +28,9 @@ const std::string& Grammar::GetStartSymbol()const
 	}
 	return m_productions.front()->GetLeftPart();
 }
+
+const std::string& Grammar::GetEndSymbol()const
+{
+	assert(!m_productions.empty());
+	return m_productions.front()->GetLastSymbol().GetText();
+}

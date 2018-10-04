@@ -1,18 +1,20 @@
 #pragma once
-#include "TokenType.h"
+#include "TokenKind.h"
 #include <optional>
 #include <string>
 
 struct Token
 {
 public:
-	explicit Token(TokenType type, std::optional<std::string> value = std::nullopt)
-		: type(type)
+	explicit Token(TokenKind kind, std::optional<std::string> value = std::nullopt)
+		: kind(kind)
 		, value(std::move(value))
 	{
 	}
 
 	// TODO: add offset, line, column properties
-	TokenType type;
+	TokenKind kind;
 	std::optional<std::string> value;
 };
+
+std::string ToString(const Token& token);

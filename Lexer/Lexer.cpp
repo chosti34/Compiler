@@ -7,19 +7,19 @@
 
 namespace
 {
-const std::unordered_map<std::string, TokenType> KEYWORDS = {
-	{ "fun", TokenType::FunñKeyword },
-	{ "Int", TokenType::IntKeyword },
-	{ "Float", TokenType::FloatKeyword },
-	{ "Bool", TokenType::BoolKeyword },
-	{ "Array", TokenType::ArrayKeyword },
-	{ "if", TokenType::IfKeyword },
-	{ "else", TokenType::ElseKeyword },
-	{ "while", TokenType::WhileKeyword },
-	{ "var", TokenType::VarKeyword },
-	{ "return", TokenType::ReturnKeyword },
-	{ "True", TokenType::TrueKeyword },
-	{ "False", TokenType::FalseKeyword },
+const std::unordered_map<std::string, TokenKind> KEYWORDS = {
+	{ "func", TokenKind::FUNCTION_KEYWORD },
+	{ "Int", TokenKind::INT_KEYWORD },
+	{ "Float", TokenKind::FLOAT_KEYWORD },
+	{ "Bool", TokenKind::BOOL_KEYWORD },
+	{ "Array", TokenKind::ARRAY_KEYWORD },
+	{ "if", TokenKind::IF_KEYWORD },
+	{ "else", TokenKind::ELSE_KEYWORD },
+	{ "while", TokenKind::WHILE_KEYWORD },
+	{ "var", TokenKind::VAR_KEYWORD },
+	{ "return", TokenKind::RETURN_KEYWORD },
+	{ "True", TokenKind::TRUE_KEYWORD },
+	{ "False", TokenKind::FALSE_KEYWORD },
 };
 }
 
@@ -53,10 +53,10 @@ Token Lexer::Advance()
 				{
 					value += mText[mPos++];
 				}
-				return Token(TokenType::FloatLiteral, value);
+				return Token(TokenKind::FLOAT, value);
 			}
 
-			return Token(TokenType::IntegerLiteral, value);
+			return Token(TokenKind::INT, value);
 		}
 		if (std::isalpha(ch))
 		{
@@ -74,59 +74,59 @@ Token Lexer::Advance()
 			{
 				return Token(found->second);
 			}
-			return Token(TokenType::Identifier, value);
+			return Token(TokenKind::IDENTIFIER, value);
 		}
 		if (std::ispunct(ch))
 		{
 			if (ch == ';')
 			{
 				++mPos;
-				return Token(TokenType::SemicolonSeparator);
+				return Token(TokenKind::SEMICOLON);
 			}
 			if (ch == ':')
 			{
 				++mPos;
-				return Token(TokenType::ColonSeparator);
+				return Token(TokenKind::COLON);
 			}
 			if (ch == '=')
 			{
 				++mPos;
-				return Token(TokenType::AssignOperator);
+				return Token(TokenKind::ASSIGN);
 			}
 			if (ch == ',')
 			{
 				++mPos;
-				return Token(TokenType::CommaSeparator);
+				return Token(TokenKind::COMMA);
 			}
 			if (ch == '(')
 			{
 				++mPos;
-				return Token(TokenType::LeftParenthesis);
+				return Token(TokenKind::LEFT_PARENTHESIS);
 			}
 			if (ch == ')')
 			{
 				++mPos;
-				return Token(TokenType::RightParenthesis);
+				return Token(TokenKind::RIGHT_PARENTHESIS);
 			}
 			if (ch == '{')
 			{
 				++mPos;
-				return Token(TokenType::LeftCurly);
+				return Token(TokenKind::LEFT_CURLY);
 			}
 			if (ch == '}')
 			{
 				++mPos;
-				return Token(TokenType::RightCurly);
+				return Token(TokenKind::RIGHT_CURLY);
 			}
 			if (ch == '<')
 			{
 				++mPos;
-				return Token(TokenType::LeftAngleBracket);
+				return Token(TokenKind::LEFT_ANGLE_BRACKET);
 			}
 			if (ch == '>')
 			{
 				++mPos;
-				return Token(TokenType::RightAngleBracket);
+				return Token(TokenKind::RIGHT_ANGLE_BRACKET);
 			}
 			if (ch == '-')
 			{
@@ -134,13 +134,13 @@ Token Lexer::Advance()
 				if (mPos < mText.length() && mText[mPos] == '>')
 				{
 					++mPos;
-					return Token(TokenType::ArrowSeparator);
+					return Token(TokenKind::ARROW);
 				}
 			}
 		}
 		throw std::runtime_error("illegal character at pos " + std::to_string(mPos) + ": " + mText[mPos]);
 	}
-	return Token(TokenType::End);
+	return Token(TokenKind::END_OF_INPUT);
 }
 
 void Lexer::SetText(const std::string& text)

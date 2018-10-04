@@ -1,10 +1,11 @@
 #include "stdafx.h"
+#include <sstream>
 
-#include "../Parser/TableParser.h"
+#include "../Lexer/Lexer.h"
+#include "../Parser/Parser.h"
 #include "../grammarlib/Grammar.h"
 #include "../grammarlib/GrammarUtil.h"
 #include "../grammarlib/GrammarProductionFactory.h"
-#include "../Lexer/Lexer.h"
 
 #include "../utillib/FileUtil.h"
 #include "../utillib/FormatUtil.h"
@@ -13,6 +14,74 @@
 
 namespace
 {
+const std::string LANGUAGE_GRAMMAR = R"(<Program>       -> <FunctionList> EOF
+<FunctionList>  -> <Function> <FunctionList>
+<FunctionList>  -> #Eps#
+<Function>      -> FUNC IDENTIFIER LPAREN <ParamList> RPAREN ARROW <Type> COLON <Statement>
+<ParamList>     -> <Param> <TailParamList>
+<ParamList>     -> #Eps#
+<TailParamList> -> COMMA <Param> <TailParamList>
+<TailParamList> -> #Eps#
+<Param>         -> IDENTIFIER COLON <Type>
+<Type>          -> INT
+<Type>          -> FLOAT
+<Type>          -> BOOL
+<Type>          -> ARRAY LABRACKET <Type> RABRACKET
+<Statement>     -> <Condition>
+<Statement>     -> <Loop>
+<Statement>     -> <Decl>
+<Statement>     -> <Assign>
+<Statement>     -> <Return>
+<Statement>     -> <Composite>
+<Condition>     -> IF LPAREN <Expression> RPAREN <Statement> <OptionalElse>
+<OptionalElse>  -> ELSE <Statement>
+<OptionalElse>  -> #Eps#
+<Loop>          -> WHILE LPAREN <Expression> RPAREN <Statement>
+<Decl>          -> VAR IDENTIFIER COLON <Type> SEMICOLON
+<Assign>        -> IDENTIFIER ASSIGN <Expression> SEMICOLON
+<Return>        -> RETURN <Expression> SEMICOLON
+<Composite>     -> LCURLY <StatementList> RCURLY
+<StatementList> -> <Statement> <StatementList>
+<StatementList> -> #Eps#
+<Expression>    -> IDENTIFIER
+<Expression>    -> INTLITERAL
+<Expression>    -> FLOATLITERAL
+<Expression>    -> TRUE
+<Expression>    -> FALSE
+)";
+
+const std::unordered_map<std::string, TokenKind> TERMINAL_TO_TOKEN_KIND_MAP = {
+	{ "EOF", TokenKind::END_OF_INPUT },
+	{ "FUNC", TokenKind::FUNCTION_KEYWORD },
+	{ "IDENTIFIER", TokenKind::IDENTIFIER },
+	{ "LPAREN", TokenKind::LEFT_PARENTHESIS },
+	{ "RPAREN", TokenKind::RIGHT_PARENTHESIS },
+	{ "ARROW", TokenKind::ARROW },
+	{ "COLON", TokenKind::COLON },
+	{ "COMMA", TokenKind::COMMA },
+	{ "INT", TokenKind::INT_KEYWORD },
+	{ "FLOAT", TokenKind::FLOAT_KEYWORD },
+	{ "BOOL", TokenKind::BOOL_KEYWORD },
+	{ "ARRAY", TokenKind::ARRAY_KEYWORD },
+	{ "LABRACKET", TokenKind::LEFT_ANGLE_BRACKET },
+	{ "RABRACKET", TokenKind::RIGHT_ANGLE_BRACKET },
+	{ "IF", TokenKind::IF_KEYWORD },
+	{ "ELSE", TokenKind::ELSE_KEYWORD },
+	{ "WHILE", TokenKind::WHILE_KEYWORD },
+	{ "VAR", TokenKind::VAR_KEYWORD },
+	{ "SEMICOLON", TokenKind::SEMICOLON },
+	{ "ASSIGN", TokenKind::ASSIGN },
+	{ "RETURN", TokenKind::RETURN_KEYWORD },
+	{ "LCURLY", TokenKind::LEFT_CURLY },
+	{ "RCURLY", TokenKind::RIGHT_CURLY },
+	{ "INTLITERAL", TokenKind::INT },
+	{ "FLOATLITERAL", TokenKind::FLOAT },
+	{ "TRUE", TokenKind::TRUE_KEYWORD },
+	{ "FALSE", TokenKind::FALSE_KEYWORD }
+};
+
+const std::string TEST_CODE_EXAMPLE = "fun AlwaysTrueFunc() -> Bool: return True;";
+
 std::unique_ptr<Grammar> CreateGrammar(std::istream& strm)
 {
 	auto grammar = std::make_unique<Grammar>();
@@ -25,14 +94,6 @@ std::unique_ptr<Grammar> CreateGrammar(std::istream& strm)
 	}
 
 	return grammar;
-}
-
-// Чтобы файл был закрыт после выхода из функции
-std::unique_ptr<Grammar> CreateGrammarFromFile(const std::string& filepath)
-{
-	using namespace FileUtil;
-	const auto input = OpenFileForReading(filepath);
-	return CreateGrammar(*input);
 }
 
 void PrintGrammarToStdout(const Grammar& grammar)
@@ -64,17 +125,7 @@ void PrintGrammarToStdout(const Grammar& grammar)
 	}
 }
 
-std::set<std::string> ConvertToStrings(const std::set<TokenType>& beginnings)
-{
-	std::set<std::string> strings;
-	for (const auto& beginning : beginnings)
-	{
-		strings.insert(TokenTypeToString(beginning));
-	}
-	return strings;
-}
-
-void DumpParser(const TableParser& parser)
+void PrintParserTableToStdout(const ParserTable& parser)
 {
 	FormatUtil::Table table;
 	table.Append({ "Index", "Name", "Shift", "Push", "Error", "End", "Next", "Beginnings" });
@@ -92,28 +143,13 @@ void DumpParser(const TableParser& parser)
 			boolalpha(state->shift), boolalpha(state->push),
 			boolalpha(state->error), boolalpha(state->end),
 			state->next ? std::to_string(*state->next) : "none",
-			StringUtil::Join(ConvertToStrings(state->beginnings), ", ", "{", "}")});
+			StringUtil::Join(state->beginnings, ", ", "{ ", " }")});
 	}
 
 	using namespace FormatUtil;
 	table.SetDisplayMethod(Table::DisplayMethod::ColumnsLineSeparated);
 	std::cout << table << std::endl;
 }
-
-const std::string TEST_CODE_EXAMPLE = R"(
-
-func AlwaysTrueFunc() -> Bool: return True;
-
-func Main(args: Array<Int>) -> Int:
-{
-	if (True)
-	{
-		return 0;
-	}
-	return 1;
-}
-
-)";
 }
 
 int main(int argc, char* argv[])
@@ -125,12 +161,17 @@ int main(int argc, char* argv[])
 	try
 	{
 		// Чтение грамматики из файла
-		auto grammar = CreateGrammarFromFile("misc/input.txt");
+		auto input = std::istringstream(LANGUAGE_GRAMMAR);
+		const auto grammar = CreateGrammar(input);
 		PrintGrammarToStdout(*grammar);
 
-		// Генерация парсера
-		auto parser = CreateTableParser(*grammar);
-		DumpParser(*parser);
+		// Генерация таблицы для парсера
+		auto table = ParserTable::Create(*grammar);
+		PrintParserTableToStdout(*table);
+
+		// Создаём парсер связывая таблицу построенную по грамматике и лексер с его токенами
+		const auto parser = std::make_unique<Parser>(
+			std::move(table), std::make_unique<Lexer>(), TERMINAL_TO_TOKEN_KIND_MAP);
 
 		// Запускаем парсер
 		std::cout << std::boolalpha << parser->Parse(TEST_CODE_EXAMPLE) << std::endl;

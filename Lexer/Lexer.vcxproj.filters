@@ -30,7 +30,7 @@
     <ClInclude Include="Lexer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TokenType.h">
+    <ClInclude Include="TokenKind.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -41,7 +41,10 @@
     <ClCompile Include="Lexer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="TokenType.cpp">
+    <ClCompile Include="TokenKind.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Token.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

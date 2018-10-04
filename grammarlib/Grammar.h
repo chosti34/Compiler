@@ -10,8 +10,8 @@ public:
 
 	size_t GetProductionsCount()const;
 	const std::string& GetStartSymbol()const;
+	const std::string& GetEndSymbol()const;
 
 private:
 	std::vector<std::shared_ptr<GrammarProduction>> m_productions;
-	std::vector<std::pair<std::string, int>> m_tokens;
 };
