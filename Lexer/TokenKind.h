@@ -7,6 +7,7 @@ enum class TokenKind
 {
 	// End of input token kind
 	END_OF_INPUT,
+
 	// Keywords
 	FUNCTION_KEYWORD,
 	INT_KEYWORD,
@@ -20,12 +21,19 @@ enum class TokenKind
 	RETURN_KEYWORD,
 	TRUE_KEYWORD,
 	FALSE_KEYWORD,
+
 	// Expression terms
 	IDENTIFIER,
 	INT,
 	FLOAT,
+
 	// Operators
 	ASSIGN,
+	PLUS,
+	MINUS,
+	MUL,
+	DIV,
+
 	// Separators
 	LEFT_PARENTHESIS,
 	RIGHT_PARENTHESIS,

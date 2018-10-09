@@ -1,41 +1,48 @@
 #include "stdafx.h"
 #include "Parser.h"
 #include "../Lexer/Lexer.h"
+#include <algorithm>
 
 namespace
 {
-std::vector<std::unordered_set<TokenKind>> TransformBeginnings(const ParserTable& table, const Parser::TerminalTokenMapping& mapping)
+std::unordered_set<TokenKind> TransformToTokens(
+	const std::set<std::string> &strings,
+	const std::unordered_map<std::string, TokenKind> &tokensMap)
 {
-	std::vector<std::unordered_set<TokenKind>> transformed;
-	for (size_t i = 0; i < table.GetStatesCount(); ++i)
+	std::unordered_set<TokenKind> res;
+	for (const std::string& str : strings)
 	{
-		const auto state = table.GetState(i);
-		std::unordered_set<TokenKind> beginnings;
-		for (const auto& beginning : state->beginnings)
+		auto it = tokensMap.find(str);
+		if (it == tokensMap.end())
 		{
-			try
-			{
-				beginnings.insert(mapping.at(beginning));
-			}
-			catch (const std::exception& ex)
-			{
-				throw std::invalid_argument("terminal to token mapping must map '" + beginning + "' to something");
-			}
+			throw std::logic_error("tokens map should have value for key: '" + str + "'");
 		}
-		transformed.push_back(std::move(beginnings));
+		res.insert(it->second);
 	}
-	return transformed;
+	return res;
 }
 }
 
-Parser::Parser(
-	std::unique_ptr<ParserTable> && table,
-	std::unique_ptr<ILexer> && lexer,
-	const TerminalTokenMapping& mapping)
-	: m_beginnings(TransformBeginnings(*table, mapping))
-	, m_table(std::move(table))
-	, m_lexer(std::move(lexer))
+Parser::Parser(std::unique_ptr<ILexer> && lexer)
+	: m_lexer(std::move(lexer))
 {
+}
+
+void Parser::SetParsingTable(const ParsingTable& table, const TokensMap& tokensMap)
+{
+	for (size_t i = 0; i < table.GetEntriesCount(); ++i)
+	{
+		const auto entry = table.GetEntry(i);
+		m_states.push_back(State{
+			entry->shift,
+			entry->error,
+			entry->push,
+			entry->end,
+			entry->name,
+			entry->next,
+			TransformToTokens(entry->beginnings, tokensMap)
+		});
+	}
 }
 
 bool Parser::Parse(const std::string& text)
@@ -48,11 +55,11 @@ bool Parser::Parse(const std::string& text)
 
 	while (true)
 	{
-		const auto state = m_table->GetState(index);
+		const auto& state = m_states[index];
 
-		if (m_beginnings[index].find(token.kind) == m_beginnings[index].end())
+		if (state.beginnings.find(token.kind) == state.beginnings.end())
 		{
-			if (!state->error)
+			if (!state.error)
 			{
 				++index;
 				continue;
@@ -63,23 +70,23 @@ bool Parser::Parse(const std::string& text)
 			}
 		}
 
-		if (state->end)
+		if (state.end)
 		{
 			assert(stack.empty());
 			return true;
 		}
-		if (state->push)
+		if (state.push)
 		{
 			stack.push_back(index + 1);
 		}
-		if (state->shift)
+		if (state.shift)
 		{
 			token = m_lexer->Advance();
 		}
 
-		if (state->next != std::nullopt)
+		if (state.next != std::nullopt)
 		{
-			index = *state->next;
+			index = *state.next;
 		}
 		else
 		{

@@ -30,7 +30,11 @@ const std::unordered_map<TokenKind, std::string> TOKEN_KIND_TO_STRING_MAP = {
 	{ TokenKind::ARROW, "ARROW" },
 	{ TokenKind::COLON, "COLON" },
 	{ TokenKind::COMMA, "COMMA" },
-	{ TokenKind::SEMICOLON, "SEMICOLON" }
+	{ TokenKind::SEMICOLON, "SEMICOLON" },
+	{ TokenKind::MINUS, "MINUS" },
+	{ TokenKind::PLUS, "PLUS" },
+	{ TokenKind::DIV, "DIV" },
+	{ TokenKind::MUL, "MUL" }
 };
 }
 

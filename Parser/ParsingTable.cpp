@@ -1,5 +1,5 @@
 ﻿#include "stdafx.h"
-#include "ParserTable.h"
+#include "ParsingTable.h"
 
 #include "../grammarlib/GrammarUtil.h"
 #include "../Lexer/Lexer.h"
@@ -49,12 +49,12 @@ std::set<std::string> GatherBeginSetAndFollowIfHasEmptiness(const Grammar& gramm
 }
 }
 
-void ParserTable::AddState(std::shared_ptr<ParserTableEntry> state)
+void ParsingTable::AddEntry(std::shared_ptr<ParsingTable::Entry> state)
 {
 	m_table.push_back(std::move(state));
 }
 
-std::shared_ptr<ParserTableEntry> ParserTable::GetState(size_t index)
+std::shared_ptr<ParsingTable::Entry> ParsingTable::GetEntry(size_t index)
 {
 	if (index >= m_table.size())
 	{
@@ -63,7 +63,7 @@ std::shared_ptr<ParserTableEntry> ParserTable::GetState(size_t index)
 	return m_table[index];
 }
 
-std::shared_ptr<const ParserTableEntry> ParserTable::GetState(size_t index)const
+std::shared_ptr<const ParsingTable::Entry> ParsingTable::GetEntry(size_t index)const
 {
 	if (index >= m_table.size())
 	{
@@ -72,18 +72,18 @@ std::shared_ptr<const ParserTableEntry> ParserTable::GetState(size_t index)const
 	return m_table[index];
 }
 
-size_t ParserTable::GetStatesCount()const
+size_t ParsingTable::GetEntriesCount()const
 {
 	return m_table.size();
 }
 
-std::unique_ptr<ParserTable> ParserTable::Create(const Grammar& grammar)
+std::unique_ptr<ParsingTable> ParsingTable::Create(const Grammar& grammar)
 {
-	auto table = std::make_unique<ParserTable>();
+	auto table = std::make_unique<ParsingTable>();
 
 	for (size_t i = 0; i < grammar.GetProductionsCount(); ++i)
 	{
-		auto entry = std::make_shared<ParserTableEntry>();
+		auto entry = std::make_shared<ParsingTable::Entry>();
 		entry->name = grammar.GetProduction(i)->GetLeftPart();
 		entry->shift = false;
 		entry->push = false;
@@ -91,7 +91,7 @@ std::unique_ptr<ParserTable> ParserTable::Create(const Grammar& grammar)
 		entry->end = false;
 		entry->beginnings = GatherBeginningSymbolsOfProduction(grammar, static_cast<int>(i));
 		entry->next = std::nullopt; //! will be added later
-		table->AddState(std::move(entry));
+		table->AddEntry(std::move(entry));
 	}
 
 	for (size_t row = 0; row < grammar.GetProductionsCount(); ++row)
@@ -101,7 +101,7 @@ std::unique_ptr<ParserTable> ParserTable::Create(const Grammar& grammar)
 		for (size_t col = 0; col < production->GetSymbolsCount(); ++col)
 		{
 			const auto& symbol = production->GetSymbol(col);
-			auto state = std::make_shared<ParserTableEntry>();
+			auto state = std::make_shared<ParsingTable::Entry>();
 
 			switch (symbol.GetType())
 			{
@@ -112,7 +112,7 @@ std::unique_ptr<ParserTable> ParserTable::Create(const Grammar& grammar)
 				state->error = true;
 				state->end = (symbol.GetText() == grammar.GetEndSymbol());
 				state->next = (col == production->GetSymbolsCount() - 1u) ?
-					std::nullopt : std::make_optional<size_t>(table->GetStatesCount() + 1u);
+					std::nullopt : std::make_optional<size_t>(table->GetEntriesCount() + 1u);
 				state->beginnings = { symbol.GetText() };
 				break;
 			case GrammarSymbolType::Nonterminal:
@@ -138,11 +138,11 @@ std::unique_ptr<ParserTable> ParserTable::Create(const Grammar& grammar)
 				throw std::logic_error("CreateParser: default switch branch should be unreachable");
 			}
 
-			table->AddState(std::move(state));
+			table->AddEntry(std::move(state));
 		}
 
 		//! adding index that we skipped on first loop
-		table->GetState(row)->next = table->GetStatesCount() - production->GetSymbolsCount();
+		table->GetEntry(row)->next = table->GetEntriesCount() - production->GetSymbolsCount();
 	}
 
 	return table;

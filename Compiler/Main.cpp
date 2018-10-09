@@ -50,7 +50,21 @@ const std::string LANGUAGE_GRAMMAR = R"(<Program>       -> <FunctionList> EOF
 <Expression>    -> FALSE
 )";
 
-const std::unordered_map<std::string, TokenKind> TERMINAL_TO_TOKEN_KIND_MAP = {
+const std::string MATH_GRAMMAR = R"(<Program> -> <Expr> EOF
+<Expr>       -> <Term> <ExprHelper>
+<ExprHelper> -> PLUS <Term> <ExprHelper>
+<ExprHelper> -> MINUS <Term> <ExprHelper>
+<ExprHelper> -> #Eps#
+<Term>       -> <Factor> <TermHelper>
+<TermHelper> -> MUL <Factor> <TermHelper>
+<TermHelper> -> DIV <Factor> <TermHelper>
+<TermHelper> -> #Eps#
+<Factor>     -> LPAREN <Expr> RPAREN
+<Factor>     -> INTLITERAL
+<Factor>     -> MINUS <Factor>
+)";
+
+const std::unordered_map<std::string, TokenKind> TOKENS_MAP = {
 	{ "EOF", TokenKind::END_OF_INPUT },
 	{ "FUNC", TokenKind::FUNCTION_KEYWORD },
 	{ "IDENTIFIER", TokenKind::IDENTIFIER },
@@ -77,10 +91,15 @@ const std::unordered_map<std::string, TokenKind> TERMINAL_TO_TOKEN_KIND_MAP = {
 	{ "INTLITERAL", TokenKind::INT },
 	{ "FLOATLITERAL", TokenKind::FLOAT },
 	{ "TRUE", TokenKind::TRUE_KEYWORD },
-	{ "FALSE", TokenKind::FALSE_KEYWORD }
+	{ "FALSE", TokenKind::FALSE_KEYWORD },
+	{ "MINUS", TokenKind::MINUS },
+	{ "PLUS", TokenKind::PLUS },
+	{ "MUL", TokenKind::MUL },
+	{ "DIV", TokenKind::DIV }
 };
 
-const std::string TEST_CODE_EXAMPLE = "func AlwaysTrueFunc() -> Bool: return True;";
+const std::string FUNCTION_DEFINITION_CODE_EXAMPLE = "func AlwaysTrueFunc() -> Bool: return True;";
+const std::string EXPRESSION_CODE_EXAMPLE = "12 - -1";
 
 std::unique_ptr<Grammar> CreateGrammar(std::istream& strm)
 {
@@ -125,30 +144,30 @@ void PrintGrammarToStdout(const Grammar& grammar)
 	}
 }
 
-void PrintParserTableToStdout(const ParserTable& parser)
+void PrintParserTableToStdout(const ParsingTable& parsingTable)
 {
-	FormatUtil::Table table;
-	table.Append({ "Index", "Name", "Shift", "Push", "Error", "End", "Next", "Beginnings" });
+	FormatUtil::Table formatTable;
+	formatTable.Append({ "Index", "Name", "Shift", "Push", "Error", "End", "Next", "Beginnings" });
 
 	const auto boolalpha = [](bool value) -> std::string
 	{
 		return value ? "true" : "false";
 	};
 
-	for (size_t i = 0; i < parser.GetStatesCount(); ++i)
+	for (size_t i = 0; i < parsingTable.GetEntriesCount(); ++i)
 	{
-		const auto& state = parser.GetState(i);
-		table.Append({
-			std::to_string(i), state->name,
-			boolalpha(state->shift), boolalpha(state->push),
-			boolalpha(state->error), boolalpha(state->end),
-			state->next ? std::to_string(*state->next) : "none",
-			StringUtil::Join(state->beginnings, ", ", "{ ", " }")});
+		const auto& entry = parsingTable.GetEntry(i);
+		formatTable.Append({
+			std::to_string(i), entry->name,
+			boolalpha(entry->shift), boolalpha(entry->push),
+			boolalpha(entry->error), boolalpha(entry->end),
+			entry->next ? std::to_string(*entry->next) : "none",
+			StringUtil::Join(entry->beginnings, ", ", "{ ", " }")});
 	}
 
 	using namespace FormatUtil;
-	table.SetDisplayMethod(Table::DisplayMethod::ColumnsLineSeparated);
-	std::cout << table << std::endl;
+	formatTable.SetDisplayMethod(Table::DisplayMethod::ColumnsLineSeparated);
+	std::cout << formatTable << std::endl;
 }
 }
 
@@ -161,20 +180,35 @@ int main(int argc, char* argv[])
 	try
 	{
 		// Чтение грамматики из файла
-		auto input = std::istringstream(LANGUAGE_GRAMMAR);
+		auto input = std::istringstream(MATH_GRAMMAR);
 		const auto grammar = CreateGrammar(input);
 		PrintGrammarToStdout(*grammar);
 
 		// Генерация таблицы для парсера
-		auto table = ParserTable::Create(*grammar);
+		auto table = ParsingTable::Create(*grammar);
 		PrintParserTableToStdout(*table);
 
 		// Создаём парсер связывая таблицу построенную по грамматике и лексер с его токенами
-		const auto parser = std::make_unique<Parser>(
-			std::move(table), std::make_unique<Lexer>(), TERMINAL_TO_TOKEN_KIND_MAP);
+		const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>());
+		parser->SetParsingTable(*table, TOKENS_MAP);
+
+		// Токенизируем текст (для отладки)
+		std::cout << EXPRESSION_CODE_EXAMPLE << std::endl;
+		auto lexer = std::make_unique<Lexer>();
+		lexer->SetText(EXPRESSION_CODE_EXAMPLE);
+
+		do
+		{
+			auto token = lexer->Advance();
+			std::cout << ToString(token) << std::endl;
+			if (token.kind == TokenKind::END_OF_INPUT)
+			{
+				break;
+			}
+		} while (true);
 
 		// Запускаем парсер
-		std::cout << std::boolalpha << parser->Parse(TEST_CODE_EXAMPLE) << std::endl;
+		std::cout << std::boolalpha << parser->Parse(EXPRESSION_CODE_EXAMPLE) << std::endl;
 	}
 	catch (const std::exception& ex)
 	{

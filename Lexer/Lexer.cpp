@@ -136,6 +136,22 @@ Token Lexer::Advance()
 					++mPos;
 					return Token(TokenKind::ARROW);
 				}
+				return Token(TokenKind::MINUS);
+			}
+			if (ch == '+')
+			{
+				++mPos;
+				return Token(TokenKind::PLUS);
+			}
+			if (ch == '*')
+			{
+				++mPos;
+				return Token(TokenKind::MUL);
+			}
+			if (ch == '/')
+			{
+				++mPos;
+				return Token(TokenKind::DIV);
 			}
 		}
 		throw std::runtime_error("illegal character at pos " + std::to_string(mPos) + ": " + mText[mPos]);
