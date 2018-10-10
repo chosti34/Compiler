@@ -1,7 +1,5 @@
 #include "stdafx.h"
 #include "Parser.h"
-#include "../Lexer/Lexer.h"
-#include <algorithm>
 
 namespace
 {
@@ -28,12 +26,12 @@ Parser::Parser(std::unique_ptr<ILexer> && lexer)
 {
 }
 
-void Parser::SetParsingTable(const ParsingTable& table, const TokensMap& tokensMap)
+void Parser::SetParsingTable(const LLParsingTable& table, const TokensMap& tokensMap)
 {
 	for (size_t i = 0; i < table.GetEntriesCount(); ++i)
 	{
 		const auto entry = table.GetEntry(i);
-		m_states.push_back(State{
+		m_states.push_back(ParserState{
 			entry->shift,
 			entry->error,
 			entry->push,

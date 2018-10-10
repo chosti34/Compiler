@@ -1,12 +1,10 @@
-п»ї#include "stdafx.h"
-#include "ParsingTable.h"
-
-#include "../grammarlib/GrammarUtil.h"
-#include "../Lexer/Lexer.h"
+#include "stdafx.h"
+#include "LLParsingTable.h"
+#include "GrammarUtil.h"
 
 namespace
 {
-// РРјРµРµС‚ Р»Рё РґР°РЅРЅС‹Р№ РЅРµС‚РµСЂРјРёРЅР°Р» Р°Р»СЊС‚РµСЂРЅР°С‚РёРІС‹ СЃ Р±РѕР»СЊС€РёРј РёРЅРґРµРєСЃРѕРј (РЅРёР¶Рµ РїРѕ СЃРїРёСЃРєСѓ РїСЂР°РІРёР»)
+// Имеет ли данный нетерминал альтернативы с большим индексом (ниже по списку правил)
 bool ProductionHasAlternative(const Grammar& grammar, size_t index)
 {
 	const auto lhs = grammar.GetProduction(index++);
@@ -21,7 +19,7 @@ bool ProductionHasAlternative(const Grammar& grammar, size_t index)
 	return false;
 }
 
-// РџРѕР»СѓС‡РёС‚СЊ РёРЅРґРµРєСЃ РїСЂРѕРґСѓРєС†РёРё СЃ РґР°РЅРЅС‹Рј РЅРµС‚РµСЂРјРёРЅР°Р»РѕРј РІ Р»РµРІРѕР№ С‡Р°СЃС‚Рё
+// Получить индекс продукции с данным нетерминалом в левой части
 size_t GetProductionIndex(const Grammar& grammar, const std::string& nonterminal)
 {
 	for (size_t i = 0; i < grammar.GetProductionsCount(); ++i)
@@ -34,7 +32,7 @@ size_t GetProductionIndex(const Grammar& grammar, const std::string& nonterminal
 	throw std::invalid_argument("grammar doesn't have such nonterminal");
 }
 
-// РџРѕР»СѓС‡РёС‚СЊ РЅР°РїСЂР°РІР»СЏСЋС‰РµРµ РјРЅРѕР¶РµСЃС‚РІРѕ РґР»СЏ РЅРµС‚РµСЂРјРёРЅР°Р»Р°, Рё, РµСЃР»Рё РѕРЅ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј, РґРѕР±Р°РІРёС‚СЊ Рє РЅР°РїСЂР°РІР»СЏСЋС‰РµРјСѓ РјРЅРѕР¶РµСЃС‚РІСѓ СЃРёРјРІРѕР»С‹ СЃР»РµРґРѕРІР°С‚РµР»Рё
+// Получить направляющее множество для нетерминала, и, если он может быть пустым, добавить к направляющему множеству символы следователи
 std::set<std::string> GatherBeginSetAndFollowIfHasEmptiness(const Grammar& grammar, const std::string& nonterminal)
 {
 	std::set<std::string> symbols;
@@ -49,12 +47,12 @@ std::set<std::string> GatherBeginSetAndFollowIfHasEmptiness(const Grammar& gramm
 }
 }
 
-void ParsingTable::AddEntry(std::shared_ptr<ParsingTable::Entry> state)
+void LLParsingTable::AddEntry(std::shared_ptr<LLParsingTableEntry> state)
 {
 	m_table.push_back(std::move(state));
 }
 
-std::shared_ptr<ParsingTable::Entry> ParsingTable::GetEntry(size_t index)
+std::shared_ptr<LLParsingTableEntry> LLParsingTable::GetEntry(size_t index)
 {
 	if (index >= m_table.size())
 	{
@@ -63,7 +61,7 @@ std::shared_ptr<ParsingTable::Entry> ParsingTable::GetEntry(size_t index)
 	return m_table[index];
 }
 
-std::shared_ptr<const ParsingTable::Entry> ParsingTable::GetEntry(size_t index)const
+std::shared_ptr<const LLParsingTableEntry> LLParsingTable::GetEntry(size_t index)const
 {
 	if (index >= m_table.size())
 	{
@@ -72,18 +70,19 @@ std::shared_ptr<const ParsingTable::Entry> ParsingTable::GetEntry(size_t index)c
 	return m_table[index];
 }
 
-size_t ParsingTable::GetEntriesCount()const
+size_t LLParsingTable::GetEntriesCount()const
 {
 	return m_table.size();
 }
 
-std::unique_ptr<ParsingTable> ParsingTable::Create(const Grammar& grammar)
+std::unique_ptr<LLParsingTable> LLParsingTable::Create(const Grammar& grammar)
 {
-	auto table = std::make_unique<ParsingTable>();
+	// not using std::make_unique because constructor is private
+	auto table = std::unique_ptr<LLParsingTable>(new LLParsingTable);
 
 	for (size_t i = 0; i < grammar.GetProductionsCount(); ++i)
 	{
-		auto entry = std::make_shared<ParsingTable::Entry>();
+		auto entry = std::make_shared<LLParsingTableEntry>();
 		entry->name = grammar.GetProduction(i)->GetLeftPart();
 		entry->shift = false;
 		entry->push = false;
@@ -101,7 +100,7 @@ std::unique_ptr<ParsingTable> ParsingTable::Create(const Grammar& grammar)
 		for (size_t col = 0; col < production->GetSymbolsCount(); ++col)
 		{
 			const auto& symbol = production->GetSymbol(col);
-			auto state = std::make_shared<ParsingTable::Entry>();
+			auto state = std::make_shared<LLParsingTableEntry>();
 
 			switch (symbol.GetType())
 			{

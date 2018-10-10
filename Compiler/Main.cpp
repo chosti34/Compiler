@@ -144,7 +144,7 @@ void PrintGrammarToStdout(const Grammar& grammar)
 	}
 }
 
-void PrintParserTableToStdout(const ParsingTable& parsingTable)
+void PrintParserTableToStdout(const LLParsingTable& parsingTable)
 {
 	FormatUtil::Table formatTable;
 	formatTable.Append({ "Index", "Name", "Shift", "Push", "Error", "End", "Next", "Beginnings" });
@@ -185,7 +185,7 @@ int main(int argc, char* argv[])
 		PrintGrammarToStdout(*grammar);
 
 		// Генерация таблицы для парсера
-		auto table = ParsingTable::Create(*grammar);
+		auto table = LLParsingTable::Create(*grammar);
 		PrintParserTableToStdout(*table);
 
 		// Создаём парсер связывая таблицу построенную по грамматике и лексер с его токенами
