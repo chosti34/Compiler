@@ -5,7 +5,7 @@
 #include "../Parser/Parser.h"
 #include "../grammarlib/Grammar.h"
 #include "../grammarlib/GrammarUtil.h"
-#include "../grammarlib/GrammarProductionFactory.h"
+#include "../grammarlib/GrammarFactory.h"
 
 #include "../utillib/FileUtil.h"
 #include "../utillib/FormatUtil.h"
@@ -14,7 +14,8 @@
 
 namespace
 {
-const std::string LANGUAGE_GRAMMAR = R"(<Program>       -> <FunctionList> EOF
+const std::string LANGUAGE_GRAMMAR = R"(
+<Program>       -> <FunctionList> EOF
 <FunctionList>  -> <Function> <FunctionList>
 <FunctionList>  -> #Eps#
 <Function>      -> FUNC IDENTIFIER LPAREN <ParamList> RPAREN ARROW <Type> COLON <Statement>
@@ -50,7 +51,8 @@ const std::string LANGUAGE_GRAMMAR = R"(<Program>       -> <FunctionList> EOF
 <Expression>    -> FALSE
 )";
 
-const std::string MATH_GRAMMAR = R"(<Program> -> <Expr> EOF  
+const std::string MATH_GRAMMAR = R"(
+<Program> -> <Expr> EOF
 <Expr>       -> <Term> <ExprHelper>
 <ExprHelper> -> PLUS <Term> <ExprHelper>
 <ExprHelper> -> MINUS <Term> <ExprHelper>
@@ -101,18 +103,10 @@ const std::unordered_map<std::string, TokenKind> TOKENS_MAP = {
 const std::string FUNCTION_DEFINITION_CODE_EXAMPLE = "func AlwaysTrueFunc() -> Bool: return True;";
 const std::string EXPRESSION_CODE_EXAMPLE = "12 - -1";
 
-std::unique_ptr<Grammar> CreateGrammar(std::istream& strm)
+std::unique_ptr<Grammar> CreateGrammar(const std::string& text)
 {
-	auto grammar = std::make_unique<Grammar>();
-	auto factory = std::make_unique<GrammarProductionFactory>();
-
-	std::string line;
-	while (getline(strm, line))
-	{
-		grammar->AddProduction(factory->CreateProduction(line));
-	}
-
-	return grammar;
+	auto factory = std::make_unique<GrammarFactory>();
+	return factory->CreateGrammar(text);
 }
 
 void PrintGrammarToStdout(const Grammar& grammar)
@@ -144,7 +138,7 @@ void PrintGrammarToStdout(const Grammar& grammar)
 	}
 }
 
-void PrintParserTableToStdout(const LLParsingTable& parsingTable)
+void PrintParsingTableToStdout(const LLParsingTable& parsingTable)
 {
 	FormatUtil::Table formatTable;
 	formatTable.Append({ "Index", "Name", "Shift", "Push", "Error", "End", "Next", "Beginnings" });
@@ -169,6 +163,24 @@ void PrintParserTableToStdout(const LLParsingTable& parsingTable)
 	formatTable.SetDisplayMethod(Table::DisplayMethod::ColumnsLineSeparated);
 	std::cout << formatTable << std::endl;
 }
+
+void DebugTokenize(const std::string& text)
+{
+	std::cout << "Tokens for: '" << text << "'" << std::endl;
+
+	auto lexer = std::make_unique<Lexer>();
+	lexer->SetText(text);
+
+	do
+	{
+		auto token = lexer->Advance();
+		std::cout << ToString(token) << std::endl;
+		if (token.kind == TokenKind::END_OF_INPUT)
+		{
+			break;
+		}
+	} while (true);
+}
 }
 
 int main(int argc, char* argv[])
@@ -179,33 +191,20 @@ int main(int argc, char* argv[])
 
 	try
 	{
-		// Чтение грамматики из файла
-		auto input = std::istringstream(MATH_GRAMMAR);
-		const auto grammar = CreateGrammar(input);
+		// Инициализируем грамматику
+		const auto grammar = CreateGrammar(MATH_GRAMMAR);
 		PrintGrammarToStdout(*grammar);
 
 		// Генерация таблицы для парсера
-		auto table = LLParsingTable::Create(*grammar);
-		PrintParserTableToStdout(*table);
+		const auto table = LLParsingTable::Create(*grammar);
+		PrintParsingTableToStdout(*table);
 
 		// Создаём парсер связывая таблицу построенную по грамматике и лексер с его токенами
 		const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>());
 		parser->SetParsingTable(*table, TOKENS_MAP);
 
 		// Токенизируем текст (для отладки)
-		std::cout << EXPRESSION_CODE_EXAMPLE << std::endl;
-		auto lexer = std::make_unique<Lexer>();
-		lexer->SetText(EXPRESSION_CODE_EXAMPLE);
-
-		do
-		{
-			auto token = lexer->Advance();
-			std::cout << ToString(token) << std::endl;
-			if (token.kind == TokenKind::END_OF_INPUT)
-			{
-				break;
-			}
-		} while (true);
+		DebugTokenize(EXPRESSION_CODE_EXAMPLE);
 
 		// Запускаем парсер
 		std::cout << std::boolalpha << parser->Parse(EXPRESSION_CODE_EXAMPLE) << std::endl;
