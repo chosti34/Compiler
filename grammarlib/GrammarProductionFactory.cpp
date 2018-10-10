@@ -1,12 +1,22 @@
 #include "stdafx.h"
 #include "GrammarProductionFactory.h"
+#include <unordered_set>
 #include <functional>
+#include <algorithm>
 #include <cctype>
 
 namespace
 {
+// Reserved strings for special symbols
 const std::string ARROW_SYMBOL = "->";
 const std::string EPSILON_SYMBOL = "#Eps#";
+
+// Terminals and nonterminals can't contain this characters
+bool IsSpecialCharacter(char ch)
+{
+	static std::unordered_set<char> specials = { '<', '>', '#' };
+	return specials.find(ch) != specials.end();
+}
 
 bool MatchSafely(const std::string& str, size_t& offset, const std::string& match)
 {
@@ -22,27 +32,15 @@ bool MatchSafely(const std::string& str, size_t& offset, const std::string& matc
 	return true;
 }
 
-void SkipSpaces(const std::string& str, size_t& offset)
+void SkipWhile(const std::string& str, size_t& offset, std::function<bool(char ch)> && predicate)
 {
-	while (offset < str.length() && std::isspace(str[offset]))
+	while (offset < str.length() && predicate(str[offset]))
 	{
 		++offset;
 	}
 }
 
-bool ReadAs(const std::string& text, size_t& offset, const std::string& what)
-{
-	size_t offsetCopy = offset;
-	SkipSpaces(text, offsetCopy);
-	if (MatchSafely(text, offsetCopy, what))
-	{
-		offset = offsetCopy;
-		return true;
-	}
-	return false;
-}
-
-void ReadCharacters(
+void ReadWhile(
 	const std::string& text,
 	std::string& characters,
 	size_t& offset,
@@ -52,6 +50,18 @@ void ReadCharacters(
 	{
 		characters += text[offset++];
 	}
+}
+
+bool ReadAs(const std::string& text, size_t& offset, const std::string& what)
+{
+	size_t offsetCopy = offset;
+	SkipWhile(text, offsetCopy, std::isspace);
+	if (MatchSafely(text, offsetCopy, what))
+	{
+		offset = offsetCopy;
+		return true;
+	}
+	return false;
 }
 
 bool ReadAsArrow(const std::string& text, size_t& offset)
@@ -67,11 +77,11 @@ bool ReadAsEpsilon(const std::string& text, size_t& offset)
 bool ReadAsTerminal(const std::string& text, size_t& offset, std::string& terminal)
 {
 	size_t offsetCopy = offset;
-	SkipSpaces(text, offsetCopy);
+	SkipWhile(text, offsetCopy, std::isspace);
 
 	std::string characters;
-	ReadCharacters(text, characters, offsetCopy, [](char ch) {
-		return std::isalnum(ch) || (std::ispunct(ch) && ch != '<' && ch != '>' && ch != '#');
+	ReadWhile(text, characters, offsetCopy, [](char ch) {
+		return std::isalnum(ch) || (std::ispunct(ch) && !IsSpecialCharacter(ch));
 	});
 
 	if (!characters.empty())
@@ -86,7 +96,7 @@ bool ReadAsTerminal(const std::string& text, size_t& offset, std::string& termin
 bool ReadAsNonterminal(const std::string& text, size_t& offset, std::string& nonterminal)
 {
 	size_t offsetCopy = offset;
-	SkipSpaces(text, offsetCopy);
+	SkipWhile(text, offsetCopy, std::isspace);
 
 	if (!MatchSafely(text, offsetCopy, "<"))
 	{
@@ -94,8 +104,8 @@ bool ReadAsNonterminal(const std::string& text, size_t& offset, std::string& non
 	}
 
 	std::string characters;
-	ReadCharacters(text, characters, offsetCopy, [](char ch) {
-		return std::isalnum(ch) || (std::ispunct(ch) && ch != '<' && ch != '>' && ch != '#');
+	ReadWhile(text, characters, offsetCopy, [](char ch) {
+		return std::isalnum(ch) || (std::ispunct(ch) && !IsSpecialCharacter(ch));
 	});
 
 	if (!characters.empty() && MatchSafely(text, offsetCopy, ">"))
@@ -112,48 +122,40 @@ std::shared_ptr<GrammarProduction> GrammarProductionFactory::CreateProduction(co
 {
 	size_t offset = 0;
 
-	std::string nonterminal;
-	if (!ReadAsNonterminal(line, offset, nonterminal))
+	std::string leftNonterminal;
+	if (!ReadAsNonterminal(line, offset, leftNonterminal))
 	{
 		throw std::invalid_argument("can't read left nonterminal of production: " + line);
 	}
 
 	if (!ReadAsArrow(line, offset))
 	{
-		throw std::invalid_argument("production's right and left part must be delimited with arrow");
+		throw std::invalid_argument("production's right and left parts must be delimited by arrow");
 	}
 
-	std::vector<GrammarSymbol> right;
-	while (true)
+	std::vector<GrammarSymbol> rightPart;
+	std::string buffer;
+
+	while (offset < line.length())
 	{
-		std::string symbol;
-		if (ReadAsNonterminal(line, offset, symbol))
+		SkipWhile(line, offset, std::isspace);
+		if (ReadAsEpsilon(line, offset))
 		{
-			right.emplace_back(symbol, GrammarSymbolType::Nonterminal);
+			rightPart.emplace_back(EPSILON_SYMBOL, GrammarSymbolType::Epsilon);
 		}
-		else if (ReadAsTerminal(line, offset, symbol))
+		else if (ReadAsNonterminal(line, offset, buffer))
 		{
-			right.emplace_back(symbol, GrammarSymbolType::Terminal);
+			rightPart.emplace_back(buffer, GrammarSymbolType::Nonterminal);
 		}
-		else if (ReadAsEpsilon(line, offset))
+		else if (ReadAsTerminal(line, offset, buffer))
 		{
-			right.emplace_back(EPSILON_SYMBOL, GrammarSymbolType::Epsilon);
-		}
-		else
-		{
-			break;
+			rightPart.emplace_back(buffer, GrammarSymbolType::Terminal);
 		}
 	}
 
-	// check on string end
-	if (offset < line.length())
+	if (!rightPart.empty())
 	{
-		throw std::invalid_argument("unexpected character at position " + std::to_string(offset) + ": " + line);
+		return std::make_shared<GrammarProduction>(leftNonterminal, rightPart);
 	}
-
-	if (!right.empty())
-	{
-		return std::make_shared<GrammarProduction>(nonterminal, right);
-	}
-	throw std::invalid_argument("production's left part is empty: " + line);
+	throw std::invalid_argument("production's left part can't be empty: " + line);
 }

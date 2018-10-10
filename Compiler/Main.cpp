@@ -50,7 +50,7 @@ const std::string LANGUAGE_GRAMMAR = R"(<Program>       -> <FunctionList> EOF
 <Expression>    -> FALSE
 )";
 
-const std::string MATH_GRAMMAR = R"(<Program> -> <Expr> EOF
+const std::string MATH_GRAMMAR = R"(<Program> -> <Expr> EOF  
 <Expr>       -> <Term> <ExprHelper>
 <ExprHelper> -> PLUS <Term> <ExprHelper>
 <ExprHelper> -> MINUS <Term> <ExprHelper>
