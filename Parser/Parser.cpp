@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "Parser.h"
+#include <iostream>
 
 namespace
 {
@@ -67,6 +68,11 @@ bool Parser::Parse(const std::string& text)
 			{
 				return false;
 			}
+		}
+
+		if (state.beginnings.empty())
+		{
+			std::cout << state.name << std::endl;
 		}
 
 		if (state.end)

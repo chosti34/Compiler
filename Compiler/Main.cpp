@@ -53,16 +53,16 @@ const std::string LANGUAGE_GRAMMAR = R"(
 const std::string MATH_GRAMMAR = R"(
 <Program> -> <Expr> EOF
 <Expr>       -> <Term> <ExprHelper>
-<ExprHelper> -> PLUS <Term> <ExprHelper>
-<ExprHelper> -> MINUS <Term> <ExprHelper>
+<ExprHelper> -> PLUS <Term> {CreateBinaryNodePlus} <ExprHelper>
+<ExprHelper> -> MINUS <Term> {CreateBinaryNodeMinus} <ExprHelper>
 <ExprHelper> -> #Eps#
 <Term>       -> <Factor> <TermHelper>
-<TermHelper> -> MUL <Factor> <TermHelper>
-<TermHelper> -> DIV <Factor> <TermHelper>
+<TermHelper> -> MUL <Factor> {CreateBinaryNodeMul} <TermHelper>
+<TermHelper> -> DIV <Factor> {CreateBinaryNodeDiv} <TermHelper>
 <TermHelper> -> #Eps#
 <Factor>     -> LPAREN <Expr> RPAREN
-<Factor>     -> INTLITERAL
-<Factor>     -> MINUS <Factor>
+<Factor>     -> INTLITERAL {CreateNumberNode}
+<Factor>     -> MINUS <Factor> {CreateUnaryNodeMinus}
 )";
 
 const std::unordered_map<std::string, TokenKind> TOKENS_MAP = {
@@ -110,7 +110,7 @@ func Main(args: Array<Int>) -> Int:
 }
 )";
 
-const std::string EXPRESSION_CODE_EXAMPLE = "12 - -1";
+const std::string EXPRESSION_CODE_EXAMPLE = "12 + 1 + 1";
 
 std::unique_ptr<Grammar> CreateGrammar(const std::string& text)
 {
@@ -201,7 +201,7 @@ int main(int argc, char* argv[])
 	try
 	{
 		// Инициализируем грамматику
-		const auto grammar = CreateGrammar(LANGUAGE_GRAMMAR);
+		const auto grammar = CreateGrammar(MATH_GRAMMAR);
 		PrintGrammarToStdout(*grammar);
 
 		// Генерация таблицы для парсера
@@ -213,10 +213,10 @@ int main(int argc, char* argv[])
 		parser->SetParsingTable(*table, TOKENS_MAP);
 
 		// Токенизируем текст (для отладки)
-		DebugTokenize(FUNCTION_DEFINITION_CODE_EXAMPLE);
+		DebugTokenize(EXPRESSION_CODE_EXAMPLE);
 
 		// Запускаем парсер
-		std::cout << std::boolalpha << parser->Parse(FUNCTION_DEFINITION_CODE_EXAMPLE) << std::endl;
+		std::cout << std::boolalpha << parser->Parse(EXPRESSION_CODE_EXAMPLE) << std::endl;
 	}
 	catch (const std::exception& ex)
 	{
