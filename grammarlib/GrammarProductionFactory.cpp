@@ -14,10 +14,11 @@ const std::string EPSILON_SYMBOL = "#Eps#";
 // Terminals and nonterminals can't contain this characters
 bool IsSpecialCharacter(char ch)
 {
-	static std::unordered_set<char> specials = { '<', '>', '#' };
+	static std::unordered_set<char> specials = { '<', '>', '#', '{', '}' };
 	return specials.find(ch) != specials.end();
 }
 
+// TODO: can be implemented with std::string::compare
 bool MatchSafely(const std::string& str, size_t& offset, const std::string& match)
 {
 	size_t offsetCopy = offset;
@@ -64,17 +65,7 @@ bool ReadAs(const std::string& text, size_t& offset, const std::string& what)
 	return false;
 }
 
-bool ReadAsArrow(const std::string& text, size_t& offset)
-{
-	return ReadAs(text, offset, ARROW_SYMBOL);
-}
-
-bool ReadAsEpsilon(const std::string& text, size_t& offset)
-{
-	return ReadAs(text, offset, EPSILON_SYMBOL);
-}
-
-bool ReadAsTerminal(const std::string& text, size_t& offset, std::string& terminal)
+bool ReadChars(const std::string& text, size_t& offset, std::string& chars)
 {
 	size_t offsetCopy = offset;
 	SkipWhile(text, offsetCopy, std::isspace);
@@ -87,34 +78,65 @@ bool ReadAsTerminal(const std::string& text, size_t& offset, std::string& termin
 	if (!characters.empty())
 	{
 		offset = offsetCopy;
-		terminal = std::move(characters);
+		chars = std::move(characters);
 		return true;
 	}
 	return false;
 }
 
-bool ReadAsNonterminal(const std::string& text, size_t& offset, std::string& nonterminal)
+bool ReadCharsEx(
+	const std::string& text,
+	size_t& offset,
+	std::string& chars,
+	const std::string& prefix,
+	const std::string& suffix)
 {
 	size_t offsetCopy = offset;
 	SkipWhile(text, offsetCopy, std::isspace);
 
-	if (!MatchSafely(text, offsetCopy, "<"))
+	if (!MatchSafely(text, offsetCopy, prefix))
 	{
 		return false;
 	}
 
 	std::string characters;
-	ReadWhile(text, characters, offsetCopy, [](char ch) {
-		return std::isalnum(ch) || (std::ispunct(ch) && !IsSpecialCharacter(ch));
-	});
+	if (!ReadChars(text, offsetCopy, characters))
+	{
+		return false;
+	}
 
-	if (!characters.empty() && MatchSafely(text, offsetCopy, ">"))
+	if (MatchSafely(text, offsetCopy, suffix))
 	{
 		offset = offsetCopy;
-		nonterminal = std::move(characters);
+		chars = std::move(characters);
 		return true;
 	}
 	return false;
+}
+
+bool ReadAsArrow(const std::string& text, size_t& offset)
+{
+	return ReadAs(text, offset, ARROW_SYMBOL);
+}
+
+bool ReadAsEpsilon(const std::string& text, size_t& offset)
+{
+	return ReadAs(text, offset, EPSILON_SYMBOL);
+}
+
+bool ReadAsTerminal(const std::string& text, size_t& offset, std::string& terminal)
+{
+	return ReadChars(text, offset, terminal);
+}
+
+bool ReadAsNonterminal(const std::string& text, size_t& offset, std::string& nonterminal)
+{
+	return ReadCharsEx(text, offset, nonterminal, "<", ">");
+}
+
+bool ReadAsAttribute(const std::string& text, size_t& offset, std::string& attribute)
+{
+	return ReadCharsEx(text, offset, attribute, "{", "}");
 }
 }
 
@@ -136,9 +158,8 @@ std::shared_ptr<GrammarProduction> GrammarProductionFactory::CreateProduction(co
 	std::vector<GrammarSymbol> rightPart;
 	std::string buffer;
 
-	while (offset < line.length())
+	while (true)
 	{
-		SkipWhile(line, offset, std::isspace);
 		if (ReadAsEpsilon(line, offset))
 		{
 			rightPart.emplace_back(EPSILON_SYMBOL, GrammarSymbolType::Epsilon);
@@ -150,6 +171,23 @@ std::shared_ptr<GrammarProduction> GrammarProductionFactory::CreateProduction(co
 		else if (ReadAsTerminal(line, offset, buffer))
 		{
 			rightPart.emplace_back(buffer, GrammarSymbolType::Terminal);
+		}
+		else if (ReadAsAttribute(line, offset, buffer))
+		{
+			assert(!rightPart.empty());
+			rightPart.back().SetAttribute(buffer);
+		}
+		else
+		{
+			SkipWhile(line, offset, std::isspace);
+			if (offset >= line.length())
+			{
+				break;
+			}
+			else
+			{
+				throw std::invalid_argument("can't parse grammar production because of '" + std::string(line, offset) + "'");
+			}
 		}
 	}
 

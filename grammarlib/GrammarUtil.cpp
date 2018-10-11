@@ -64,7 +64,7 @@ bool NonterminalHasEmptiness(const Grammar& grammar, const std::string& nontermi
 		return true;
 	}
 
-	const auto indices = GatherProductionIndices(grammar, [&](const GrammarProduction& production) {
+	const auto indices = GatherProductionIndices(grammar, [&nonterminal](const GrammarProduction& production) ->bool {
 		return production.GetLeftPart() == nonterminal && ProductionConsistsOfNonterminals(production);
 	});
 

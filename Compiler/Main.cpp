@@ -1,5 +1,4 @@
 #include "stdafx.h"
-#include <sstream>
 
 #include "../Lexer/Lexer.h"
 #include "../Parser/Parser.h"
@@ -15,7 +14,7 @@
 namespace
 {
 const std::string LANGUAGE_GRAMMAR = R"(
-<Program>       -> <FunctionList> EOF
+<Program>       -> <FunctionList> EOF {AttributeForEofToken}
 <FunctionList>  -> <Function> <FunctionList>
 <FunctionList>  -> #Eps#
 <Function>      -> FUNC IDENTIFIER LPAREN <ParamList> RPAREN ARROW <Type> COLON <Statement>
@@ -100,7 +99,17 @@ const std::unordered_map<std::string, TokenKind> TOKENS_MAP = {
 	{ "DIV", TokenKind::DIV }
 };
 
-const std::string FUNCTION_DEFINITION_CODE_EXAMPLE = "func AlwaysTrueFunc() -> Bool: return True;";
+const std::string FUNCTION_DEFINITION_CODE_EXAMPLE = R"(
+func AlwaysTrueFunc() -> Bool: return 1;
+
+func Main(args: Array<Int>, num: Int) -> Int:
+{
+	if (True)
+		return 0;
+	return True;
+}
+)";
+
 const std::string EXPRESSION_CODE_EXAMPLE = "12 - -1";
 
 std::unique_ptr<Grammar> CreateGrammar(const std::string& text)
@@ -192,7 +201,7 @@ int main(int argc, char* argv[])
 	try
 	{
 		// Инициализируем грамматику
-		const auto grammar = CreateGrammar(MATH_GRAMMAR);
+		const auto grammar = CreateGrammar(LANGUAGE_GRAMMAR);
 		PrintGrammarToStdout(*grammar);
 
 		// Генерация таблицы для парсера
@@ -204,10 +213,10 @@ int main(int argc, char* argv[])
 		parser->SetParsingTable(*table, TOKENS_MAP);
 
 		// Токенизируем текст (для отладки)
-		DebugTokenize(EXPRESSION_CODE_EXAMPLE);
+		DebugTokenize(FUNCTION_DEFINITION_CODE_EXAMPLE);
 
 		// Запускаем парсер
-		std::cout << std::boolalpha << parser->Parse(EXPRESSION_CODE_EXAMPLE) << std::endl;
+		std::cout << std::boolalpha << parser->Parse(FUNCTION_DEFINITION_CODE_EXAMPLE) << std::endl;
 	}
 	catch (const std::exception& ex)
 	{
