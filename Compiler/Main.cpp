@@ -20,7 +20,7 @@ const std::string LANGUAGE_GRAMMAR = R"(
 <Function>      -> FUNC IDENTIFIER LPAREN <ParamList> RPAREN ARROW <Type> COLON <Statement>
 <ParamList>     -> <Param> <TailParamList>
 <ParamList>     -> #Eps#
-<TailParamList> -> COMMA <Param> <TailParamList>
+<TailParamList> -> COMMA <Param> {ParamAttrubute} <TailParamList>
 <TailParamList> -> #Eps#
 <Param>         -> IDENTIFIER COLON <Type>
 <Type>          -> INT
@@ -35,7 +35,7 @@ const std::string LANGUAGE_GRAMMAR = R"(
 <Statement>     -> <Composite>
 <Condition>     -> IF LPAREN <Expression> RPAREN <Statement> <OptionalElse>
 <OptionalElse>  -> ELSE <Statement>
-<OptionalElse>  -> #Eps#
+<OptionalElse>  -> #Eps# {ElseAttribute}
 <Loop>          -> WHILE LPAREN <Expression> RPAREN <Statement>
 <Decl>          -> VAR IDENTIFIER COLON <Type> SEMICOLON
 <Assign>        -> IDENTIFIER ASSIGN <Expression> SEMICOLON
@@ -102,11 +102,11 @@ const std::unordered_map<std::string, TokenKind> TOKENS_MAP = {
 const std::string FUNCTION_DEFINITION_CODE_EXAMPLE = R"(
 func AlwaysTrueFunc() -> Bool: return 1;
 
-func Main(args: Array<Int>, num: Int) -> Int:
+func Main(args: Array<Int>) -> Int:
 {
-	if (True)
-		return 0;
-	return True;
+	var a: Int;
+	a = 0;
+	return a;
 }
 )";
 

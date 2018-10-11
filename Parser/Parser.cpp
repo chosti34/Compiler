@@ -55,7 +55,8 @@ bool Parser::Parse(const std::string& text)
 	{
 		const auto& state = m_states[index];
 
-		if (state.beginnings.find(token.kind) == state.beginnings.end())
+		// if beginnings is empty, this is attribute state
+		if (!state.beginnings.empty() && state.beginnings.find(token.kind) == state.beginnings.end())
 		{
 			if (!state.error)
 			{

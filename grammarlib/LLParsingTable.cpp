@@ -93,55 +93,76 @@ std::unique_ptr<LLParsingTable> LLParsingTable::Create(const Grammar& grammar)
 		table->AddEntry(std::move(entry));
 	}
 
+	const auto createAttributeEntry = [&grammar](int row, int col) {
+		assert(grammar.GetProduction(row)->GetSymbol(col).GetAttribute());
+		auto entry = std::make_shared<LLParsingTableEntry>();
+		entry->shift = false;
+		entry->push = false;
+		entry->error = false;
+		entry->end = grammar.GetProduction(row)->GetSymbol(col).GetText() == grammar.GetEndSymbol();
+		entry->next = (col == grammar.GetProduction(row)->GetSymbolsCount() - 1u) ?
+			std::nullopt : std::make_optional<size_t>(col + 1);
+		entry->name = *grammar.GetProduction(row)->GetSymbol(col).GetAttribute();
+		return entry;
+	};
+
 	for (size_t row = 0; row < grammar.GetProductionsCount(); ++row)
 	{
 		const auto production = grammar.GetProduction(row);
+		unsigned attributes = 0u;
 
 		for (size_t col = 0; col < production->GetSymbolsCount(); ++col)
 		{
 			const auto& symbol = production->GetSymbol(col);
-			auto state = std::make_shared<LLParsingTableEntry>();
+			auto entry = std::make_shared<LLParsingTableEntry>();
 
 			switch (symbol.GetType())
 			{
 			case GrammarSymbolType::Terminal:
-				state->name = symbol.GetText();
-				state->shift = true;
-				state->push = false;
-				state->error = true;
-				state->end = (symbol.GetText() == grammar.GetEndSymbol());
-				state->next = (col == production->GetSymbolsCount() - 1u) ?
+				entry->name = symbol.GetText();
+				entry->shift = true;
+				entry->push = false;
+				entry->error = true;
+				entry->end = (symbol.GetText() == grammar.GetEndSymbol() && !symbol.GetAttribute());
+				entry->next = (col == production->GetSymbolsCount() - 1u && !symbol.GetAttribute()) ?
 					std::nullopt : std::make_optional<size_t>(table->GetEntriesCount() + 1u);
-				state->beginnings = { symbol.GetText() };
+				entry->beginnings = { symbol.GetText() };
 				break;
 			case GrammarSymbolType::Nonterminal:
-				state->name = symbol.GetText();
-				state->shift = false;
-				state->push = col < (production->GetSymbolsCount() - 1u);
-				state->error = true;
-				state->end = false;
-				state->next = GetProductionIndex(grammar, symbol.GetText());
-				state->beginnings = GatherBeginSetAndFollowIfHasEmptiness(grammar, symbol.GetText());
+				entry->name = symbol.GetText();
+				entry->shift = false;
+				entry->push = col < (production->GetSymbolsCount() - 1u) || symbol.GetAttribute();
+				entry->error = true;
+				entry->end = false;
+				entry->next = GetProductionIndex(grammar, symbol.GetText());
+				entry->beginnings = GatherBeginSetAndFollowIfHasEmptiness(grammar, symbol.GetText());
 				break;
 			case GrammarSymbolType::Epsilon:
-				state->name = symbol.GetText();
-				state->shift = false;
-				state->push = false;
-				state->error = true;
-				state->end = false;
-				state->next = std::nullopt;
-				state->beginnings = GatherBeginningSymbolsOfProduction(grammar, static_cast<int>(row));
+				entry->name = symbol.GetText();
+				entry->shift = false;
+				entry->push = false;
+				entry->error = true;
+				entry->end = false;
+				entry->next = symbol.GetAttribute() ? std::make_optional<size_t>(col + 1u) : std::nullopt;
+				entry->beginnings = GatherBeginningSymbolsOfProduction(grammar, static_cast<int>(row));
 				break;
 			default:
 				assert(false);
 				throw std::logic_error("CreateParser: default switch branch should be unreachable");
 			}
 
-			table->AddEntry(std::move(state));
+			table->AddEntry(std::move(entry));
+
+			const auto attribute = symbol.GetAttribute();
+			if (attribute)
+			{
+				table->AddEntry(createAttributeEntry(static_cast<int>(row), static_cast<int>(col)));
+				++attributes;
+			}
 		}
 
 		//! adding index that we skipped on first loop
-		table->GetEntry(row)->next = table->GetEntriesCount() - production->GetSymbolsCount();
+		table->GetEntry(row)->next = table->GetEntriesCount() - production->GetSymbolsCount() - attributes;
 	}
 
 	return table;
