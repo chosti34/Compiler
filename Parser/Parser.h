@@ -1,5 +1,6 @@
 #pragma once
 #include "IParser.h"
+#include "ASTNode.h"
 
 #include "../grammarlib/LLParsingTable.h"
 #include "../Lexer/ILexer.h"
@@ -27,8 +28,10 @@ public:
 	void SetParsingTable(const LLParsingTable& table, const TokensMap& tokensMap);
 
 	bool Parse(const std::string& text) override;
+	ASTNode::Ptr GetAST();
 
 private:
 	std::unique_ptr<ILexer> m_lexer;
 	std::vector<ParserState> m_states;
+	ASTNode::Ptr m_ast;
 };

@@ -93,10 +93,10 @@ std::unique_ptr<LLParsingTable> LLParsingTable::Create(const Grammar& grammar)
 		table->AddEntry(std::move(entry));
 	}
 
-	const auto createAttributeEntry = [&grammar](int row, int col) {
+	const auto createAttributeEntry = [&grammar](int row, int col, bool fromTerminal) {
 		assert(grammar.GetProduction(row)->GetSymbol(col).GetAttribute());
 		auto entry = std::make_shared<LLParsingTableEntry>();
-		entry->shift = false;
+		entry->shift = fromTerminal;
 		entry->push = false;
 		entry->error = false;
 		entry->end = grammar.GetProduction(row)->GetSymbol(col).GetText() == grammar.GetEndSymbol();
@@ -109,7 +109,7 @@ std::unique_ptr<LLParsingTable> LLParsingTable::Create(const Grammar& grammar)
 	for (size_t row = 0; row < grammar.GetProductionsCount(); ++row)
 	{
 		const auto production = grammar.GetProduction(row);
-		unsigned attributes = 0u;
+		unsigned attributesCount = 0u;
 
 		for (size_t col = 0; col < production->GetSymbolsCount(); ++col)
 		{
@@ -120,7 +120,7 @@ std::unique_ptr<LLParsingTable> LLParsingTable::Create(const Grammar& grammar)
 			{
 			case GrammarSymbolType::Terminal:
 				entry->name = symbol.GetText();
-				entry->shift = true;
+				entry->shift = !static_cast<bool>(symbol.GetAttribute());
 				entry->push = false;
 				entry->error = true;
 				entry->end = (symbol.GetText() == grammar.GetEndSymbol() && !symbol.GetAttribute());
@@ -156,13 +156,16 @@ std::unique_ptr<LLParsingTable> LLParsingTable::Create(const Grammar& grammar)
 			const auto attribute = symbol.GetAttribute();
 			if (attribute)
 			{
-				table->AddEntry(createAttributeEntry(static_cast<int>(row), static_cast<int>(col)));
-				++attributes;
+				table->AddEntry(createAttributeEntry(
+					static_cast<int>(row),
+					static_cast<int>(col),
+					symbol.GetType() == GrammarSymbolType::Terminal));
+				++attributesCount;
 			}
 		}
 
 		//! adding index that we skipped on first loop
-		table->GetEntry(row)->next = table->GetEntriesCount() - production->GetSymbolsCount() - attributes;
+		table->GetEntry(row)->next = table->GetEntriesCount() - production->GetSymbolsCount() - attributesCount;
 	}
 
 	return table;
