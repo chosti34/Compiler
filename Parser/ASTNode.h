@@ -1,16 +1,18 @@
 #pragma once
+#include <string>
 #include <memory>
 #include <cassert>
 
 class BinOpNode;
-class NumNode;
+class LeafNumNode;
 class UnOpNode;
 
 class IASTVisitor
 {
 public:
+	virtual ~IASTVisitor() = default;
 	virtual void Visit(const BinOpNode& node) = 0;
-	virtual void Visit(const NumNode& node) = 0;
+	virtual void Visit(const LeafNumNode& node) = 0;
 	virtual void Visit(const UnOpNode& node) = 0;
 };
 
@@ -18,6 +20,7 @@ class ASTNode
 {
 public:
 	using Ptr = std::unique_ptr<ASTNode>;
+	virtual ~ASTNode() = default;
 	virtual void Accept(IASTVisitor& visitor)const = 0;
 };
 
@@ -65,10 +68,10 @@ private:
 	Operator m_op;
 };
 
-class NumNode : public ASTNode
+class LeafNumNode : public ASTNode
 {
 public:
-	NumNode(int value)
+	LeafNumNode(int value)
 		: m_value(value)
 	{
 	}
@@ -145,7 +148,7 @@ public:
 		m_acc = -Calculate(node.GetExpr());
 	}
 
-	void Visit(const NumNode& node) override
+	void Visit(const LeafNumNode& node) override
 	{
 		m_acc = node.GetValue();
 	}

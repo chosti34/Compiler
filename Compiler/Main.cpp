@@ -110,7 +110,7 @@ func Main(args: Array<Int>) -> Int:
 }
 )";
 
-const std::string EXPRESSION_CODE_EXAMPLE = "2 * (12 + 1 + 1) - 25 / 3";
+const std::string EXPRESSION_CODE_EXAMPLE = "1 + 1 + 1 * 2 - 3 - -3";
 
 std::unique_ptr<Grammar> CreateGrammar(const std::string& text)
 {
@@ -218,12 +218,16 @@ int main(int argc, char* argv[])
 		// Запускаем парсер
 		std::cout << std::boolalpha << parser->Parse(EXPRESSION_CODE_EXAMPLE) << std::endl;
 
-		auto ast = parser->GetAST();
-
-		ExpressionCalculator calculator;
-		int value = calculator.Calculate(*ast);
-
-		std::cout << value << std::endl;
+		if (auto ast = parser->GetAST())
+		{
+			ExpressionCalculator calculator;
+			int value = calculator.Calculate(*ast);
+			std::cout << value << std::endl;
+		}
+		else
+		{
+			std::cout << "AST isn't built" << std::endl;
+		}
 	}
 	catch (const std::exception& ex)
 	{

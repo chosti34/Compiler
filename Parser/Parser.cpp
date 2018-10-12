@@ -25,7 +25,7 @@ std::unordered_set<TokenKind> TransformToTokens(
 void ProcessIntegerLiteral(std::vector<ASTNode::Ptr>& treeStack, const Token& token)
 {
 	assert(token.kind == TokenKind::INT);
-	treeStack.push_back(std::make_unique<NumNode>(std::stoi(*token.value)));
+	treeStack.push_back(std::make_unique<LeafNumNode>(std::stoi(*token.value)));
 }
 
 void ProcessUnaryMinus(std::vector<ASTNode::Ptr>& treeStack, const Token& token)
@@ -43,7 +43,7 @@ void ProcessBinaryOperator(std::vector<ASTNode::Ptr>& treeStack, const Token& to
 	treeStack.push_back(std::make_unique<BinOpNode>(std::move(left), std::move(right), op));
 }
 
-std::unordered_map<std::string, std::function<void(std::vector<ASTNode::Ptr>&, const Token& token)>> ATTRIBUTE_ACTION_MAP = {
+std::unordered_map<std::string, std::function<void(std::vector<ASTNode::Ptr>&, const Token&)>> ATTRIBUTE_ACTION_MAP = {
 	{ "CreateNumberNode", ProcessIntegerLiteral },
 	{ "CreateUnaryNodeMinus", ProcessUnaryMinus },
 	{ "CreateBinaryNodePlus", std::bind(ProcessBinaryOperator, std::placeholders::_1, std::placeholders::_2, BinOpNode::Plus) },
