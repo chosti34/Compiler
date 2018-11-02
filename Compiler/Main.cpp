@@ -5,6 +5,7 @@
 #include "../grammarlib/Grammar.h"
 #include "../grammarlib/GrammarUtil.h"
 #include "../grammarlib/GrammarFactory.h"
+#include "../grammarlib/GrammarProductionFactory.h"
 
 #include "../utillib/FileUtil.h"
 #include "../utillib/FormatUtil.h"
@@ -110,44 +111,73 @@ func Main(args: Array<Int>) -> Int:
 }
 )";
 
-const std::string EXPRESSION_CODE_EXAMPLE = "1 + 1 + 1 * 2 - 3 - -3";
-
-std::unique_ptr<Grammar> CreateGrammar(const std::string& text)
+class GrammarBuilder
 {
-	auto factory = std::make_unique<GrammarFactory>();
-	return factory->CreateGrammar(text);
-}
+public:
+	GrammarBuilder(std::unique_ptr<GrammarProductionFactory> && factory)
+		: m_factory(std::move(factory))
+	{
+	}
 
-void PrintGrammarToStdout(const Grammar& grammar)
+	GrammarBuilder& AddProduction(const std::string& line)
+	{
+		m_productions.push_back(std::move(m_factory->CreateProduction(line)));
+		return *this;
+	}
+
+	std::unique_ptr<Grammar> Build()
+	{
+		auto grammar = std::make_unique<Grammar>();
+		for (const auto& production : m_productions)
+		{
+			grammar->AddProduction(production);
+		}
+		return grammar;
+	}
+
+private:
+	std::vector<std::shared_ptr<GrammarProduction>> m_productions;
+	std::unique_ptr<GrammarProductionFactory> m_factory;
+};
+
+void DumpGrammar(std::ostream& os, const Grammar& grammar)
 {
 	for (size_t row = 0; row < grammar.GetProductionsCount(); ++row)
 	{
 		const auto production = grammar.GetProduction(row);
-		std::cout << "<" << production->GetLeftPart() << ">" << " -> ";
+		os << "<" << production->GetLeftPart() << ">" << " -> ";
 
 		for (size_t col = 0; col < production->GetSymbolsCount(); ++col)
 		{
-			if (production->GetSymbol(col).GetType() == GrammarSymbolType::Nonterminal)
+			const auto& symbol = production->GetSymbol(col);
+
+			if (symbol.GetType() == GrammarSymbolType::Nonterminal)
 			{
-				std::cout << "<" << production->GetSymbol(col).GetText() << ">";
+				os << "<" << symbol.GetText() << ">";
 			}
 			else
 			{
-				std::cout << production->GetSymbol(col).GetText();
+				os << symbol.GetText();
+			}
+
+			const auto attribute = symbol.GetAttribute();
+			if (attribute)
+			{
+				os << " {" << *attribute << "}";
 			}
 
 			bool last = col == production->GetSymbolsCount() - 1;
 			if (!last)
 			{
-				std::cout << " ";
+				os << " ";
 			}
 		}
 
-		StreamUtil::PrintIterable(std::cout, GatherBeginningSymbolsOfProduction(grammar, int(row)), ", ", " / {", "}");
+		StreamUtil::PrintIterable(os, GatherBeginningSymbolsOfProduction(grammar, int(row)), ", ", " / {", "}");
 	}
 }
 
-void PrintParsingTableToStdout(const LLParsingTable& parsingTable)
+void DumpParsingTable(std::ostream& os, const LLParsingTable& parsingTable)
 {
 	FormatUtil::Table formatTable;
 	formatTable.Append({ "Index", "Name", "Shift", "Push", "Error", "End", "Next", "Beginnings" });
@@ -170,7 +200,7 @@ void PrintParsingTableToStdout(const LLParsingTable& parsingTable)
 
 	using namespace FormatUtil;
 	formatTable.SetDisplayMethod(Table::DisplayMethod::ColumnsLineSeparated);
-	std::cout << formatTable << std::endl;
+	os << formatTable << std::endl;
 }
 
 void DebugTokenize(const std::string& text)
@@ -190,44 +220,60 @@ void DebugTokenize(const std::string& text)
 		}
 	} while (true);
 }
+
+std::unique_ptr<Grammar> CreateExpressionGrammar()
+{
+	return GrammarBuilder(std::make_unique<GrammarProductionFactory>())
+		.AddProduction("<Program>    -> <Expr> EOF")
+		.AddProduction("<Expr>       -> <Term> <ExprHelper>")
+		.AddProduction("<ExprHelper> -> PLUS <Term> {CreateBinaryNodePlus} <ExprHelper>")
+		.AddProduction("<ExprHelper> -> MINUS <Term> {CreateBinaryNodeMinus} <ExprHelper>")
+		.AddProduction("<ExprHelper> -> #Eps#")
+		.AddProduction("<Term>       -> <Factor> <TermHelper>")
+		.AddProduction("<TermHelper> -> MUL <Factor> {CreateBinaryNodeMul} <TermHelper>")
+		.AddProduction("<TermHelper> -> DIV <Factor> {CreateBinaryNodeDiv} <TermHelper>")
+		.AddProduction("<TermHelper> -> #Eps#")
+		.AddProduction("<Factor>     -> LPAREN <Expr> RPAREN")
+		.AddProduction("<Factor>     -> INTLITERAL {CreateNumberNode}")
+		.AddProduction("<Factor>     -> MINUS <Factor> {CreateUnaryNodeMinus}")
+		.Build();
 }
 
-int main(int argc, char* argv[])
+void ExecuteApp()
 {
-	// TODO: think about compiler flags
-	(void)argc;
-	(void)argv;
+	const auto grammar = CreateExpressionGrammar();
+	const auto table = LLParsingTable::Create(*grammar);
+	const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>());
+	parser->SetParsingTable(*table, TOKENS_MAP);
 
+	const std::string code = "1 + 1 + 1 * 2 - 3 - -3";
+
+#ifdef _DEBUG
+	DumpGrammar(std::cout, *grammar);
+	DumpParsingTable(std::cout, *table);
+	DebugTokenize(code);
+#endif
+
+	std::cout << std::boolalpha << parser->Parse(code) << std::endl;
+
+	if (auto ast = parser->GetAST())
+	{
+		ExpressionCalculator calculator;
+		int value = calculator.Calculate(*ast);
+		std::cout << value << std::endl;
+	}
+	else
+	{
+		std::cout << "AST isn't built" << std::endl;
+	}
+}
+}
+
+int main()
+{
 	try
 	{
-		// Инициализируем грамматику
-		const auto grammar = CreateGrammar(MATH_GRAMMAR);
-		PrintGrammarToStdout(*grammar);
-
-		// Генерация таблицы для парсера
-		const auto table = LLParsingTable::Create(*grammar);
-		PrintParsingTableToStdout(*table);
-
-		// Создаём парсер связывая таблицу построенную по грамматике и лексер с его токенами
-		const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>());
-		parser->SetParsingTable(*table, TOKENS_MAP);
-
-		// Токенизируем текст (для отладки)
-		DebugTokenize(EXPRESSION_CODE_EXAMPLE);
-
-		// Запускаем парсер
-		std::cout << std::boolalpha << parser->Parse(EXPRESSION_CODE_EXAMPLE) << std::endl;
-
-		if (auto ast = parser->GetAST())
-		{
-			ExpressionCalculator calculator;
-			int value = calculator.Calculate(*ast);
-			std::cout << value << std::endl;
-		}
-		else
-		{
-			std::cout << "AST isn't built" << std::endl;
-		}
+		ExecuteApp();
 	}
 	catch (const std::exception& ex)
 	{

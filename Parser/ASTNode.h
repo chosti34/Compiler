@@ -112,7 +112,7 @@ private:
 	ASTNode::Ptr m_expr;
 };
 
-class ExpressionCalculator : public IASTVisitor
+class ExpressionCalculator : private IASTVisitor
 {
 public:
 	int Calculate(const ASTNode& node)
