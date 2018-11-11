@@ -5,46 +5,46 @@
 
 enum class TokenKind
 {
-	// End of input token kind
-	END_OF_INPUT,
+	// Metas
+	EndOfFile,
 
 	// Keywords
-	FUNCTION_KEYWORD,
-	INT_KEYWORD,
-	FLOAT_KEYWORD,
-	BOOL_KEYWORD,
-	ARRAY_KEYWORD,
-	IF_KEYWORD,
-	ELSE_KEYWORD,
-	WHILE_KEYWORD,
-	VAR_KEYWORD,
-	RETURN_KEYWORD,
-	TRUE_KEYWORD,
-	FALSE_KEYWORD,
+	Func,
+	Int,
+	Float,
+	Bool,
+	Array,
+	If,
+	Else,
+	While,
+	Var,
+	Return,
+	True,
+	False,
 
-	// Expression terms
-	IDENTIFIER,
-	INT,
-	FLOAT,
+	// Mutables
+	Identifier,
+	IntegerConstant,
+	FloatConstant,
 
 	// Operators
-	ASSIGN,
-	PLUS,
-	MINUS,
-	MUL,
-	DIV,
+	Assign,
+	Plus,
+	Minus,
+	Mul,
+	Div,
 
 	// Separators
-	LEFT_PARENTHESIS,
-	RIGHT_PARENTHESIS,
-	LEFT_ANGLE_BRACKET,
-	RIGHT_ANGLE_BRACKET,
-	LEFT_CURLY,
-	RIGHT_CURLY,
-	ARROW,
-	COLON,
-	COMMA,
-	SEMICOLON
+	LeftParenthesis,
+	RightParenthesis,
+	LeftBracket,
+	RightBracket,
+	LeftCurly,
+	RightCurly,
+	Arrow,
+	Colon,
+	Comma,
+	Semicolon
 };
 
 std::string ToString(TokenKind kind);

@@ -93,14 +93,26 @@ private:
 class UnOpNode : public ASTNode
 {
 public:
-	UnOpNode(ASTNode::Ptr&& expr)
+	enum Operator
+	{
+		Plus,
+		Minus
+	};
+
+	UnOpNode(ASTNode::Ptr&& expr, Operator op)
 		: m_expr(std::move(expr))
+		, m_op(op)
 	{
 	}
 
 	const ASTNode& GetExpr()const
 	{
 		return *m_expr;
+	}
+
+	Operator GetOperator()const
+	{
+		return m_op;
 	}
 
 	void Accept(IASTVisitor& visitor)const override
@@ -110,6 +122,7 @@ public:
 
 private:
 	ASTNode::Ptr m_expr;
+	Operator m_op;
 };
 
 class ExpressionCalculator : private IASTVisitor

@@ -7,13 +7,13 @@ public:
 	Lexer() = default;
 	explicit Lexer(const std::string& text);
 
-	Token Advance() override;
+	Token GetNextToken() override;
 	void SetText(const std::string& text) override;
 
 private:
 	void SkipWhitespaces();
 
 private:
-	std::string mText;
-	size_t mPos = 0;
+	std::string m_text;
+	size_t m_pos = 0;
 };

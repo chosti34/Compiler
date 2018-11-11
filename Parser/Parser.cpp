@@ -24,7 +24,7 @@ std::unordered_set<TokenKind> TransformToTokens(
 
 void ProcessIntegerLiteral(std::vector<ASTNode::Ptr>& treeStack, const Token& token)
 {
-	assert(token.kind == TokenKind::INT);
+	assert(token.kind == TokenKind::IntegerConstant);
 	treeStack.push_back(std::make_unique<LeafNumNode>(std::stoi(*token.value)));
 }
 
@@ -32,7 +32,7 @@ void ProcessUnaryMinus(std::vector<ASTNode::Ptr>& treeStack, const Token& token)
 {
 	(void)token;
 	auto node = std::move(treeStack.back()); treeStack.pop_back();
-	treeStack.push_back(std::make_unique<UnOpNode>(std::move(node)));
+	treeStack.push_back(std::make_unique<UnOpNode>(std::move(node), UnOpNode::Minus));
 }
 
 void ProcessBinaryOperator(std::vector<ASTNode::Ptr>& treeStack, const Token& token, BinOpNode::Operator op)
@@ -43,19 +43,20 @@ void ProcessBinaryOperator(std::vector<ASTNode::Ptr>& treeStack, const Token& to
 	treeStack.push_back(std::make_unique<BinOpNode>(std::move(left), std::move(right), op));
 }
 
+using namespace std::placeholders;
+
 std::unordered_map<std::string, std::function<void(std::vector<ASTNode::Ptr>&, const Token&)>> ATTRIBUTE_ACTION_MAP = {
 	{ "CreateNumberNode", ProcessIntegerLiteral },
 	{ "CreateUnaryNodeMinus", ProcessUnaryMinus },
-	{ "CreateBinaryNodePlus", std::bind(ProcessBinaryOperator, std::placeholders::_1, std::placeholders::_2, BinOpNode::Plus) },
-	{ "CreateBinaryNodeMinus", std::bind(ProcessBinaryOperator, std::placeholders::_1, std::placeholders::_2, BinOpNode::Minus) },
-	{ "CreateBinaryNodeMul", std::bind(ProcessBinaryOperator, std::placeholders::_1, std::placeholders::_2, BinOpNode::Mul) },
-	{ "CreateBinaryNodeDiv", std::bind(ProcessBinaryOperator, std::placeholders::_1, std::placeholders::_2, BinOpNode::Div) }
+	{ "CreateBinaryNodePlus", std::bind(ProcessBinaryOperator, _1, _2, BinOpNode::Plus) },
+	{ "CreateBinaryNodeMinus", std::bind(ProcessBinaryOperator, _1, _2, BinOpNode::Minus) },
+	{ "CreateBinaryNodeMul", std::bind(ProcessBinaryOperator, _1, _2, BinOpNode::Mul) },
+	{ "CreateBinaryNodeDiv", std::bind(ProcessBinaryOperator, _1, _2, BinOpNode::Div) }
 };
 }
 
 Parser::Parser(std::unique_ptr<ILexer> && lexer)
 	: m_lexer(std::move(lexer))
-	, m_ast(nullptr)
 {
 }
 
@@ -76,13 +77,13 @@ void Parser::SetParsingTable(const LLParsingTable& table, const TokensMap& token
 	}
 }
 
-bool Parser::Parse(const std::string& text)
+std::unique_ptr<ASTNode> Parser::Parse(const std::string& text)
 {
 	m_lexer->SetText(text);
-	Token token = m_lexer->Advance();
+	Token token = m_lexer->GetNextToken();
 
-	std::vector<ASTNode::Ptr> astStack;
-	std::vector<size_t> addressStack;
+	std::vector<ASTNode::Ptr> nodes;
+	std::vector<size_t> addresses;
 	size_t index = 0;
 
 	while (true)
@@ -99,7 +100,7 @@ bool Parser::Parse(const std::string& text)
 			}
 			else
 			{
-				return false;
+				return nullptr;
 			}
 		}
 
@@ -109,24 +110,23 @@ bool Parser::Parse(const std::string& text)
 			auto it = ATTRIBUTE_ACTION_MAP.find(state.name);
 			if (it != ATTRIBUTE_ACTION_MAP.end())
 			{
-				it->second(astStack, token);
+				it->second(nodes, token);
 			}
 		}
 
 		if (state.end)
 		{
-			assert(addressStack.empty());
-			assert(astStack.size() == 1);
-			m_ast = std::move(astStack.back());
-			return true;
+			assert(addresses.empty());
+			assert(nodes.size() == 1);
+			return std::move(nodes.back());
 		}
 		if (state.push)
 		{
-			addressStack.push_back(index + 1);
+			addresses.push_back(index + 1);
 		}
 		if (state.shift)
 		{
-			token = m_lexer->Advance();
+			token = m_lexer->GetNextToken();
 		}
 
 		if (state.next != std::nullopt)
@@ -135,17 +135,12 @@ bool Parser::Parse(const std::string& text)
 		}
 		else
 		{
-			assert(!addressStack.empty());
-			index = addressStack.back();
-			addressStack.pop_back();
+			assert(!addresses.empty());
+			index = addresses.back();
+			addresses.pop_back();
 		}
 	}
 
 	assert(false);
-	throw std::logic_error("while loop doesn't have a break statement here");
-}
-
-ASTNode::Ptr Parser::GetAST()
-{
-	return std::move(m_ast);
+	throw std::logic_error("Parser::Parse - while loop doesn't have a break statement here");
 }

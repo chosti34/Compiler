@@ -14,45 +14,45 @@
 
 namespace
 {
-const std::string LANGUAGE_GRAMMAR = R"(
-<Program>       -> <FunctionList> EOF {AttributeForEofToken}
-<FunctionList>  -> <Function> <FunctionList>
-<FunctionList>  -> #Eps#
-<Function>      -> FUNC IDENTIFIER LPAREN <ParamList> RPAREN ARROW <Type> COLON <Statement>
-<ParamList>     -> <Param> <TailParamList>
-<ParamList>     -> #Eps#
-<TailParamList> -> COMMA <Param> {ParamAttrubute} <TailParamList>
-<TailParamList> -> #Eps#
-<Param>         -> IDENTIFIER COLON <Type>
-<Type>          -> INT
-<Type>          -> FLOAT
-<Type>          -> BOOL
-<Type>          -> ARRAY LABRACKET <Type> RABRACKET
-<Statement>     -> <Condition>
-<Statement>     -> <Loop>
-<Statement>     -> <Decl>
-<Statement>     -> <Assign>
-<Statement>     -> <Return>
-<Statement>     -> <Composite>
-<Condition>     -> IF LPAREN <Expression> RPAREN <Statement> <OptionalElse>
-<OptionalElse>  -> ELSE <Statement>
-<OptionalElse>  -> #Eps# {ElseAttribute}
-<Loop>          -> WHILE LPAREN <Expression> RPAREN <Statement>
-<Decl>          -> VAR IDENTIFIER COLON <Type> SEMICOLON
-<Assign>        -> IDENTIFIER ASSIGN <Expression> SEMICOLON
-<Return>        -> RETURN <Expression> SEMICOLON
-<Composite>     -> LCURLY <StatementList> RCURLY
-<StatementList> -> <Statement> <StatementList>
-<StatementList> -> #Eps#
-<Expression>    -> IDENTIFIER
-<Expression>    -> INTLITERAL
-<Expression>    -> FLOATLITERAL
-<Expression>    -> TRUE
-<Expression>    -> FALSE
-)";
+//const std::string LANGUAGE_GRAMMAR = R"(
+//<Program>       -> <FunctionList> EOF {AttributeForEofToken}
+//<FunctionList>  -> <Function> <FunctionList>
+//<FunctionList>  -> #Eps#
+//<Function>      -> FUNC IDENTIFIER LPAREN <ParamList> RPAREN ARROW <Type> COLON <Statement>
+//<ParamList>     -> <Param> <TailParamList>
+//<ParamList>     -> #Eps#
+//<TailParamList> -> COMMA <Param> {ParamAttrubute} <TailParamList>
+//<TailParamList> -> #Eps#
+//<Param>         -> IDENTIFIER COLON <Type>
+//<Type>          -> INT
+//<Type>          -> FLOAT
+//<Type>          -> BOOL
+//<Type>          -> ARRAY LABRACKET <Type> RABRACKET
+//<Statement>     -> <Condition>
+//<Statement>     -> <Loop>
+//<Statement>     -> <Decl>
+//<Statement>     -> <Assign>
+//<Statement>     -> <Return>
+//<Statement>     -> <Composite>
+//<Condition>     -> IF LPAREN <Expression> RPAREN <Statement> <OptionalElse>
+//<OptionalElse>  -> ELSE <Statement>
+//<OptionalElse>  -> #Eps# {ElseAttribute}
+//<Loop>          -> WHILE LPAREN <Expression> RPAREN <Statement>
+//<Decl>          -> VAR IDENTIFIER COLON <Type> SEMICOLON
+//<Assign>        -> IDENTIFIER ASSIGN <Expression> SEMICOLON
+//<Return>        -> RETURN <Expression> SEMICOLON
+//<Composite>     -> LCURLY <StatementList> RCURLY
+//<StatementList> -> <Statement> <StatementList>
+//<StatementList> -> #Eps#
+//<Expression>    -> IDENTIFIER
+//<Expression>    -> INTLITERAL
+//<Expression>    -> FLOATLITERAL
+//<Expression>    -> TRUE
+//<Expression>    -> FALSE
+//)";
 
 const std::string MATH_GRAMMAR = R"(
-<Program> -> <Expr> EOF
+<Program>    -> <Expr> EOF
 <Expr>       -> <Term> <ExprHelper>
 <ExprHelper> -> PLUS <Term> {CreateBinaryNodePlus} <ExprHelper>
 <ExprHelper> -> MINUS <Term> {CreateBinaryNodeMinus} <ExprHelper>
@@ -67,37 +67,37 @@ const std::string MATH_GRAMMAR = R"(
 )";
 
 const std::unordered_map<std::string, TokenKind> TOKENS_MAP = {
-	{ "EOF", TokenKind::END_OF_INPUT },
-	{ "FUNC", TokenKind::FUNCTION_KEYWORD },
-	{ "IDENTIFIER", TokenKind::IDENTIFIER },
-	{ "LPAREN", TokenKind::LEFT_PARENTHESIS },
-	{ "RPAREN", TokenKind::RIGHT_PARENTHESIS },
-	{ "ARROW", TokenKind::ARROW },
-	{ "COLON", TokenKind::COLON },
-	{ "COMMA", TokenKind::COMMA },
-	{ "INT", TokenKind::INT_KEYWORD },
-	{ "FLOAT", TokenKind::FLOAT_KEYWORD },
-	{ "BOOL", TokenKind::BOOL_KEYWORD },
-	{ "ARRAY", TokenKind::ARRAY_KEYWORD },
-	{ "LABRACKET", TokenKind::LEFT_ANGLE_BRACKET },
-	{ "RABRACKET", TokenKind::RIGHT_ANGLE_BRACKET },
-	{ "IF", TokenKind::IF_KEYWORD },
-	{ "ELSE", TokenKind::ELSE_KEYWORD },
-	{ "WHILE", TokenKind::WHILE_KEYWORD },
-	{ "VAR", TokenKind::VAR_KEYWORD },
-	{ "SEMICOLON", TokenKind::SEMICOLON },
-	{ "ASSIGN", TokenKind::ASSIGN },
-	{ "RETURN", TokenKind::RETURN_KEYWORD },
-	{ "LCURLY", TokenKind::LEFT_CURLY },
-	{ "RCURLY", TokenKind::RIGHT_CURLY },
-	{ "INTLITERAL", TokenKind::INT },
-	{ "FLOATLITERAL", TokenKind::FLOAT },
-	{ "TRUE", TokenKind::TRUE_KEYWORD },
-	{ "FALSE", TokenKind::FALSE_KEYWORD },
-	{ "MINUS", TokenKind::MINUS },
-	{ "PLUS", TokenKind::PLUS },
-	{ "MUL", TokenKind::MUL },
-	{ "DIV", TokenKind::DIV }
+	{ "EndOfFile", TokenKind::EndOfFile },
+	{ "Func", TokenKind::Func },
+	{ "Identifier", TokenKind::Identifier },
+	{ "LeftParenthesis", TokenKind::LeftParenthesis },
+	{ "RightParenthesis", TokenKind::RightParenthesis },
+	{ "Arrow", TokenKind::Arrow },
+	{ "Colon", TokenKind::Colon },
+	{ "Comma", TokenKind::Comma },
+	{ "Int", TokenKind::Int },
+	{ "Float", TokenKind::Float },
+	{ "Bool", TokenKind::Bool },
+	{ "Array", TokenKind::Array },
+	{ "LeftBracket", TokenKind::LeftBracket },
+	{ "RightBracket", TokenKind::RightBracket },
+	{ "If", TokenKind::If },
+	{ "Else", TokenKind::Else },
+	{ "While", TokenKind::While },
+	{ "Var", TokenKind::Var },
+	{ "Semicolon", TokenKind::Semicolon },
+	{ "Assign", TokenKind::Assign },
+	{ "Return", TokenKind::Return },
+	{ "LeftCurly", TokenKind::LeftCurly },
+	{ "RightCurly", TokenKind::RightCurly },
+	{ "IntegerConstant", TokenKind::IntegerConstant },
+	{ "FloatConstant", TokenKind::FloatConstant },
+	{ "True", TokenKind::True },
+	{ "False", TokenKind::False },
+	{ "Minus", TokenKind::Minus },
+	{ "Plus", TokenKind::Plus },
+	{ "Mul", TokenKind::Mul },
+	{ "Div", TokenKind::Div }
 };
 
 const std::string FUNCTION_DEFINITION_CODE_EXAMPLE = R"(
@@ -212,9 +212,9 @@ void DebugTokenize(const std::string& text)
 
 	do
 	{
-		auto token = lexer->Advance();
+		auto token = lexer->GetNextToken();
 		std::cout << ToString(token) << std::endl;
-		if (token.kind == TokenKind::END_OF_INPUT)
+		if (token.kind == TokenKind::EndOfFile)
 		{
 			break;
 		}
@@ -239,7 +239,7 @@ std::unique_ptr<Grammar> CreateExpressionGrammar()
 		.Build();
 }
 
-void ExecuteApp()
+void Execute()
 {
 	const auto grammar = CreateExpressionGrammar();
 	const auto table = LLParsingTable::Create(*grammar);
@@ -254,17 +254,16 @@ void ExecuteApp()
 	DebugTokenize(code);
 #endif
 
-	std::cout << std::boolalpha << parser->Parse(code) << std::endl;
-
-	if (auto ast = parser->GetAST())
+	if (auto ast = parser->Parse(code))
 	{
+		std::cout << "AST has been successfully built!" << std::endl;
 		ExpressionCalculator calculator;
 		int value = calculator.Calculate(*ast);
 		std::cout << value << std::endl;
 	}
 	else
 	{
-		std::cout << "AST isn't built" << std::endl;
+		std::cout << "AST can't be built..." << std::endl;
 	}
 }
 }
@@ -273,7 +272,7 @@ int main()
 {
 	try
 	{
-		ExecuteApp();
+		Execute();
 	}
 	catch (const std::exception& ex)
 	{

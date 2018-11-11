@@ -27,11 +27,9 @@ public:
 	explicit Parser(std::unique_ptr<ILexer> && lexer);
 	void SetParsingTable(const LLParsingTable& table, const TokensMap& tokensMap);
 
-	bool Parse(const std::string& text) override;
-	ASTNode::Ptr GetAST();
+	std::unique_ptr<ASTNode> Parse(const std::string& text) override;
 
 private:
 	std::unique_ptr<ILexer> m_lexer;
 	std::vector<ParserState> m_states;
-	ASTNode::Ptr m_ast;
 };
