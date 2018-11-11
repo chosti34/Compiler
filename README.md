@@ -1,37 +1,47 @@
 # compiler-60min
 
 ### Грамматика языка
-<Program>       -> <FunctionList> EOF  
-<FunctionList>  -> <Function> <FunctionList>  
-<FunctionList>  -> #Eps#  
-<Function>      -> FUN IDENTIFIER LPAREN <ParamList> RPAREN ARROW <Type> COLON <Statement>  
-<ParamList>     -> <Param> <TailParamList>  
-<ParamList>     -> #Eps#  
-<TailParamList> -> COMMA <Param> <TailParamList>  
-<TailParamList> -> #Eps#  
-<Param>         -> IDENTIFIER COLON <Type>  
-<Type>          -> INT  
-<Type>          -> FLOAT  
-<Type>          -> BOOL  
-<Type>          -> ARRAY LABRACKET <Type> RABRACKET  
-<Statement>     -> <Condition>  
-<Statement>     -> <Loop>  
-<Statement>     -> <Decl>  
-<Statement>     -> <Assign>  
-<Statement>     -> <Return>  
-<Statement>     -> <Composite>  
-<Condition>     -> IF LPAREN <Expression> RPAREN <Statement> <OptionalElse>  
-<OptionalElse>  -> ELSE <Statement>  
-<OptionalElse>  -> #Eps#  
-<Loop>          -> WHILE LPAREN <Expression> RPAREN <Statement>  
-<Decl>          -> VAR IDENTIFIER COLON <Type> SEMICOLON  
-<Assign>        -> IDENTIFIER ASSIGN <Expression> SEMICOLON  
-<Return>        -> RETURN <Expression> SEMICOLON  
-<Composite>     -> LCURLY <StatementList> RCURLY  
-<StatementList> -> <Statement> <StatementList>  
-<StatementList> -> #Eps#  
-<Expression>    -> IDENTIFIER  
-<Expression>    -> INTLITERAL  
-<Expression>    -> FLOATLITERAL  
-<Expression>    -> TRUE  
-<Expression>    -> FALSE
+<Program>       -> <FunctionList> EndOfFile
+<FunctionList>  -> <Function> <FunctionList>
+<FunctionList>  -> #Eps#
+<Function>      -> Func Identifier LeftParenthesis <ParamList> RightParenthesis Arrow <Type> Colon <Statement>
+<ParamList>     -> <Param> <ParamListTail>
+<ParamList>     -> #Eps#
+<ParamListTail> -> Comma <Param> <ParamListTail>
+<ParamListTail> -> #Eps#
+<Param>         -> Identifier Colon <Type>
+<Type>          -> Integer
+<Type>          -> Float
+<Type>          -> Bool
+<Type>          -> Array LeftBracket <Type> RightBracket
+<Statement>     -> <Condition>
+<Statement>     -> <Loop>
+<Statement>     -> <Decl>
+<Statement>     -> <Assign>
+<Statement>     -> <Return>
+<Statement>     -> <Composite>
+<Condition>     -> If LeftParenthesis <Expression> RightParenthesis <Statement> <OptionalElse>
+<OptionalElse>  -> Else <Statement>
+<OptionalElse>  -> #Eps#
+<Loop>          -> While LeftParenthesis <Expression> RightParenthesis <Statement>
+<Decl>          -> Var Identifier Colon <Type> Semicolon
+<Assign>        -> Identifier Assign <Expression> Semicolon
+<Return>        -> Return <Expression> Semicolon
+<Composite>     -> LeftCurly <StatementList> RightCurly
+<StatementList> -> <Statement> <StatementList>
+<StatementList> -> #Eps#
+<Expression> -> <AddSubExpr>
+<AddSubExpr> -> <MulDivExpr> <AddSubExprTail>
+<AddSubExprTail> -> Plus <MulDivExpr> <AddSubExprTail>
+<AddSubExprTail> -> Minus <MulDivExpr> <AddSubExprTail>
+<AddSubExprTail> -> #Eps#
+<MulDivExpr> -> <AtomExpr> <MulDivExprTail>
+<MulDivExprTail> -> Mul <AtomExpr> <MulDivExprTail>
+<MulDivExprTail> -> Div <AtomExpr> <MulDivExprTail>
+<MulDivExprTail> -> #Eps#
+<AtomExpr> -> IntegerConstant
+<AtomExpr> -> FloatConstant
+<AtomExpr> -> TrueConstant
+<AtomExpr> -> FalseConstant
+<AtomExpr> -> StringConstant
+<AtomExpr> -> LeftParenthesis <Expression> RightParenthesis
