@@ -1,27 +1,10 @@
 #include "stdafx.h"
-#include "Parser.h"
+#include "LLParser.h"
 #include <iostream>
 #include <functional>
 
 namespace
 {
-std::unordered_set<TokenKind> TransformToTokens(
-	const std::set<std::string> &strings,
-	const std::unordered_map<std::string, TokenKind> &tokensMap)
-{
-	std::unordered_set<TokenKind> res;
-	for (const std::string& str : strings)
-	{
-		auto it = tokensMap.find(str);
-		if (it == tokensMap.end())
-		{
-			throw std::logic_error("tokens map should have value for key: '" + str + "'");
-		}
-		res.insert(it->second);
-	}
-	return res;
-}
-
 void ProcessIntegerLiteral(std::vector<ASTNode::Ptr>& treeStack, const Token& token)
 {
 	assert(token.kind == TokenKind::IntegerConstant);
@@ -55,29 +38,13 @@ std::unordered_map<std::string, std::function<void(std::vector<ASTNode::Ptr>&, c
 };
 }
 
-Parser::Parser(std::unique_ptr<ILexer> && lexer)
+LLParser::LLParser(std::unique_ptr<ILexer> && lexer, std::unique_ptr<LLParserTable> && table)
 	: m_lexer(std::move(lexer))
+	, m_table(std::move(table))
 {
 }
 
-void Parser::SetParsingTable(const LLParsingTable& table, const TokensMap& tokensMap)
-{
-	for (size_t i = 0; i < table.GetEntriesCount(); ++i)
-	{
-		const auto entry = table.GetEntry(i);
-		m_states.push_back(ParserState{
-			entry->shift,
-			entry->error,
-			entry->push,
-			entry->end,
-			entry->name,
-			entry->next,
-			TransformToTokens(entry->beginnings, tokensMap)
-		});
-	}
-}
-
-std::unique_ptr<ASTNode> Parser::Parse(const std::string& text)
+std::unique_ptr<ASTNode> LLParser::Parse(const std::string& text)
 {
 	m_lexer->SetText(text);
 	Token token = m_lexer->GetNextToken();
@@ -88,12 +55,12 @@ std::unique_ptr<ASTNode> Parser::Parse(const std::string& text)
 
 	while (true)
 	{
-		const auto& state = m_states[index];
+		auto state = m_table->GetEntry(index);
 
 		// if beginnings is empty, this is attribute state
-		if (!state.beginnings.empty() && state.beginnings.find(token.kind) == state.beginnings.end())
+		if (!state->beginnings.empty() && state->beginnings.find(m_tokensMap.at(token.kind)) == state->beginnings.end())
 		{
-			if (!state.error)
+			if (!state->error)
 			{
 				++index;
 				continue;
@@ -104,34 +71,34 @@ std::unique_ptr<ASTNode> Parser::Parse(const std::string& text)
 			}
 		}
 
-		if (state.beginnings.empty())
+		if (state->beginnings.empty())
 		{
-			std::cout << state.name << std::endl;
-			auto it = ATTRIBUTE_ACTION_MAP.find(state.name);
+			std::cout << state->name << std::endl;
+			auto it = ATTRIBUTE_ACTION_MAP.find(state->name);
 			if (it != ATTRIBUTE_ACTION_MAP.end())
 			{
 				it->second(nodes, token);
 			}
 		}
 
-		if (state.end)
+		if (state->end)
 		{
 			assert(addresses.empty());
 			assert(nodes.size() == 1);
 			return std::move(nodes.back());
 		}
-		if (state.push)
+		if (state->push)
 		{
 			addresses.push_back(index + 1);
 		}
-		if (state.shift)
+		if (state->shift)
 		{
 			token = m_lexer->GetNextToken();
 		}
 
-		if (state.next != std::nullopt)
+		if (state->next != std::nullopt)
 		{
-			index = *state.next;
+			index = *state->next;
 		}
 		else
 		{
@@ -142,5 +109,10 @@ std::unique_ptr<ASTNode> Parser::Parse(const std::string& text)
 	}
 
 	assert(false);
-	throw std::logic_error("Parser::Parse - while loop doesn't have a break statement here");
+	throw std::logic_error("LLParser::Parse - while loop doesn't have a break statement here");
+}
+
+void LLParser::SetTokenMapping(TokenKind kind, const std::string& mapping)
+{
+	m_tokensMap.emplace(kind, mapping);
 }

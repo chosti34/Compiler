@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "LLParsingTable.h"
+#include "LLParserTable.h"
 #include "GrammarUtil.h"
 
 namespace
@@ -47,12 +47,12 @@ std::set<std::string> GatherBeginSetAndFollowIfHasEmptiness(const Grammar& gramm
 }
 }
 
-void LLParsingTable::AddEntry(std::shared_ptr<LLParsingTableEntry> state)
+void LLParserTable::AddEntry(std::shared_ptr<Entry> state)
 {
 	m_table.push_back(std::move(state));
 }
 
-std::shared_ptr<LLParsingTableEntry> LLParsingTable::GetEntry(size_t index)
+std::shared_ptr<LLParserTable::Entry> LLParserTable::GetEntry(size_t index)
 {
 	if (index >= m_table.size())
 	{
@@ -61,7 +61,7 @@ std::shared_ptr<LLParsingTableEntry> LLParsingTable::GetEntry(size_t index)
 	return m_table[index];
 }
 
-std::shared_ptr<const LLParsingTableEntry> LLParsingTable::GetEntry(size_t index)const
+std::shared_ptr<const LLParserTable::Entry> LLParserTable::GetEntry(size_t index)const
 {
 	if (index >= m_table.size())
 	{
@@ -70,19 +70,19 @@ std::shared_ptr<const LLParsingTableEntry> LLParsingTable::GetEntry(size_t index
 	return m_table[index];
 }
 
-size_t LLParsingTable::GetEntriesCount()const
+size_t LLParserTable::GetEntriesCount()const
 {
 	return m_table.size();
 }
 
-std::unique_ptr<LLParsingTable> LLParsingTable::Create(const Grammar& grammar)
+std::unique_ptr<LLParserTable> CreateParserTable(const Grammar& grammar)
 {
 	// not using std::make_unique because constructor is private
-	auto table = std::unique_ptr<LLParsingTable>(new LLParsingTable);
+	auto table = std::unique_ptr<LLParserTable>(new LLParserTable);
 
 	for (size_t i = 0; i < grammar.GetProductionsCount(); ++i)
 	{
-		auto entry = std::make_shared<LLParsingTableEntry>();
+		auto entry = std::make_shared<LLParserTable::Entry>();
 		entry->name = grammar.GetProduction(i)->GetLeftPart();
 		entry->shift = false;
 		entry->push = false;
@@ -95,7 +95,7 @@ std::unique_ptr<LLParsingTable> LLParsingTable::Create(const Grammar& grammar)
 
 	const auto createAttributeEntry = [&grammar](int row, int col, bool fromTerminal) {
 		assert(grammar.GetProduction(row)->GetSymbol(col).GetAttribute());
-		auto entry = std::make_shared<LLParsingTableEntry>();
+		auto entry = std::make_shared<LLParserTable::Entry>();
 		entry->shift = fromTerminal;
 		entry->push = false;
 		entry->error = false;
@@ -114,7 +114,7 @@ std::unique_ptr<LLParsingTable> LLParsingTable::Create(const Grammar& grammar)
 		for (size_t col = 0; col < production->GetSymbolsCount(); ++col)
 		{
 			const auto& symbol = production->GetSymbol(col);
-			auto entry = std::make_shared<LLParsingTableEntry>();
+			auto entry = std::make_shared<LLParserTable::Entry>();
 
 			switch (symbol.GetType())
 			{
@@ -164,7 +164,7 @@ std::unique_ptr<LLParsingTable> LLParsingTable::Create(const Grammar& grammar)
 			}
 		}
 
-		//! adding index that we skipped on first loop
+		// adding index that we skipped on first loop
 		table->GetEntry(row)->next = table->GetEntriesCount() - production->GetSymbolsCount() - attributesCount;
 	}
 

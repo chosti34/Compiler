@@ -1,9 +1,10 @@
 #include "stdafx.h"
 
 #include "../Lexer/Lexer.h"
-#include "../Parser/Parser.h"
+#include "../Parser/LLParser.h"
 #include "../grammarlib/Grammar.h"
 #include "../grammarlib/GrammarUtil.h"
+#include "../grammarlib/GrammarBuilder.h"
 #include "../grammarlib/GrammarFactory.h"
 #include "../grammarlib/GrammarProductionFactory.h"
 
@@ -100,46 +101,6 @@ const std::unordered_map<std::string, TokenKind> TOKENS_MAP = {
 	{ "Div", TokenKind::Div }
 };
 
-const std::string FUNCTION_DEFINITION_CODE_EXAMPLE = R"(
-func AlwaysTrueFunc() -> Bool: return 1;
-
-func Main(args: Array<Int>) -> Int:
-{
-	var a: Int;
-	a = 0;
-	return a;
-}
-)";
-
-class GrammarBuilder
-{
-public:
-	GrammarBuilder(std::unique_ptr<GrammarProductionFactory> && factory)
-		: m_factory(std::move(factory))
-	{
-	}
-
-	GrammarBuilder& AddProduction(const std::string& line)
-	{
-		m_productions.push_back(std::move(m_factory->CreateProduction(line)));
-		return *this;
-	}
-
-	std::unique_ptr<Grammar> Build()
-	{
-		auto grammar = std::make_unique<Grammar>();
-		for (const auto& production : m_productions)
-		{
-			grammar->AddProduction(production);
-		}
-		return grammar;
-	}
-
-private:
-	std::vector<std::shared_ptr<GrammarProduction>> m_productions;
-	std::unique_ptr<GrammarProductionFactory> m_factory;
-};
-
 void DumpGrammar(std::ostream& os, const Grammar& grammar)
 {
 	for (size_t row = 0; row < grammar.GetProductionsCount(); ++row)
@@ -177,7 +138,7 @@ void DumpGrammar(std::ostream& os, const Grammar& grammar)
 	}
 }
 
-void DumpParsingTable(std::ostream& os, const LLParsingTable& parsingTable)
+void DumpParsingTable(std::ostream& os, const LLParserTable& parserTable)
 {
 	FormatUtil::Table formatTable;
 	formatTable.Append({ "Index", "Name", "Shift", "Push", "Error", "End", "Next", "Beginnings" });
@@ -187,9 +148,9 @@ void DumpParsingTable(std::ostream& os, const LLParsingTable& parsingTable)
 		return value ? "true" : "false";
 	};
 
-	for (size_t i = 0; i < parsingTable.GetEntriesCount(); ++i)
+	for (size_t i = 0; i < parserTable.GetEntriesCount(); ++i)
 	{
-		const auto& entry = parsingTable.GetEntry(i);
+		const auto& entry = parserTable.GetEntry(i);
 		formatTable.Append({
 			std::to_string(i), entry->name,
 			boolalpha(entry->shift), boolalpha(entry->push),
@@ -221,9 +182,9 @@ void DebugTokenize(const std::string& text)
 	} while (true);
 }
 
-std::unique_ptr<Grammar> CreateExpressionGrammar()
+std::unique_ptr<LLParser> CreateYolangParser()
 {
-	return GrammarBuilder(std::make_unique<GrammarProductionFactory>())
+	auto grammar = GrammarBuilder(std::make_unique<GrammarProductionFactory>())
 		.AddProduction("<Program>    -> <Expr> EOF")
 		.AddProduction("<Expr>       -> <Term> <ExprHelper>")
 		.AddProduction("<ExprHelper> -> PLUS <Term> {CreateBinaryNodePlus} <ExprHelper>")
@@ -237,24 +198,26 @@ std::unique_ptr<Grammar> CreateExpressionGrammar()
 		.AddProduction("<Factor>     -> INTLITERAL {CreateNumberNode}")
 		.AddProduction("<Factor>     -> MINUS <Factor> {CreateUnaryNodeMinus}")
 		.Build();
+
+	auto parser = std::make_unique<LLParser>(std::make_unique<Lexer>(), CreateParserTable(*grammar));
+
+	parser->SetTokenMapping(TokenKind::EndOfFile, "EOF");
+	parser->SetTokenMapping(TokenKind::Plus, "PLUS");
+	parser->SetTokenMapping(TokenKind::Minus, "MINUS");
+	parser->SetTokenMapping(TokenKind::Mul, "MUL");
+	parser->SetTokenMapping(TokenKind::Div, "DIV");
+	parser->SetTokenMapping(TokenKind::LeftParenthesis, "LPAREN");
+	parser->SetTokenMapping(TokenKind::RightParenthesis, "RPAREN");
+	parser->SetTokenMapping(TokenKind::IntegerConstant, "INTLITERAL");
+
+	return parser;
 }
 
 void Execute()
 {
-	const auto grammar = CreateExpressionGrammar();
-	const auto table = LLParsingTable::Create(*grammar);
-	const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>());
-	parser->SetParsingTable(*table, TOKENS_MAP);
+	auto parser = CreateYolangParser();
 
-	const std::string code = "1 + 1 + 1 * 2 - 3 - -3";
-
-#ifdef _DEBUG
-	DumpGrammar(std::cout, *grammar);
-	DumpParsingTable(std::cout, *table);
-	DebugTokenize(code);
-#endif
-
-	if (auto ast = parser->Parse(code))
+	if (auto ast = parser->Parse("123 + (1 - 4)"))
 	{
 		std::cout << "AST has been successfully built!" << std::endl;
 		ExpressionCalculator calculator;
