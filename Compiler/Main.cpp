@@ -5,7 +5,6 @@
 #include "../grammarlib/Grammar.h"
 #include "../grammarlib/GrammarUtil.h"
 #include "../grammarlib/GrammarBuilder.h"
-#include "../grammarlib/GrammarFactory.h"
 #include "../grammarlib/GrammarProductionFactory.h"
 
 #include "../utillib/FileUtil.h"
@@ -51,55 +50,6 @@ namespace
 //<Expression>    -> TRUE
 //<Expression>    -> FALSE
 //)";
-
-const std::string MATH_GRAMMAR = R"(
-<Program>    -> <Expr> EOF
-<Expr>       -> <Term> <ExprHelper>
-<ExprHelper> -> PLUS <Term> {CreateBinaryNodePlus} <ExprHelper>
-<ExprHelper> -> MINUS <Term> {CreateBinaryNodeMinus} <ExprHelper>
-<ExprHelper> -> #Eps#
-<Term>       -> <Factor> <TermHelper>
-<TermHelper> -> MUL <Factor> {CreateBinaryNodeMul} <TermHelper>
-<TermHelper> -> DIV <Factor> {CreateBinaryNodeDiv} <TermHelper>
-<TermHelper> -> #Eps#
-<Factor>     -> LPAREN <Expr> RPAREN
-<Factor>     -> INTLITERAL {CreateNumberNode}
-<Factor>     -> MINUS <Factor> {CreateUnaryNodeMinus}
-)";
-
-const std::unordered_map<std::string, TokenKind> TOKENS_MAP = {
-	{ "EndOfFile", TokenKind::EndOfFile },
-	{ "Func", TokenKind::Func },
-	{ "Identifier", TokenKind::Identifier },
-	{ "LeftParenthesis", TokenKind::LeftParenthesis },
-	{ "RightParenthesis", TokenKind::RightParenthesis },
-	{ "Arrow", TokenKind::Arrow },
-	{ "Colon", TokenKind::Colon },
-	{ "Comma", TokenKind::Comma },
-	{ "Int", TokenKind::Int },
-	{ "Float", TokenKind::Float },
-	{ "Bool", TokenKind::Bool },
-	{ "Array", TokenKind::Array },
-	{ "LeftBracket", TokenKind::LeftBracket },
-	{ "RightBracket", TokenKind::RightBracket },
-	{ "If", TokenKind::If },
-	{ "Else", TokenKind::Else },
-	{ "While", TokenKind::While },
-	{ "Var", TokenKind::Var },
-	{ "Semicolon", TokenKind::Semicolon },
-	{ "Assign", TokenKind::Assign },
-	{ "Return", TokenKind::Return },
-	{ "LeftCurly", TokenKind::LeftCurly },
-	{ "RightCurly", TokenKind::RightCurly },
-	{ "IntegerConstant", TokenKind::IntegerConstant },
-	{ "FloatConstant", TokenKind::FloatConstant },
-	{ "True", TokenKind::True },
-	{ "False", TokenKind::False },
-	{ "Minus", TokenKind::Minus },
-	{ "Plus", TokenKind::Plus },
-	{ "Mul", TokenKind::Mul },
-	{ "Div", TokenKind::Div }
-};
 
 void DumpGrammar(std::ostream& os, const Grammar& grammar)
 {
@@ -174,8 +124,8 @@ void DebugTokenize(const std::string& text)
 	do
 	{
 		auto token = lexer->GetNextToken();
-		std::cout << ToString(token) << std::endl;
-		if (token.kind == TokenKind::EndOfFile)
+		std::cout << TokenToString(token) << std::endl;
+		if (token.type == Token::EndOfFile)
 		{
 			break;
 		}
@@ -185,30 +135,21 @@ void DebugTokenize(const std::string& text)
 std::unique_ptr<LLParser> CreateYolangParser()
 {
 	auto grammar = GrammarBuilder(std::make_unique<GrammarProductionFactory>())
-		.AddProduction("<Program>    -> <Expr> EOF")
+		.AddProduction("<Program>    -> <Expr> EndOfFile")
 		.AddProduction("<Expr>       -> <Term> <ExprHelper>")
-		.AddProduction("<ExprHelper> -> PLUS <Term> {CreateBinaryNodePlus} <ExprHelper>")
-		.AddProduction("<ExprHelper> -> MINUS <Term> {CreateBinaryNodeMinus} <ExprHelper>")
+		.AddProduction("<ExprHelper> -> Plus <Term> {CreateBinaryNodePlus} <ExprHelper>")
+		.AddProduction("<ExprHelper> -> Minus <Term> {CreateBinaryNodeMinus} <ExprHelper>")
 		.AddProduction("<ExprHelper> -> #Eps#")
 		.AddProduction("<Term>       -> <Factor> <TermHelper>")
-		.AddProduction("<TermHelper> -> MUL <Factor> {CreateBinaryNodeMul} <TermHelper>")
-		.AddProduction("<TermHelper> -> DIV <Factor> {CreateBinaryNodeDiv} <TermHelper>")
+		.AddProduction("<TermHelper> -> Mul <Factor> {CreateBinaryNodeMul} <TermHelper>")
+		.AddProduction("<TermHelper> -> Div <Factor> {CreateBinaryNodeDiv} <TermHelper>")
 		.AddProduction("<TermHelper> -> #Eps#")
-		.AddProduction("<Factor>     -> LPAREN <Expr> RPAREN")
-		.AddProduction("<Factor>     -> INTLITERAL {CreateNumberNode}")
-		.AddProduction("<Factor>     -> MINUS <Factor> {CreateUnaryNodeMinus}")
+		.AddProduction("<Factor>     -> LeftParenthesis <Expr> RightParenthesis")
+		.AddProduction("<Factor>     -> IntegerConstant {CreateNumberNode}")
+		.AddProduction("<Factor>     -> Minus <Factor> {CreateUnaryNodeMinus}")
 		.Build();
 
 	auto parser = std::make_unique<LLParser>(std::make_unique<Lexer>(), CreateParserTable(*grammar));
-
-	parser->SetTokenMapping(TokenKind::EndOfFile, "EOF");
-	parser->SetTokenMapping(TokenKind::Plus, "PLUS");
-	parser->SetTokenMapping(TokenKind::Minus, "MINUS");
-	parser->SetTokenMapping(TokenKind::Mul, "MUL");
-	parser->SetTokenMapping(TokenKind::Div, "DIV");
-	parser->SetTokenMapping(TokenKind::LeftParenthesis, "LPAREN");
-	parser->SetTokenMapping(TokenKind::RightParenthesis, "RPAREN");
-	parser->SetTokenMapping(TokenKind::IntegerConstant, "INTLITERAL");
 
 	return parser;
 }

@@ -7,7 +7,7 @@ namespace
 {
 void ProcessIntegerLiteral(std::vector<ASTNode::Ptr>& treeStack, const Token& token)
 {
-	assert(token.kind == TokenKind::IntegerConstant);
+	assert(token.type == Token::IntegerConstant);
 	treeStack.push_back(std::make_unique<LeafNumNode>(std::stoi(*token.value)));
 }
 
@@ -58,7 +58,7 @@ std::unique_ptr<ASTNode> LLParser::Parse(const std::string& text)
 		auto state = m_table->GetEntry(index);
 
 		// if beginnings is empty, this is attribute state
-		if (!state->beginnings.empty() && state->beginnings.find(m_tokensMap.at(token.kind)) == state->beginnings.end())
+		if (!state->beginnings.empty() && state->beginnings.find(TokenTypeToString(token.type)) == state->beginnings.end())
 		{
 			if (!state->error)
 			{
@@ -110,9 +110,4 @@ std::unique_ptr<ASTNode> LLParser::Parse(const std::string& text)
 
 	assert(false);
 	throw std::logic_error("LLParser::Parse - while loop doesn't have a break statement here");
-}
-
-void LLParser::SetTokenMapping(TokenKind kind, const std::string& mapping)
-{
-	m_tokensMap.emplace(kind, mapping);
 }
