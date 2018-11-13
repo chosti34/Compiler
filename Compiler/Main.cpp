@@ -14,44 +14,7 @@
 
 namespace
 {
-//const std::string LANGUAGE_GRAMMAR = R"(
-//<Program>       -> <FunctionList> EOF {AttributeForEofToken}
-//<FunctionList>  -> <Function> <FunctionList>
-//<FunctionList>  -> #Eps#
-//<Function>      -> FUNC IDENTIFIER LPAREN <ParamList> RPAREN ARROW <Type> COLON <Statement>
-//<ParamList>     -> <Param> <TailParamList>
-//<ParamList>     -> #Eps#
-//<TailParamList> -> COMMA <Param> {ParamAttrubute} <TailParamList>
-//<TailParamList> -> #Eps#
-//<Param>         -> IDENTIFIER COLON <Type>
-//<Type>          -> INT
-//<Type>          -> FLOAT
-//<Type>          -> BOOL
-//<Type>          -> ARRAY LABRACKET <Type> RABRACKET
-//<Statement>     -> <Condition>
-//<Statement>     -> <Loop>
-//<Statement>     -> <Decl>
-//<Statement>     -> <Assign>
-//<Statement>     -> <Return>
-//<Statement>     -> <Composite>
-//<Condition>     -> IF LPAREN <Expression> RPAREN <Statement> <OptionalElse>
-//<OptionalElse>  -> ELSE <Statement>
-//<OptionalElse>  -> #Eps# {ElseAttribute}
-//<Loop>          -> WHILE LPAREN <Expression> RPAREN <Statement>
-//<Decl>          -> VAR IDENTIFIER COLON <Type> SEMICOLON
-//<Assign>        -> IDENTIFIER ASSIGN <Expression> SEMICOLON
-//<Return>        -> RETURN <Expression> SEMICOLON
-//<Composite>     -> LCURLY <StatementList> RCURLY
-//<StatementList> -> <Statement> <StatementList>
-//<StatementList> -> #Eps#
-//<Expression>    -> IDENTIFIER
-//<Expression>    -> INTLITERAL
-//<Expression>    -> FLOATLITERAL
-//<Expression>    -> TRUE
-//<Expression>    -> FALSE
-//)";
-
-void DumpGrammar(std::ostream& os, const Grammar& grammar)
+void WriteGrammar(const Grammar &grammar, std::ostream &os = std::cout)
 {
 	for (size_t row = 0; row < grammar.GetProductionsCount(); ++row)
 	{
@@ -88,7 +51,7 @@ void DumpGrammar(std::ostream& os, const Grammar& grammar)
 	}
 }
 
-void DumpParsingTable(std::ostream& os, const LLParserTable& parserTable)
+void WriteParserTable(const LLParserTable &parserTable, std::ostream &os = std::cout)
 {
 	FormatUtil::Table formatTable;
 	formatTable.Append({ "Index", "Name", "Shift", "Push", "Error", "End", "Next", "Beginnings" });
@@ -114,9 +77,9 @@ void DumpParsingTable(std::ostream& os, const LLParserTable& parserTable)
 	os << formatTable << std::endl;
 }
 
-void DebugTokenize(const std::string& text)
+void WriteTokens(const std::string &text, std::ostream &os = std::cout)
 {
-	std::cout << "Tokens for: '" << text << "'" << std::endl;
+	os << "Tokens for: '" << text << "'" << std::endl;
 
 	auto lexer = std::make_unique<Lexer>();
 	lexer->SetText(text);
@@ -124,12 +87,13 @@ void DebugTokenize(const std::string& text)
 	do
 	{
 		auto token = lexer->GetNextToken();
-		std::cout << TokenToString(token) << std::endl;
+		os << TokenToString(token) << std::endl;
 		if (token.type == Token::EndOfFile)
 		{
 			break;
 		}
-	} while (true);
+	}
+	while (true);
 }
 
 std::unique_ptr<LLParser> CreateYolangParser()

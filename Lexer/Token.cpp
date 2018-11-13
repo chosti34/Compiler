@@ -4,7 +4,7 @@
 
 namespace
 {
-const std::unordered_map<Token::Type, std::string> gcTokenTypes = {
+const std::unordered_map<Token::Type, std::string> TOKEN_TYPE_TO_STRING = {
 	// Meta
 	{ Token::EndOfFile, "EndOfFile" },
 	// Keyword
@@ -42,12 +42,51 @@ const std::unordered_map<Token::Type, std::string> gcTokenTypes = {
 	{ Token::Div, "Div" },
 	{ Token::Mul, "Mul" }
 };
+
+const std::unordered_map<std::string, Token::Type> STRING_TO_TOKEN_TYPE = {
+	// Meta
+	{ "EndOfFile", Token::EndOfFile },
+	// Keyword
+	{ "Func", Token::Func },
+	{ "Int", Token::Int },
+	{ "Float", Token::Float },
+	{ "Bool", Token::Bool },
+	{ "Array", Token::Array },
+	{ "If", Token::If },
+	{ "Else", Token::Else },
+	{ Token::While, "While" },
+	{ Token::Var, "Var" },
+	{ Token::Return, "Return" },
+	{ Token::True, "True" },
+	{ Token::False, "False" },
+	// Mutable
+	{ Token::Identifier, "Identifier" },
+	{ Token::IntegerConstant, "IntegerConstant" },
+	{ Token::FloatConstant, "FloatConstant" },
+	// Separators
+	{ Token::LeftParenthesis, "LeftParenthesis" },
+	{ Token::RightParenthesis, "RightParenthesis" },
+	{ Token::LeftBracket, "LeftBracket" },
+	{ Token::RightBracket, "RightBracket" },
+	{ Token::LeftCurly, "LeftCurly" },
+	{ Token::RightCurly, "RightCurly" },
+	{ Token::Arrow, "Arrow" },
+	{ Token::Colon, "Colon" },
+	{ Token::Comma, "Comma" },
+	{ Token::Semicolon, "Semicolon" },
+	// Operators
+	{ Token::Assign, "Assign" },
+	{ Token::Minus, "Minus" },
+	{ Token::Plus, "Plus" },
+	{ Token::Div, "Div" },
+	{ Token::Mul, "Mul" }
+};
 }
 
 std::string TokenTypeToString(Token::Type type)
 {
-	auto found = gcTokenTypes.find(type);
-	if (found == gcTokenTypes.end())
+	auto found = TOKEN_TYPE_TO_STRING.find(type);
+	if (found == TOKEN_TYPE_TO_STRING.end())
 	{
 		throw std::logic_error("passed token type doesn't have string representation");
 	}
@@ -56,6 +95,7 @@ std::string TokenTypeToString(Token::Type type)
 
 Token::Type StringToTokenType(const std::string &str)
 {
+	(void)str;
 	return Token::Type();
 }
 

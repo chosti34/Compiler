@@ -32,5 +32,6 @@ const std::string& Grammar::GetStartSymbol()const
 const std::string& Grammar::GetEndSymbol()const
 {
 	assert(!m_productions.empty());
+	assert(m_productions.front()->GetLastSymbol().GetType() == GrammarSymbolType::Terminal);
 	return m_productions.front()->GetLastSymbol().GetText();
 }
