@@ -78,7 +78,7 @@ size_t LLParserTable::GetEntriesCount()const
 std::unique_ptr<LLParserTable> CreateParserTable(const Grammar& grammar)
 {
 	// not using std::make_unique because constructor is private
-	auto table = std::unique_ptr<LLParserTable>(new LLParserTable);
+	auto table = std::make_unique<LLParserTable>();
 
 	for (size_t i = 0; i < grammar.GetProductionsCount(); ++i)
 	{
