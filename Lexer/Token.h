@@ -51,6 +51,9 @@ struct Token
 	size_t column = 0;
 };
 
+bool TokenExists(const std::string &token);
+
 std::string TokenTypeToString(Token::Type type);
 Token::Type StringToTokenType(const std::string &str);
+
 std::string TokenToString(const Token &token);

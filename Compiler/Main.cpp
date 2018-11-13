@@ -14,6 +14,24 @@
 
 namespace
 {
+bool GrammarTerminalsMatchLexerTokens(const Grammar &grammar)
+{
+	for (size_t row = 0; row < grammar.GetProductionsCount(); ++row)
+	{
+		auto production = grammar.GetProduction(row);
+		for (size_t col = 0; col < production->GetSymbolsCount(); ++col)
+		{
+			const GrammarSymbol& symbol = production->GetSymbol(col);
+			if (symbol.GetType() == GrammarSymbolType::Terminal &&
+				!TokenExists(symbol.GetText()))
+			{
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
 void WriteGrammar(const Grammar &grammar, std::ostream &os = std::cout)
 {
 	for (size_t row = 0; row < grammar.GetProductionsCount(); ++row)
@@ -105,7 +123,7 @@ std::unique_ptr<LLParser> CreateYolangParser()
 		.AddProduction("<ExprHelper> -> Minus <Term> {CreateBinaryNodeMinus} <ExprHelper>")
 		.AddProduction("<ExprHelper> -> #Eps#")
 		.AddProduction("<Term>       -> <Factor> <TermHelper>")
-		.AddProduction("<TermHelper> -> Mul <Factor> {CreateBinaryNodeMul} <TermHelper>")
+		.AddProduction("<TermHelper> -> Muls <Factor> {CreateBinaryNodeMul} <TermHelper>")
 		.AddProduction("<TermHelper> -> Div <Factor> {CreateBinaryNodeDiv} <TermHelper>")
 		.AddProduction("<TermHelper> -> #Eps#")
 		.AddProduction("<Factor>     -> LeftParenthesis <Expr> RightParenthesis")
@@ -113,9 +131,8 @@ std::unique_ptr<LLParser> CreateYolangParser()
 		.AddProduction("<Factor>     -> Minus <Factor> {CreateUnaryNodeMinus}")
 		.Build();
 
-	auto parser = std::make_unique<LLParser>(std::make_unique<Lexer>(), CreateParserTable(*grammar));
-
-	return parser;
+	assert(GrammarTerminalsMatchLexerTokens(*grammar));
+	return std::make_unique<LLParser>(std::make_unique<Lexer>(), CreateParserTable(*grammar));
 }
 
 void Execute()
