@@ -160,11 +160,87 @@ private:
 	std::string m_name;
 };
 
+class VariableDeclarationAST;
+class AssignStatementAST;
+class ReturnStatementAST;
+class IfStatementAST;
+class WhileStatementAST;
+class CompositeStatementAST;
+
+class IStatementVisitor
+{
+public:
+	virtual ~IStatementVisitor() = default;
+	virtual void Visit(const VariableDeclarationAST& vardecl) = 0;
+	virtual void Visit(const AssignStatementAST& assign) = 0;
+	virtual void Visit(const ReturnStatementAST& ret) = 0;
+	virtual void Visit(const IfStatementAST& ifstmt) = 0;
+	virtual void Visit(const WhileStatementAST& loop) = 0;
+	virtual void Visit(const CompositeStatementAST& composite) = 0;
+};
+
 // Statements
 class IStatementAST
 {
 public:
 	virtual ~IStatementAST() = default;
+	virtual void Accept(IStatementVisitor& visitor)const = 0;
+};
+
+class VariableDeclarationAST : public IStatementAST
+{
+public:
+	explicit VariableDeclarationAST(std::unique_ptr<IdentifierAST> && identifier, ValueType type)
+		: m_identifier(std::move(identifier))
+		, m_type(type)
+	{
+	}
+
+	void Accept(IStatementVisitor& visitor)const override
+	{
+		visitor.Visit(*this);
+	}
+
+private:
+	std::unique_ptr<IdentifierAST> m_identifier;
+	ValueType m_type;
+};
+
+class AssignStatementAST : public IStatementAST
+{
+public:
+	explicit AssignStatementAST(
+		std::unique_ptr<IdentifierAST> && identifier, std::unique_ptr<IExpressionAST> && expr)
+		: m_identifier(std::move(identifier))
+		, m_expr(std::move(expr))
+	{
+	}
+
+	void Accept(IStatementVisitor& visitor)const override
+	{
+		visitor.Visit(*this);
+	}
+
+private:
+	std::unique_ptr<IExpressionAST> m_identifier;
+	std::unique_ptr<IExpressionAST> m_expr;
+};
+
+class ReturnStatementAST : public IStatementAST
+{
+public:
+	explicit ReturnStatementAST(std::unique_ptr<IExpressionAST> && expr)
+		: m_expr(std::move(expr))
+	{
+	}
+
+	void Accept(IStatementVisitor& visitor)const override
+	{
+		visitor.Visit(*this);
+	}
+
+private:
+	std::unique_ptr<IExpressionAST> m_expr;
 };
 
 class IfStatementAST : public IStatementAST
@@ -185,6 +261,11 @@ public:
 		m_elif = std::move(elif);
 	}
 
+	void Accept(IStatementVisitor& visitor)const override
+	{
+		visitor.Visit(*this);
+	}
+
 private:
 	std::unique_ptr<IExpressionAST> m_expr;
 	std::unique_ptr<IStatementAST> m_then;
@@ -202,41 +283,17 @@ public:
 	{
 	}
 
+	void Accept(IStatementVisitor& visitor)const override
+	{
+		visitor.Visit(*this);
+	}
+
 private:
 	std::unique_ptr<IExpressionAST> m_expr;
 	std::unique_ptr<IStatementAST> m_stmt;
 };
 
-class AssignStatementAST : public IStatementAST
-{
-public:
-	explicit AssignStatementAST(
-		std::unique_ptr<IdentifierAST> && identifier, std::unique_ptr<IExpressionAST> && expr)
-		: m_identifier(std::move(identifier))
-		, m_expr(std::move(expr))
-	{
-	}
-
-private:
-	std::unique_ptr<IExpressionAST> m_identifier;
-	std::unique_ptr<IExpressionAST> m_expr;
-};
-
-class VariableDeclarationAST : public IStatementAST
-{
-public:
-	explicit VariableDeclarationAST(std::unique_ptr<IdentifierAST> && identifier, ValueType type)
-		: m_identifier(std::move(identifier))
-		, m_type(type)
-	{
-	}
-
-private:
-	std::unique_ptr<IdentifierAST> m_identifier;
-	ValueType m_type;
-};
-
-class CompositeStatement : public IStatementAST
+class CompositeStatementAST : public IStatementAST
 {
 public:
 	void AddStatement(std::unique_ptr<IStatementAST> && stmt)
@@ -244,20 +301,13 @@ public:
 		m_statements.push_back(std::move(stmt));
 	}
 
-private:
-	std::vector<std::unique_ptr<IStatementAST>> m_statements;
-};
-
-class ReturnStatementAST : public IStatementAST
-{
-public:
-	explicit ReturnStatementAST(std::unique_ptr<IExpressionAST> && expr)
-		: m_expr(std::move(expr))
+	void Accept(IStatementVisitor& visitor)const override
 	{
+		visitor.Visit(*this);
 	}
 
 private:
-	std::unique_ptr<IExpressionAST> m_expr;
+	std::vector<std::unique_ptr<IStatementAST>> m_statements;
 };
 
 // Function

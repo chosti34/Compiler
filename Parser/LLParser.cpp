@@ -126,7 +126,7 @@ public:
 
 	void OnCompositeStatementParse()
 	{
-		auto composite = std::make_unique<CompositeStatement>();
+		auto composite = std::make_unique<CompositeStatementAST>();
 		for (auto& stmt : m_compositeCache.back())
 		{
 			composite->AddStatement(std::move(stmt));
