@@ -5,6 +5,14 @@
 
 namespace
 {
+template <typename T>
+T Pop(std::vector<T> &vect)
+{
+	auto value = std::move(vect.back());
+	vect.pop_back();
+	return std::move(value);
+}
+
 class ASTBuilder
 {
 public:
@@ -16,40 +24,79 @@ public:
 	std::unique_ptr<IExpressionAST> PopBuiltExpression()
 	{
 		assert(m_expressions.size() == 1);
-		auto expr = std::move(m_expressions.back()); m_expressions.pop_back();
-		return std::move(expr);
+		return std::move(Pop(m_expressions));
+	}
+
+	std::unique_ptr<IStatementAST> PopBuiltStatement()
+	{
+		assert(m_statements.size() == 1);
+		return std::move(Pop(m_statements));
+	}
+
+	void OnAssignStatementParse()
+	{
+		assert(m_expressions.size() >= 2);
+		auto expr = Pop(m_expressions);
+		auto baseIdentifier = Pop(m_expressions);
+
+		// Намеренно использую dynamic_cast (можно было бы сохранять идентификаторы в стеке?)
+		// Указатели baseIdentifier и derivedIdentifier меняются правом владения
+		std::unique_ptr<IdentifierAST> derivedIdentifier;
+		if (IdentifierAST* ptr = dynamic_cast<IdentifierAST*>(baseIdentifier.get()))
+		{
+			baseIdentifier.release();
+			derivedIdentifier.reset(ptr);
+		}
+		else
+		{
+			assert(false);
+		}
+
+		m_statements.push_back(std::make_unique<AssignStatementAST>(
+			std::move(derivedIdentifier), std::move(expr)));
+	}
+
+	void OnReturnStatementParse()
+	{
+		assert(!m_expressions.empty());
+		m_statements.push_back(std::make_unique<ReturnStatementAST>(Pop(m_expressions)));
+	}
+
+	void OnCompositeStatementParse()
+	{
+		auto composite = std::make_unique<CompositeStatement>();
+		for (auto& stmt : m_compositeCache)
+		{
+			composite->AddStatement(std::move(stmt));
+		}
+		m_compositeCache.clear();
+		m_statements.push_back(std::move(composite));
+	}
+
+	void OnCompositeStatementPartParse()
+	{
+		assert(!m_statements.empty());
+		m_compositeCache.push_back(Pop(m_statements));
 	}
 
 	void OnBinaryPlusParse()
 	{
-		auto right = std::move(m_expressions.back()); m_expressions.pop_back();
-		auto left = std::move(m_expressions.back()); m_expressions.pop_back();
-		m_expressions.push_back(std::make_unique<BinaryExpressionAST>(
-			std::move(left), std::move(right), BinaryExpressionAST::Plus));
+		OnBinaryExpr(BinaryExpressionAST::Plus);
 	}
 
 	void OnBinaryMinusParse()
 	{
-		auto right = std::move(m_expressions.back()); m_expressions.pop_back();
-		auto left = std::move(m_expressions.back()); m_expressions.pop_back();
-		m_expressions.push_back(std::make_unique<BinaryExpressionAST>(
-			std::move(left), std::move(right), BinaryExpressionAST::Minus));
+		OnBinaryExpr(BinaryExpressionAST::Minus);
 	}
 
 	void OnBinaryMulParse()
 	{
-		auto right = std::move(m_expressions.back()); m_expressions.pop_back();
-		auto left = std::move(m_expressions.back()); m_expressions.pop_back();
-		m_expressions.push_back(std::make_unique<BinaryExpressionAST>(
-			std::move(left), std::move(right), BinaryExpressionAST::Mul));
+		OnBinaryExpr(BinaryExpressionAST::Mul);
 	}
 
 	void OnBinaryDivParse()
 	{
-		auto right = std::move(m_expressions.back()); m_expressions.pop_back();
-		auto left = std::move(m_expressions.back()); m_expressions.pop_back();
-		m_expressions.push_back(std::make_unique<BinaryExpressionAST>(
-			std::move(left), std::move(right), BinaryExpressionAST::Div));
+		OnBinaryExpr(BinaryExpressionAST::Div);
 	}
 
 	void OnIdentifierParse()
@@ -77,9 +124,21 @@ public:
 	}
 
 private:
-	const Token &m_token;
+	void OnBinaryExpr(BinaryExpressionAST::Operator op)
+	{
+		auto right = Pop(m_expressions);
+		auto left = Pop(m_expressions);
+
+		m_expressions.push_back(std::make_unique<BinaryExpressionAST>(
+			std::move(left), std::move(right), op));
+	}
+
+private:
+	const Token& m_token;
 	std::vector<std::unique_ptr<IExpressionAST>> m_expressions;
 	std::vector<std::unique_ptr<IStatementAST>> m_statements;
+	std::vector<std::unique_ptr<IStatementAST>> m_compositeCache;
+	std::vector<ValueType> m_types;
 };
 }
 
@@ -109,27 +168,21 @@ std::unique_ptr<IExpressionAST> LLParser::Parse(const std::string& text)
 		{ "OnUnaryMinusParse", std::bind(&ASTBuilder::OnUnaryMinusParse, &astBuilder) },
 	};
 
-	auto onAttributeEntry = [&actions](const LLParserTable::Entry &entry) {
-		assert(entry.isAttribute);
-		auto it = actions.find(entry.name);
-		if (it != actions.end())
-		{
-			auto& action = it->second;
-			action();
-		}
-		else
-		{
-			throw std::logic_error("attribute '" + entry.name + "' doesn't have action");
-		}
-	};
-
 	while (true)
 	{
 		auto state = m_table->GetEntry(index);
 
 		if (state->isAttribute)
 		{
-			onAttributeEntry(*state);
+			auto it = actions.find(state->name);
+			if (it != actions.end())
+			{
+				it->second();
+			}
+			else
+			{
+				throw std::logic_error("attribute '" + state->name + "' doesn't have action");
+			}
 		}
 		else if (!EntryAcceptsTerminal(*state, TokenTypeToString(token.type)))
 		{

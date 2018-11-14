@@ -146,7 +146,7 @@ public:
 	{
 	}
 
-	const std::string &GetName()const
+	const std::string& GetName()const
 	{
 		return m_name;
 	}
@@ -205,14 +205,15 @@ private:
 class AssignStatementAST : public IStatementAST
 {
 public:
-	explicit AssignStatementAST(const std::string &left, std::unique_ptr<IExpressionAST> && expr)
-		: m_left(left)
+	explicit AssignStatementAST(
+		std::unique_ptr<IdentifierAST> && identifier, std::unique_ptr<IExpressionAST> && expr)
+		: m_identifier(std::move(identifier))
 		, m_expr(std::move(expr))
 	{
 	}
 
 private:
-	std::string m_left;
+	std::unique_ptr<IExpressionAST> m_identifier;
 	std::unique_ptr<IExpressionAST> m_expr;
 };
 
