@@ -5,36 +5,81 @@
 
 namespace
 {
-void ProcessIntegerConstant(std::vector<ASTNode::Ptr>& treeStack, const Token& token)
+class ASTBuilder
 {
-	assert(token.type == Token::IntegerConstant);
-	treeStack.push_back(std::make_unique<LeafNumNode>(std::stoi(*token.value)));
-}
+public:
+	ASTBuilder(const Token &token)
+		: m_token(token)
+	{
+	}
 
-void ProcessUnaryMinus(std::vector<ASTNode::Ptr>& treeStack, const Token& token)
-{
-	(void)token;
-	auto node = std::move(treeStack.back()); treeStack.pop_back();
-	treeStack.push_back(std::make_unique<UnOpNode>(std::move(node), UnOpNode::Minus));
-}
+	std::unique_ptr<IExpressionAST> PopBuiltExpression()
+	{
+		assert(m_expressions.size() == 1);
+		auto expr = std::move(m_expressions.back()); m_expressions.pop_back();
+		return std::move(expr);
+	}
 
-void ProcessBinaryOperator(std::vector<ASTNode::Ptr>& treeStack, const Token& token, BinOpNode::Operator op)
-{
-	(void)token;
-	auto right = std::move(treeStack.back()); treeStack.pop_back();
-	auto left = std::move(treeStack.back()); treeStack.pop_back();
-	treeStack.push_back(std::make_unique<BinOpNode>(std::move(left), std::move(right), op));
-}
+	void OnBinaryPlusParse()
+	{
+		auto right = std::move(m_expressions.back()); m_expressions.pop_back();
+		auto left = std::move(m_expressions.back()); m_expressions.pop_back();
+		m_expressions.push_back(std::make_unique<BinaryExpressionAST>(
+			std::move(left), std::move(right), BinaryExpressionAST::Plus));
+	}
 
-using namespace std::placeholders;
+	void OnBinaryMinusParse()
+	{
+		auto right = std::move(m_expressions.back()); m_expressions.pop_back();
+		auto left = std::move(m_expressions.back()); m_expressions.pop_back();
+		m_expressions.push_back(std::make_unique<BinaryExpressionAST>(
+			std::move(left), std::move(right), BinaryExpressionAST::Minus));
+	}
 
-std::unordered_map<std::string, std::function<void(std::vector<ASTNode::Ptr>&, const Token&)>> ATTRIBUTE_ACTION_MAP = {
-	{ "CreateNumberNode", ProcessIntegerConstant },
-	{ "CreateUnaryNodeMinus", ProcessUnaryMinus },
-	{ "CreateBinaryNodePlus", std::bind(ProcessBinaryOperator, _1, _2, BinOpNode::Plus) },
-	{ "CreateBinaryNodeMinus", std::bind(ProcessBinaryOperator, _1, _2, BinOpNode::Minus) },
-	{ "CreateBinaryNodeMul", std::bind(ProcessBinaryOperator, _1, _2, BinOpNode::Mul) },
-	{ "CreateBinaryNodeDiv", std::bind(ProcessBinaryOperator, _1, _2, BinOpNode::Div) }
+	void OnBinaryMulParse()
+	{
+		auto right = std::move(m_expressions.back()); m_expressions.pop_back();
+		auto left = std::move(m_expressions.back()); m_expressions.pop_back();
+		m_expressions.push_back(std::make_unique<BinaryExpressionAST>(
+			std::move(left), std::move(right), BinaryExpressionAST::Mul));
+	}
+
+	void OnBinaryDivParse()
+	{
+		auto right = std::move(m_expressions.back()); m_expressions.pop_back();
+		auto left = std::move(m_expressions.back()); m_expressions.pop_back();
+		m_expressions.push_back(std::make_unique<BinaryExpressionAST>(
+			std::move(left), std::move(right), BinaryExpressionAST::Div));
+	}
+
+	void OnIdentifierParse()
+	{
+		assert(m_token.type == Token::Identifier);
+		m_expressions.push_back(std::make_unique<IdentifierAST>(*m_token.value));
+	}
+
+	void OnIntegerConstantParse()
+	{
+		assert(m_token.type == Token::IntegerConstant);
+		m_expressions.push_back(std::make_unique<NumberConstantAST>(std::stod(*m_token.value)));
+	}
+
+	void OnFloatConstantParse()
+	{
+		assert(m_token.type == Token::FloatConstant);
+		m_expressions.push_back(std::make_unique<NumberConstantAST>(std::stod(*m_token.value)));
+	}
+
+	void OnUnaryMinusParse()
+	{
+		auto node = std::move(m_expressions.back()); m_expressions.pop_back();
+		m_expressions.push_back(std::make_unique<UnaryAST>(std::move(node), UnaryAST::Minus));
+	}
+
+private:
+	const Token &m_token;
+	std::vector<std::unique_ptr<IExpressionAST>> m_expressions;
+	std::vector<std::unique_ptr<IStatementAST>> m_statements;
 };
 }
 
@@ -44,20 +89,33 @@ LLParser::LLParser(std::unique_ptr<ILexer> && lexer, std::unique_ptr<LLParserTab
 {
 }
 
-std::unique_ptr<ASTNode> LLParser::Parse(const std::string& text)
+std::unique_ptr<IExpressionAST> LLParser::Parse(const std::string& text)
 {
 	m_lexer->SetText(text);
 	Token token = m_lexer->GetNextToken();
 
-	std::vector<ASTNode::Ptr> nodes;
 	std::vector<size_t> addresses;
 	size_t index = 0;
 
-	auto onAttributeEntry = [&](const LLParserTable::Entry &entry) {
-		auto it = ATTRIBUTE_ACTION_MAP.find(entry.name);
-		if (it != ATTRIBUTE_ACTION_MAP.end())
+	ASTBuilder astBuilder(token);
+	std::unordered_map<std::string, std::function<void()>> actions = {
+		{ "OnBinaryPlusParse", std::bind(&ASTBuilder::OnBinaryPlusParse, &astBuilder) },
+		{ "OnBinaryMinusParse", std::bind(&ASTBuilder::OnBinaryMinusParse, &astBuilder) },
+		{ "OnBinaryMulParse", std::bind(&ASTBuilder::OnBinaryMulParse, &astBuilder) },
+		{ "OnBinaryDivParse", std::bind(&ASTBuilder::OnBinaryDivParse, &astBuilder) },
+		{ "OnIdentifierParse", std::bind(&ASTBuilder::OnIdentifierParse, &astBuilder) },
+		{ "OnIntegerConstantParse", std::bind(&ASTBuilder::OnIntegerConstantParse, &astBuilder) },
+		{ "OnFloatConstantParse", std::bind(&ASTBuilder::OnFloatConstantParse, &astBuilder) },
+		{ "OnUnaryMinusParse", std::bind(&ASTBuilder::OnUnaryMinusParse, &astBuilder) },
+	};
+
+	auto onAttributeEntry = [&actions](const LLParserTable::Entry &entry) {
+		assert(entry.isAttribute);
+		auto it = actions.find(entry.name);
+		if (it != actions.end())
 		{
-			it->second(nodes, token);
+			auto& action = it->second;
+			action();
 		}
 		else
 		{
@@ -89,8 +147,7 @@ std::unique_ptr<ASTNode> LLParser::Parse(const std::string& text)
 		if (state->isEnding)
 		{
 			assert(addresses.empty());
-			assert(nodes.size() == 1);
-			return std::move(nodes.back());
+			return astBuilder.PopBuiltExpression();
 		}
 		if (state->doPush)
 		{

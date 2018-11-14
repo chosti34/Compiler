@@ -120,16 +120,18 @@ std::unique_ptr<LLParser> CreateYolangParser()
 	auto grammar = GrammarBuilder(std::make_unique<GrammarProductionFactory>())
 		.AddProduction("<Program>    -> <Expr> EndOfFile")
 		.AddProduction("<Expr>       -> <Term> <ExprHelper>")
-		.AddProduction("<ExprHelper> -> Plus <Term> {CreateBinaryNodePlus} <ExprHelper>")
-		.AddProduction("<ExprHelper> -> Minus <Term> {CreateBinaryNodeMinus} <ExprHelper>")
+		.AddProduction("<ExprHelper> -> Plus <Term> {OnBinaryPlusParse} <ExprHelper>")
+		.AddProduction("<ExprHelper> -> Minus <Term> {OnBinaryMinusParse} <ExprHelper>")
 		.AddProduction("<ExprHelper> -> #Eps#")
 		.AddProduction("<Term>       -> <Factor> <TermHelper>")
-		.AddProduction("<TermHelper> -> Mul <Factor> {CreateBinaryNodeMul} <TermHelper>")
-		.AddProduction("<TermHelper> -> Div <Factor> {CreateBinaryNodeDiv} <TermHelper>")
+		.AddProduction("<TermHelper> -> Mul <Factor> {OnBinaryMulParse} <TermHelper>")
+		.AddProduction("<TermHelper> -> Div <Factor> {OnBinaryDivParse} <TermHelper>")
 		.AddProduction("<TermHelper> -> #Eps#")
 		.AddProduction("<Factor>     -> LeftParenthesis <Expr> RightParenthesis")
-		.AddProduction("<Factor>     -> IntegerConstant {CreateNumberNode}")
-		.AddProduction("<Factor>     -> Minus <Factor> {CreateUnaryNodeMinus}")
+		.AddProduction("<Factor>     -> IntegerConstant {OnIntegerConstantParse}")
+		.AddProduction("<Factor>     -> FloatConstant {OnFloatConstantParse}")
+		.AddProduction("<Factor>     -> Identifier {OnIdentifierParse}")
+		.AddProduction("<Factor>     -> Minus <Factor> {OnUnaryMinusParse}")
 		.Build();
 
 	assert(GrammarTerminalsMatchLexerTokens(*grammar));
@@ -140,12 +142,11 @@ void Execute()
 {
 	auto parser = CreateYolangParser();
 
-	if (auto ast = parser->Parse("123 + (1 - 4)"))
+	if (auto ast = parser->Parse("123 + (1 - 4) + abc"))
 	{
 		std::cout << "AST has been successfully built!" << std::endl;
 		ExpressionCalculator calculator;
-		int value = calculator.Calculate(*ast);
-		std::cout << value << std::endl;
+		std::cout << calculator.Calculate(*ast) << std::endl;
 	}
 	else
 	{

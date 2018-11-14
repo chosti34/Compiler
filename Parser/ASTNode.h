@@ -1,30 +1,40 @@
 #pragma once
 #include <string>
 #include <memory>
+#include <vector>
 #include <cassert>
 
-class BinOpNode;
-class LeafNumNode;
-class UnOpNode;
-
-class IASTVisitor
+enum class ValueType
 {
-public:
-	virtual ~IASTVisitor() = default;
-	virtual void Visit(const BinOpNode& node) = 0;
-	virtual void Visit(const LeafNumNode& node) = 0;
-	virtual void Visit(const UnOpNode& node) = 0;
+	Int,
+	Float,
+	Bool
 };
 
-class ASTNode
+class BinaryExpressionAST;
+class NumberConstantAST;
+class UnaryAST;
+class IdentifierAST;
+
+class IExpressionVisitor
 {
 public:
-	using Ptr = std::unique_ptr<ASTNode>;
-	virtual ~ASTNode() = default;
-	virtual void Accept(IASTVisitor& visitor)const = 0;
+	virtual ~IExpressionVisitor() = default;
+	virtual void Visit(const BinaryExpressionAST& node) = 0;
+	virtual void Visit(const NumberConstantAST& node) = 0;
+	virtual void Visit(const UnaryAST& node) = 0;
+	virtual void Visit(const IdentifierAST& node) = 0;
 };
 
-class BinOpNode : public ASTNode
+// Expression
+class IExpressionAST
+{
+public:
+	virtual ~IExpressionAST() = default;
+	virtual void Accept(IExpressionVisitor& visitor)const = 0;
+};
+
+class BinaryExpressionAST : public IExpressionAST
 {
 public:
 	enum Operator
@@ -35,19 +45,22 @@ public:
 		Div
 	};
 
-	BinOpNode(ASTNode::Ptr&& left, ASTNode::Ptr&& right, Operator op)
+	BinaryExpressionAST(
+		std::unique_ptr<IExpressionAST> && left,
+		std::unique_ptr<IExpressionAST> && right,
+		Operator op)
 		: m_left(std::move(left))
 		, m_right(std::move(right))
 		, m_op(op)
 	{
 	}
 
-	const ASTNode& GetLeft()const
+	const IExpressionAST& GetLeft()const
 	{
 		return *m_left;
 	}
 
-	const ASTNode& GetRight()const
+	const IExpressionAST& GetRight()const
 	{
 		return *m_right;
 	}
@@ -57,40 +70,40 @@ public:
 		return m_op;
 	}
 
-	void Accept(IASTVisitor& visitor)const override
+	void Accept(IExpressionVisitor& visitor)const override
 	{
 		visitor.Visit(*this);
 	}
 
 private:
-	ASTNode::Ptr m_left;
-	ASTNode::Ptr m_right;
+	std::unique_ptr<IExpressionAST> m_left;
+	std::unique_ptr<IExpressionAST> m_right;
 	Operator m_op;
 };
 
-class LeafNumNode : public ASTNode
+class NumberConstantAST : public IExpressionAST
 {
 public:
-	LeafNumNode(int value)
+	NumberConstantAST(double value)
 		: m_value(value)
 	{
 	}
 
-	int GetValue()const
+	double GetValue()const
 	{
 		return m_value;
 	}
 
-	void Accept(IASTVisitor& visitor)const override
+	void Accept(IExpressionVisitor& visitor)const override
 	{
 		visitor.Visit(*this);
 	}
 
 private:
-	int m_value;
+	double m_value;
 };
 
-class UnOpNode : public ASTNode
+class UnaryAST : public IExpressionAST
 {
 public:
 	enum Operator
@@ -99,13 +112,13 @@ public:
 		Minus
 	};
 
-	UnOpNode(ASTNode::Ptr&& expr, Operator op)
+	UnaryAST(std::unique_ptr<IExpressionAST> && expr, Operator op)
 		: m_expr(std::move(expr))
 		, m_op(op)
 	{
 	}
 
-	const ASTNode& GetExpr()const
+	const IExpressionAST& GetExpr()const
 	{
 		return *m_expr;
 	}
@@ -115,16 +128,39 @@ public:
 		return m_op;
 	}
 
-	void Accept(IASTVisitor& visitor)const override
+	void Accept(IExpressionVisitor& visitor)const override
 	{
 		visitor.Visit(*this);
 	}
 
 private:
-	ASTNode::Ptr m_expr;
+	std::unique_ptr<IExpressionAST> m_expr;
 	Operator m_op;
 };
 
+class IdentifierAST : public IExpressionAST
+{
+public:
+	explicit IdentifierAST(const std::string &name)
+		: m_name(name)
+	{
+	}
+
+	const std::string &GetName()const
+	{
+		return m_name;
+	}
+
+	void Accept(IExpressionVisitor& visitor)const override
+	{
+		visitor.Visit(*this);
+	}
+
+private:
+	std::string m_name;
+};
+
+// Statements
 class IStatementAST
 {
 public:
@@ -135,7 +171,7 @@ class IfStatementAST : public IStatementAST
 {
 public:
 	explicit IfStatementAST(
-		std::unique_ptr<ASTNode> && expr,
+		std::unique_ptr<IExpressionAST> && expr,
 		std::unique_ptr<IStatementAST> && then,
 		std::unique_ptr<IStatementAST> && elif)
 		: m_expr(std::move(expr))
@@ -145,7 +181,7 @@ public:
 	}
 
 private:
-	std::unique_ptr<ASTNode> m_expr;
+	std::unique_ptr<IExpressionAST> m_expr;
 	std::unique_ptr<IStatementAST> m_then;
 	std::unique_ptr<IStatementAST> m_elif;
 };
@@ -154,7 +190,7 @@ class WhileStatementAST : public IStatementAST
 {
 public:
 	explicit WhileStatementAST(
-		std::unique_ptr<ASTNode> && expr,
+		std::unique_ptr<IExpressionAST> && expr,
 		std::unique_ptr<IStatementAST> && stmt)
 		: m_expr(std::move(expr))
 		, m_stmt(std::move(stmt))
@@ -162,14 +198,14 @@ public:
 	}
 
 private:
-	std::unique_ptr<ASTNode> m_expr;
+	std::unique_ptr<IExpressionAST> m_expr;
 	std::unique_ptr<IStatementAST> m_stmt;
 };
 
 class AssignStatementAST : public IStatementAST
 {
 public:
-	explicit AssignStatementAST(const std::string &left, std::unique_ptr<ASTNode> && expr)
+	explicit AssignStatementAST(const std::string &left, std::unique_ptr<IExpressionAST> && expr)
 		: m_left(left)
 		, m_expr(std::move(expr))
 	{
@@ -177,21 +213,21 @@ public:
 
 private:
 	std::string m_left;
-	std::unique_ptr<ASTNode> m_expr;
+	std::unique_ptr<IExpressionAST> m_expr;
 };
 
-class VariableDeclStatementAST : public IStatementAST
+class VariableDeclarationAST : public IStatementAST
 {
 public:
-	explicit VariableDeclStatementAST(const std::string &name, const std::string &type)
-		: m_name(name)
+	explicit VariableDeclarationAST(std::unique_ptr<IdentifierAST> &&ref, ValueType type)
+		: m_ref(std::move(ref))
 		, m_type(type)
 	{
 	}
 
 private:
-	std::string m_name;
-	std::string m_type;
+	std::unique_ptr<IdentifierAST> m_ref;
+	ValueType m_type;
 };
 
 class CompositeStatement : public IStatementAST
@@ -209,38 +245,64 @@ private:
 class ReturnStatementAST : public IStatementAST
 {
 public:
-	explicit ReturnStatementAST(std::unique_ptr<ASTNode> && expr)
+	explicit ReturnStatementAST(std::unique_ptr<IExpressionAST> && expr)
 		: m_expr(std::move(expr))
 	{
 	}
 
 private:
-	std::unique_ptr<ASTNode> m_expr;
+	std::unique_ptr<IExpressionAST> m_expr;
 };
 
-class ExpressionCalculator : private IASTVisitor
+// Function
+class FunctionAST
 {
 public:
-	int Calculate(const ASTNode& node)
+	explicit FunctionAST(std::unique_ptr<IStatementAST> && stmt)
+		: m_stmt(std::move(stmt))
+	{
+	}
+
+private:
+	std::unique_ptr<IStatementAST> m_stmt;
+};
+
+class ProgramAST
+{
+public:
+	void AddFunction(std::unique_ptr<FunctionAST> && function)
+	{
+		m_functions.push_back(std::move(function));
+	}
+
+private:
+	std::vector<std::unique_ptr<FunctionAST>> m_functions;
+};
+
+// Visitors
+class ExpressionCalculator : private IExpressionVisitor
+{
+public:
+	double Calculate(const IExpressionAST& node)
 	{
 		node.Accept(*this);
 		return m_acc;
 	}
 
-	void Visit(const BinOpNode& node) override
+	void Visit(const BinaryExpressionAST& node) override
 	{
 		switch (node.GetOperator())
 		{
-		case BinOpNode::Plus:
+		case BinaryExpressionAST::Plus:
 			m_acc = Calculate(node.GetLeft()) + Calculate(node.GetRight());
 			break;
-		case BinOpNode::Minus:
+		case BinaryExpressionAST::Minus:
 			m_acc = Calculate(node.GetLeft()) - Calculate(node.GetRight());
 			break;
-		case BinOpNode::Mul:
+		case BinaryExpressionAST::Mul:
 			m_acc = Calculate(node.GetLeft()) * Calculate(node.GetRight());
 			break;
-		case BinOpNode::Div:
+		case BinaryExpressionAST::Div:
 			m_acc = Calculate(node.GetLeft()) / Calculate(node.GetRight());
 			break;
 		default:
@@ -249,16 +311,22 @@ public:
 		}
 	}
 
-	void Visit(const UnOpNode& node) override
+	void Visit(const UnaryAST& node) override
 	{
 		m_acc = -Calculate(node.GetExpr());
 	}
 
-	void Visit(const LeafNumNode& node) override
+	void Visit(const NumberConstantAST& node) override
 	{
 		m_acc = node.GetValue();
 	}
 
+	void Visit(const IdentifierAST& identifier) override
+	{
+		throw std::logic_error(
+			"can't get value of '" + identifier.GetName() + "': symbol table is not implemented");
+	}
+
 private:
-	int m_acc;
+	double m_acc;
 };
