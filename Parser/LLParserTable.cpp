@@ -92,7 +92,7 @@ std::unique_ptr<LLParserTable> CreateParserTable(const Grammar& grammar)
 		table->AddEntry(std::move(entry));
 	}
 
-	const auto createAttributeEntry = [&grammar](int row, int col, bool fromTerminal) {
+	const auto createAttributeEntry = [&grammar, &table](int row, int col, bool fromTerminal) {
 		auto production = grammar.GetProduction(row);
 		assert(production->GetSymbol(col).GetAttribute());
 		auto entry = std::make_shared<LLParserTable::Entry>();
@@ -101,7 +101,7 @@ std::unique_ptr<LLParserTable> CreateParserTable(const Grammar& grammar)
 		entry->isError = false;
 		entry->isEnding = production->GetSymbol(col).GetText() == grammar.GetEndSymbol();
 		entry->next = (col == production->GetSymbolsCount() - 1u) ?
-			std::nullopt : std::make_optional<size_t>(col + 1);
+			std::nullopt : std::make_optional<size_t>(table->GetEntriesCount() + 1);
 		entry->name = *production->GetSymbol(col).GetAttribute();
 		entry->isAttribute = true;
 		return entry;

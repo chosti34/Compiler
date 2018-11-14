@@ -11,7 +11,7 @@ class LLParser : public IParser
 {
 public:
 	explicit LLParser(std::unique_ptr<ILexer> && lexer, std::unique_ptr<LLParserTable> && table);
-	std::unique_ptr<IExpressionAST> Parse(const std::string& text) override;
+	std::unique_ptr<IStatementAST> Parse(const std::string& text) override;
 
 private:
 	std::unique_ptr<ILexer> m_lexer;

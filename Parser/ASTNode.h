@@ -173,11 +173,16 @@ public:
 	explicit IfStatementAST(
 		std::unique_ptr<IExpressionAST> && expr,
 		std::unique_ptr<IStatementAST> && then,
-		std::unique_ptr<IStatementAST> && elif)
+		std::unique_ptr<IStatementAST> && elif = nullptr)
 		: m_expr(std::move(expr))
 		, m_then(std::move(then))
 		, m_elif(std::move(elif))
 	{
+	}
+
+	void SetElseClause(std::unique_ptr<IStatementAST> && elif)
+	{
+		m_elif = std::move(elif);
 	}
 
 private:
@@ -220,14 +225,14 @@ private:
 class VariableDeclarationAST : public IStatementAST
 {
 public:
-	explicit VariableDeclarationAST(std::unique_ptr<IdentifierAST> &&ref, ValueType type)
-		: m_ref(std::move(ref))
+	explicit VariableDeclarationAST(std::unique_ptr<IdentifierAST> && identifier, ValueType type)
+		: m_identifier(std::move(identifier))
 		, m_type(type)
 	{
 	}
 
 private:
-	std::unique_ptr<IdentifierAST> m_ref;
+	std::unique_ptr<IdentifierAST> m_identifier;
 	ValueType m_type;
 };
 

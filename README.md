@@ -11,9 +11,9 @@
 <ParamListTail>  -> #Eps#
 <Param>          -> Identifier Colon <Type>
 
-<Type>           -> Integer {CreateIntegerType}
-<Type>           -> Float {CreateFloatType}
-<Type>           -> Bool {CreateBoolType}
+<Type>           -> Integer {OnIntegerTypeParse}
+<Type>           -> Float {OnFloatTypeParse}
+<Type>           -> Bool {OnBoolTypeParse}
 <Type>           -> Array LeftBracket <Type> RightBracket {CreateArrayType}
 
 <Statement>      -> <Condition>
@@ -23,13 +23,13 @@
 <Statement>      -> <Return>
 <Statement>      -> <Composite>
 
-<Condition>      -> If LeftParenthesis <Expression> RightParenthesis <Statement> {CreateIfStatement} <OptionalElse>
-<OptionalElse>   -> Else <Statement> {AddOptionalElseClause}
+<Condition>      -> If LeftParenthesis <Expression> RightParenthesis <Statement> {OnIfStatementParse} <OptionalElse>
+<OptionalElse>   -> Else <Statement> {OnOptionalElseClauseParse}
 <OptionalElse>   -> #Eps#
 
-<Loop>           -> While LeftParenthesis <Expression> RightParenthesis <Statement> {CreateWhileStatement}
-<Decl>           -> Var Identifier {CreateIdentifierNode} Colon <Type> Semicolon {CreateVariableDeclStatement}
-<Assign>         -> Identifier {CreateIdentifierNode} Assign <Expression> Semicolon {OnAssignStatementParse}
+<Loop>           -> While LeftParenthesis <Expression> RightParenthesis <Statement> {OnWhileLoopParse}
+<Decl>           -> Var Identifier {OnIdentifierParse} Colon <Type> Semicolon {OnVariableDeclarationParse}
+<Assign>         -> Identifier {OnIdentifierParse} Assign <Expression> Semicolon {OnAssignStatementParse}
 <Return>         -> Return <Expression> Semicolon {OnReturnStatementParse}
 
 <Composite>      -> LeftCurly <StatementList> RightCurly {OnCompositeStatementParse}

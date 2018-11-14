@@ -13,6 +13,20 @@ T Pop(std::vector<T> &vect)
 	return std::move(value);
 }
 
+template <typename Derived, typename Base>
+std::unique_ptr<Derived> DowncastUniquePtr(std::unique_ptr<Base> && base)
+{
+	std::unique_ptr<Derived> derived = nullptr;
+	if (Derived* ptr = dynamic_cast<Derived*>(base.get()))
+	{
+		base.release();
+		derived.reset(ptr);
+		return std::move(derived);
+	}
+	assert(false);
+	return nullptr;
+}
+
 class ASTBuilder
 {
 public:
@@ -33,27 +47,70 @@ public:
 		return std::move(Pop(m_statements));
 	}
 
+	void OnIntegerTypeParse()
+	{
+		assert(m_token.type == Token::Int);
+		m_types.push_back(ValueType::Int);
+	}
+
+	void OnFloatTypeParse()
+	{
+		assert(m_token.type == Token::Float);
+		m_types.push_back(ValueType::Float);
+	}
+
+	void OnBoolTypeParse()
+	{
+		assert(m_token.type == Token::Bool);
+		m_types.push_back(ValueType::Bool);
+	}
+
+	void OnIfStatementParse()
+	{
+		assert(!m_expressions.empty());
+		assert(!m_statements.empty());
+		auto expr = Pop(m_expressions);
+		auto then = Pop(m_statements);
+		m_statements.push_back(std::make_unique<IfStatementAST>(std::move(expr), std::move(then)));
+	}
+
+	void OnOptionalElseClauseParse()
+	{
+		assert(m_statements.size() >= 2);
+		auto stmt = Pop(m_statements);
+		auto ifStmt = DowncastUniquePtr<IfStatementAST>(Pop(m_statements));
+		ifStmt->SetElseClause(std::move(stmt));
+		m_statements.push_back(std::move(ifStmt));
+	}
+
+	void OnWhileLoopParse()
+	{
+		assert(!m_expressions.empty());
+		assert(!m_statements.empty());
+		auto expr = Pop(m_expressions);
+		auto stmt = Pop(m_statements);
+		m_statements.push_back(std::make_unique<WhileStatementAST>(
+			std::move(expr), std::move(stmt)));
+	}
+
+	void OnVariableDeclarationParse()
+	{
+		assert(!m_expressions.empty());
+		assert(!m_types.empty());
+		auto type = Pop(m_types);
+		auto identifier = DowncastUniquePtr<IdentifierAST>(std::move(Pop(m_expressions)));
+		m_statements.push_back(std::make_unique<VariableDeclarationAST>(
+			std::move(identifier), type));
+	}
+
 	void OnAssignStatementParse()
 	{
 		assert(m_expressions.size() >= 2);
 		auto expr = Pop(m_expressions);
-		auto baseIdentifier = Pop(m_expressions);
-
-		// Намеренно использую dynamic_cast (можно было бы сохранять идентификаторы в стеке?)
-		// Указатели baseIdentifier и derivedIdentifier меняются правом владения
-		std::unique_ptr<IdentifierAST> derivedIdentifier;
-		if (IdentifierAST* ptr = dynamic_cast<IdentifierAST*>(baseIdentifier.get()))
-		{
-			baseIdentifier.release();
-			derivedIdentifier.reset(ptr);
-		}
-		else
-		{
-			assert(false);
-		}
+		auto identifier = DowncastUniquePtr<IdentifierAST>(std::move(Pop(m_expressions)));
 
 		m_statements.push_back(std::make_unique<AssignStatementAST>(
-			std::move(derivedIdentifier), std::move(expr)));
+			std::move(identifier), std::move(expr)));
 	}
 
 	void OnReturnStatementParse()
@@ -62,21 +119,26 @@ public:
 		m_statements.push_back(std::make_unique<ReturnStatementAST>(Pop(m_expressions)));
 	}
 
+	void OnCompositeStatementBeginParse()
+	{
+		m_compositeCache.emplace_back();
+	}
+
 	void OnCompositeStatementParse()
 	{
 		auto composite = std::make_unique<CompositeStatement>();
-		for (auto& stmt : m_compositeCache)
+		for (auto& stmt : m_compositeCache.back())
 		{
 			composite->AddStatement(std::move(stmt));
 		}
-		m_compositeCache.clear();
+		m_compositeCache.pop_back();
 		m_statements.push_back(std::move(composite));
 	}
 
 	void OnCompositeStatementPartParse()
 	{
 		assert(!m_statements.empty());
-		m_compositeCache.push_back(Pop(m_statements));
+		m_compositeCache.back().push_back(Pop(m_statements));
 	}
 
 	void OnBinaryPlusParse()
@@ -137,7 +199,7 @@ private:
 	const Token& m_token;
 	std::vector<std::unique_ptr<IExpressionAST>> m_expressions;
 	std::vector<std::unique_ptr<IStatementAST>> m_statements;
-	std::vector<std::unique_ptr<IStatementAST>> m_compositeCache;
+	std::vector<std::vector<std::unique_ptr<IStatementAST>>> m_compositeCache;
 	std::vector<ValueType> m_types;
 };
 }
@@ -148,7 +210,7 @@ LLParser::LLParser(std::unique_ptr<ILexer> && lexer, std::unique_ptr<LLParserTab
 {
 }
 
-std::unique_ptr<IExpressionAST> LLParser::Parse(const std::string& text)
+std::unique_ptr<IStatementAST> LLParser::Parse(const std::string& text)
 {
 	m_lexer->SetText(text);
 	Token token = m_lexer->GetNextToken();
@@ -158,6 +220,18 @@ std::unique_ptr<IExpressionAST> LLParser::Parse(const std::string& text)
 
 	ASTBuilder astBuilder(token);
 	std::unordered_map<std::string, std::function<void()>> actions = {
+		{ "OnIfStatementParse", std::bind(&ASTBuilder::OnIfStatementParse, &astBuilder) },
+		{ "OnOptionalElseClauseParse", std::bind(&ASTBuilder::OnOptionalElseClauseParse, &astBuilder) },
+		{ "OnWhileLoopParse", std::bind(&ASTBuilder::OnWhileLoopParse, &astBuilder) },
+		{ "OnVariableDeclarationParse", std::bind(&ASTBuilder::OnVariableDeclarationParse, &astBuilder) },
+		{ "OnAssignStatementParse", std::bind(&ASTBuilder::OnAssignStatementParse, &astBuilder) },
+		{ "OnReturnStatementParse", std::bind(&ASTBuilder::OnReturnStatementParse, &astBuilder) },
+		{ "OnCompositeStatementBeginParse", std::bind(&ASTBuilder::OnCompositeStatementBeginParse, &astBuilder) },
+		{ "OnCompositeStatementParse", std::bind(&ASTBuilder::OnCompositeStatementParse, &astBuilder) },
+		{ "OnCompositeStatementPartParse", std::bind(&ASTBuilder::OnCompositeStatementPartParse, &astBuilder) },
+		{ "OnIntegerTypeParse", std::bind(&ASTBuilder::OnIntegerTypeParse, &astBuilder) },
+		{ "OnFloatTypeParse", std::bind(&ASTBuilder::OnFloatTypeParse, &astBuilder) },
+		{ "OnBoolTypeParse", std::bind(&ASTBuilder::OnBoolTypeParse, &astBuilder) },
 		{ "OnBinaryPlusParse", std::bind(&ASTBuilder::OnBinaryPlusParse, &astBuilder) },
 		{ "OnBinaryMinusParse", std::bind(&ASTBuilder::OnBinaryMinusParse, &astBuilder) },
 		{ "OnBinaryMulParse", std::bind(&ASTBuilder::OnBinaryMulParse, &astBuilder) },
@@ -171,6 +245,8 @@ std::unique_ptr<IExpressionAST> LLParser::Parse(const std::string& text)
 	while (true)
 	{
 		auto state = m_table->GetEntry(index);
+		std::cout << index << std::endl;
+
 
 		if (state->isAttribute)
 		{
@@ -200,7 +276,7 @@ std::unique_ptr<IExpressionAST> LLParser::Parse(const std::string& text)
 		if (state->isEnding)
 		{
 			assert(addresses.empty());
-			return astBuilder.PopBuiltExpression();
+			return astBuilder.PopBuiltStatement();
 		}
 		if (state->doPush)
 		{

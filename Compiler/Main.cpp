@@ -118,20 +118,40 @@ void WriteTokens(const std::string &text, std::ostream &os = std::cout)
 std::unique_ptr<LLParser> CreateYolangParser()
 {
 	auto grammar = GrammarBuilder(std::make_unique<GrammarProductionFactory>())
-		.AddProduction("<Program>    -> <Expr> EndOfFile")
-		.AddProduction("<Expr>       -> <Term> <ExprHelper>")
-		.AddProduction("<ExprHelper> -> Plus <Term> {OnBinaryPlusParse} <ExprHelper>")
-		.AddProduction("<ExprHelper> -> Minus <Term> {OnBinaryMinusParse} <ExprHelper>")
-		.AddProduction("<ExprHelper> -> #Eps#")
-		.AddProduction("<Term>       -> <Factor> <TermHelper>")
-		.AddProduction("<TermHelper> -> Mul <Factor> {OnBinaryMulParse} <TermHelper>")
-		.AddProduction("<TermHelper> -> Div <Factor> {OnBinaryDivParse} <TermHelper>")
-		.AddProduction("<TermHelper> -> #Eps#")
-		.AddProduction("<Factor>     -> LeftParenthesis <Expr> RightParenthesis")
-		.AddProduction("<Factor>     -> IntegerConstant {OnIntegerConstantParse}")
-		.AddProduction("<Factor>     -> FloatConstant {OnFloatConstantParse}")
-		.AddProduction("<Factor>     -> Identifier {OnIdentifierParse}")
-		.AddProduction("<Factor>     -> Minus <Factor> {OnUnaryMinusParse}")
+		.AddProduction("<Program>       -> <Statement> EndOfFile")
+		.AddProduction("<Statement>     -> <Condition>")
+		.AddProduction("<Statement>     -> <Loop>")
+		.AddProduction("<Statement>     -> <Decl>")
+		.AddProduction("<Statement>     -> <Assign>")
+		.AddProduction("<Statement>     -> <Return>")
+		.AddProduction("<Statement>     -> <Composite>")
+		.AddProduction("<Condition>     -> If LeftParenthesis <Expression> RightParenthesis <Statement> {OnIfStatementParse} <OptionalElse>")
+		.AddProduction("<OptionalElse>  -> Else <Statement> {OnOptionalElseClauseParse}")
+		.AddProduction("<OptionalElse>  -> #Eps#")
+		.AddProduction("<Loop>          -> While LeftParenthesis <Expression> RightParenthesis <Statement> {OnWhileLoopParse}")
+		.AddProduction("<Decl>          -> Var Identifier {OnIdentifierParse} Colon <Type> Semicolon {OnVariableDeclarationParse}")
+		.AddProduction("<Assign>        -> Identifier {OnIdentifierParse} Assign <Expression> Semicolon {OnAssignStatementParse}")
+		.AddProduction("<Return>        -> Return <Expression> Semicolon {OnReturnStatementParse}")
+		.AddProduction("<Composite>     -> LeftCurly {OnCompositeStatementBeginParse} <StatementList> RightCurly {OnCompositeStatementParse}")
+		.AddProduction("<StatementList> -> <Statement> {OnCompositeStatementPartParse} <StatementList>")
+		.AddProduction("<StatementList> -> #Eps#")
+		.AddProduction("<Type>          -> Int {OnIntegerTypeParse}")
+		.AddProduction("<Type>          -> Float {OnFloatTypeParse}")
+		.AddProduction("<Type>          -> Bool {OnBoolTypeParse}")
+		.AddProduction("<Expression>    -> <Expr>")
+		.AddProduction("<Expr>          -> <Term> <ExprHelper>")
+		.AddProduction("<ExprHelper>    -> Plus <Term> {OnBinaryPlusParse} <ExprHelper>")
+		.AddProduction("<ExprHelper>    -> Minus <Term> {OnBinaryMinusParse} <ExprHelper>")
+		.AddProduction("<ExprHelper>    -> #Eps#")
+		.AddProduction("<Term>          -> <Factor> <TermHelper>")
+		.AddProduction("<TermHelper>    -> Mul <Factor> {OnBinaryMulParse} <TermHelper>")
+		.AddProduction("<TermHelper>    -> Div <Factor> {OnBinaryDivParse} <TermHelper>")
+		.AddProduction("<TermHelper>    -> #Eps#")
+		.AddProduction("<Factor>        -> LeftParenthesis <Expr> RightParenthesis")
+		.AddProduction("<Factor>        -> IntegerConstant {OnIntegerConstantParse}")
+		.AddProduction("<Factor>        -> FloatConstant {OnFloatConstantParse}")
+		.AddProduction("<Factor>        -> Identifier {OnIdentifierParse}")
+		.AddProduction("<Factor>        -> Minus <Factor> {OnUnaryMinusParse}")
 		.Build();
 
 	assert(GrammarTerminalsMatchLexerTokens(*grammar));
@@ -142,11 +162,24 @@ void Execute()
 {
 	auto parser = CreateYolangParser();
 
-	if (auto ast = parser->Parse("123 + (1 - 4) + abc"))
+	auto code = R"(
+{
+	if (a)
+	{
+		var a: Int;
+		a = 0;
+	}
+
+	while (1)
+	{
+		b = 3;
+	}
+}
+)";
+
+	if (auto ast = parser->Parse(code))
 	{
 		std::cout << "AST has been successfully built!" << std::endl;
-		ExpressionCalculator calculator;
-		std::cout << calculator.Calculate(*ast) << std::endl;
 	}
 	else
 	{

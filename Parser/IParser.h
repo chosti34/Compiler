@@ -6,5 +6,5 @@ class IParser
 {
 public:
 	virtual ~IParser() = default;
-	virtual std::unique_ptr<IExpressionAST> Parse(const std::string& text) = 0;
+	virtual std::unique_ptr<IStatementAST> Parse(const std::string& text) = 0;
 };
