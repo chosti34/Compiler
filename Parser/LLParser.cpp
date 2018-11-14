@@ -170,13 +170,13 @@ public:
 	void OnIntegerConstantParse()
 	{
 		assert(m_token.type == Token::IntegerConstant);
-		m_expressions.push_back(std::make_unique<NumberConstantAST>(std::stod(*m_token.value)));
+		m_expressions.push_back(std::make_unique<NumberConstantAST>(std::stod(*m_token.value), NumberConstantAST::Int));
 	}
 
 	void OnFloatConstantParse()
 	{
 		assert(m_token.type == Token::FloatConstant);
-		m_expressions.push_back(std::make_unique<NumberConstantAST>(std::stod(*m_token.value)));
+		m_expressions.push_back(std::make_unique<NumberConstantAST>(std::stod(*m_token.value), NumberConstantAST::Float));
 	}
 
 	void OnUnaryMinusParse()

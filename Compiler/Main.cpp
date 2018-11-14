@@ -164,11 +164,15 @@ void Execute()
 
 	auto code = R"(
 {
-	if (a)
+	if (1)
 	{
 		var a: Int;
-		a = 0;
+		var b: Int;
+		var c: Int;
+		a = ((b + c));
 	}
+
+	var b: Float;
 
 	while (1)
 	{
@@ -180,6 +184,8 @@ void Execute()
 	if (auto ast = parser->Parse(code))
 	{
 		std::cout << "AST has been successfully built!" << std::endl;
+		StatementVisitor visitor;
+		visitor.Visit(*ast);
 	}
 	else
 	{
