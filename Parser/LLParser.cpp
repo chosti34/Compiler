@@ -53,14 +53,29 @@ std::unique_ptr<ASTNode> LLParser::Parse(const std::string& text)
 	std::vector<size_t> addresses;
 	size_t index = 0;
 
+	auto onAttributeEntry = [&](const LLParserTable::Entry &entry) {
+		auto it = ATTRIBUTE_ACTION_MAP.find(entry.name);
+		if (it != ATTRIBUTE_ACTION_MAP.end())
+		{
+			it->second(nodes, token);
+		}
+		else
+		{
+			throw std::logic_error("attribute '" + entry.name + "' doesn't have action");
+		}
+	};
+
 	while (true)
 	{
 		auto state = m_table->GetEntry(index);
 
-		// if beginnings is empty, this is attribute state
-		if (!state->beginnings.empty() && state->beginnings.find(TokenTypeToString(token.type)) == state->beginnings.end())
+		if (state->isAttribute)
 		{
-			if (!state->error)
+			onAttributeEntry(*state);
+		}
+		else if (!EntryAcceptsTerminal(*state, TokenTypeToString(token.type)))
+		{
+			if (!state->isError)
 			{
 				++index;
 				continue;
@@ -71,27 +86,17 @@ std::unique_ptr<ASTNode> LLParser::Parse(const std::string& text)
 			}
 		}
 
-		if (state->beginnings.empty())
-		{
-			std::cout << state->name << std::endl;
-			auto it = ATTRIBUTE_ACTION_MAP.find(state->name);
-			if (it != ATTRIBUTE_ACTION_MAP.end())
-			{
-				it->second(nodes, token);
-			}
-		}
-
-		if (state->end)
+		if (state->isEnding)
 		{
 			assert(addresses.empty());
 			assert(nodes.size() == 1);
 			return std::move(nodes.back());
 		}
-		if (state->push)
+		if (state->doPush)
 		{
 			addresses.push_back(index + 1);
 		}
-		if (state->shift)
+		if (state->doShift)
 		{
 			token = m_lexer->GetNextToken();
 		}

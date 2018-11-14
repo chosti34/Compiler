@@ -151,6 +151,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\grammarlib\LLParserTable.h" />
     <ClInclude Include="ASTNode.h" />
     <ClInclude Include="IParser.h" />
     <ClInclude Include="LLParser.h" />
@@ -158,6 +159,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\grammarlib\LLParserTable.cpp" />
     <ClCompile Include="LLParser.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

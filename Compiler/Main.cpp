@@ -84,10 +84,11 @@ void WriteParserTable(const LLParserTable &parserTable, std::ostream &os = std::
 		const auto& entry = parserTable.GetEntry(i);
 		formatTable.Append({
 			std::to_string(i), entry->name,
-			boolalpha(entry->shift), boolalpha(entry->push),
-			boolalpha(entry->error), boolalpha(entry->end),
+			boolalpha(entry->doShift), boolalpha(entry->doPush),
+			boolalpha(entry->isError), boolalpha(entry->isEnding),
 			entry->next ? std::to_string(*entry->next) : "none",
-			StringUtil::Join(entry->beginnings, ", ", "{ ", " }")});
+			StringUtil::Join(entry->beginnings, ", ", "{ ", " }")
+		});
 	}
 
 	using namespace FormatUtil;

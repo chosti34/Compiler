@@ -158,7 +158,6 @@
     <ClInclude Include="GrammarProductionFactory.h" />
     <ClInclude Include="GrammarSymbol.h" />
     <ClInclude Include="GrammarUtil.h" />
-    <ClInclude Include="LLParserTable.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
@@ -168,7 +167,6 @@
     <ClCompile Include="GrammarProductionFactory.cpp" />
     <ClCompile Include="GrammarSymbol.cpp" />
     <ClCompile Include="GrammarUtil.cpp" />
-    <ClCompile Include="LLParserTable.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

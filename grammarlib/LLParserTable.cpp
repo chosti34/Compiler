@@ -77,32 +77,33 @@ size_t LLParserTable::GetEntriesCount()const
 
 std::unique_ptr<LLParserTable> CreateParserTable(const Grammar& grammar)
 {
-	// not using std::make_unique because constructor is private
 	auto table = std::make_unique<LLParserTable>();
 
 	for (size_t i = 0; i < grammar.GetProductionsCount(); ++i)
 	{
 		auto entry = std::make_shared<LLParserTable::Entry>();
 		entry->name = grammar.GetProduction(i)->GetLeftPart();
-		entry->shift = false;
-		entry->push = false;
-		entry->error = !ProductionHasAlternative(grammar, i);
-		entry->end = false;
+		entry->doShift = false;
+		entry->doPush = false;
+		entry->isError = !ProductionHasAlternative(grammar, i);
+		entry->isEnding = false;
 		entry->beginnings = GatherBeginningSymbolsOfProduction(grammar, static_cast<int>(i));
-		entry->next = std::nullopt; //! will be added later
+		entry->next = std::nullopt; // Will be added later
 		table->AddEntry(std::move(entry));
 	}
 
 	const auto createAttributeEntry = [&grammar](int row, int col, bool fromTerminal) {
-		assert(grammar.GetProduction(row)->GetSymbol(col).GetAttribute());
+		auto production = grammar.GetProduction(row);
+		assert(production->GetSymbol(col).GetAttribute());
 		auto entry = std::make_shared<LLParserTable::Entry>();
-		entry->shift = fromTerminal;
-		entry->push = false;
-		entry->error = false;
-		entry->end = grammar.GetProduction(row)->GetSymbol(col).GetText() == grammar.GetEndSymbol();
-		entry->next = (col == grammar.GetProduction(row)->GetSymbolsCount() - 1u) ?
+		entry->doShift = fromTerminal;
+		entry->doPush = false;
+		entry->isError = false;
+		entry->isEnding = production->GetSymbol(col).GetText() == grammar.GetEndSymbol();
+		entry->next = (col == production->GetSymbolsCount() - 1u) ?
 			std::nullopt : std::make_optional<size_t>(col + 1);
-		entry->name = *grammar.GetProduction(row)->GetSymbol(col).GetAttribute();
+		entry->name = *production->GetSymbol(col).GetAttribute();
+		entry->isAttribute = true;
 		return entry;
 	};
 
@@ -120,29 +121,32 @@ std::unique_ptr<LLParserTable> CreateParserTable(const Grammar& grammar)
 			{
 			case GrammarSymbolType::Terminal:
 				entry->name = symbol.GetText();
-				entry->shift = !static_cast<bool>(symbol.GetAttribute());
-				entry->push = false;
-				entry->error = true;
-				entry->end = (symbol.GetText() == grammar.GetEndSymbol() && !symbol.GetAttribute());
+				entry->isAttribute = false;
+				entry->doShift = !static_cast<bool>(symbol.GetAttribute());
+				entry->doPush = false;
+				entry->isError = true;
+				entry->isEnding = (symbol.GetText() == grammar.GetEndSymbol() && !symbol.GetAttribute());
 				entry->next = (col == production->GetSymbolsCount() - 1u && !symbol.GetAttribute()) ?
 					std::nullopt : std::make_optional<size_t>(table->GetEntriesCount() + 1u);
 				entry->beginnings = { symbol.GetText() };
 				break;
 			case GrammarSymbolType::Nonterminal:
 				entry->name = symbol.GetText();
-				entry->shift = false;
-				entry->push = col < (production->GetSymbolsCount() - 1u) || symbol.GetAttribute();
-				entry->error = true;
-				entry->end = false;
+				entry->isAttribute = false;
+				entry->doShift = false;
+				entry->doPush = col < (production->GetSymbolsCount() - 1u) || symbol.GetAttribute();
+				entry->isError = true;
+				entry->isEnding = false;
 				entry->next = GetProductionIndex(grammar, symbol.GetText());
 				entry->beginnings = GatherBeginSetAndFollowIfHasEmptiness(grammar, symbol.GetText());
 				break;
 			case GrammarSymbolType::Epsilon:
 				entry->name = symbol.GetText();
-				entry->shift = false;
-				entry->push = false;
-				entry->error = true;
-				entry->end = false;
+				entry->isAttribute = false;
+				entry->doShift = false;
+				entry->doPush = false;
+				entry->isError = true;
+				entry->isEnding = false;
 				entry->next = symbol.GetAttribute() ? std::make_optional<size_t>(col + 1u) : std::nullopt;
 				entry->beginnings = GatherBeginningSymbolsOfProduction(grammar, static_cast<int>(row));
 				break;
@@ -164,9 +168,14 @@ std::unique_ptr<LLParserTable> CreateParserTable(const Grammar& grammar)
 			}
 		}
 
-		// adding index that we skipped on first loop
+		// Adding index that we skipped on first loop
 		table->GetEntry(row)->next = table->GetEntriesCount() - production->GetSymbolsCount() - attributesCount;
 	}
 
 	return table;
+}
+
+bool EntryAcceptsTerminal(const LLParserTable::Entry &entry, const std::string &terminal)
+{
+	return entry.beginnings.find(terminal) != entry.beginnings.end();
 }

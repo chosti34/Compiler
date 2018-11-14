@@ -1,6 +1,5 @@
 #pragma once
-#include "GrammarFwd.h"
-
+#include "../grammarlib/GrammarFwd.h"
 #include <set>
 #include <memory>
 #include <vector>
@@ -11,10 +10,12 @@ class LLParserTable
 public:
 	struct Entry
 	{
-		bool shift;
-		bool error;
-		bool push;
-		bool end;
+	public:
+		bool doShift;
+		bool isError;
+		bool doPush;
+		bool isEnding;
+		bool isAttribute;
 		std::string name;
 		std::optional<size_t> next;
 		std::set<std::string> beginnings;
@@ -30,3 +31,4 @@ private:
 };
 
 std::unique_ptr<LLParserTable> CreateParserTable(const Grammar& grammar);
+bool EntryAcceptsTerminal(const LLParserTable::Entry &entry, const std::string &terminal);

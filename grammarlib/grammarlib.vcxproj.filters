@@ -39,9 +39,6 @@
     <ClInclude Include="GrammarFwd.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="LLParserTable.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="GrammarBuilder.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -63,9 +60,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="GrammarUtil.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="LLParserTable.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
