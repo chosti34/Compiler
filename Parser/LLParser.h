@@ -2,7 +2,7 @@
 #include "IParser.h"
 #include "ASTNode.h"
 
-#include "../grammarlib/LLParserTable.h"
+#include "LLParserTable.h"
 #include "../Lexer/ILexer.h"
 
 #include <unordered_map>

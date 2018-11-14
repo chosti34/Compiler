@@ -30,7 +30,7 @@
     <ClInclude Include="LLParser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\grammarlib\LLParserTable.h">
+    <ClInclude Include="LLParserTable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -41,7 +41,7 @@
     <ClCompile Include="LLParser.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\grammarlib\LLParserTable.cpp">
+    <ClCompile Include="LLParserTable.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

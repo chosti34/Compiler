@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "LLParserTable.h"
-#include "GrammarUtil.h"
+#include "../grammarlib/GrammarUtil.h"
 
 namespace
 {

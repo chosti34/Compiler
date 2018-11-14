@@ -81,7 +81,7 @@ void WriteParserTable(const LLParserTable &parserTable, std::ostream &os = std::
 
 	for (size_t i = 0; i < parserTable.GetEntriesCount(); ++i)
 	{
-		const auto& entry = parserTable.GetEntry(i);
+		auto entry = parserTable.GetEntry(i);
 		formatTable.Append({
 			std::to_string(i), entry->name,
 			boolalpha(entry->doShift), boolalpha(entry->doPush),

@@ -125,6 +125,99 @@ private:
 	Operator m_op;
 };
 
+class IStatementAST
+{
+public:
+	virtual ~IStatementAST() = default;
+};
+
+class IfStatementAST : public IStatementAST
+{
+public:
+	explicit IfStatementAST(
+		std::unique_ptr<ASTNode> && expr,
+		std::unique_ptr<IStatementAST> && then,
+		std::unique_ptr<IStatementAST> && elif)
+		: m_expr(std::move(expr))
+		, m_then(std::move(then))
+		, m_elif(std::move(elif))
+	{
+	}
+
+private:
+	std::unique_ptr<ASTNode> m_expr;
+	std::unique_ptr<IStatementAST> m_then;
+	std::unique_ptr<IStatementAST> m_elif;
+};
+
+class WhileStatementAST : public IStatementAST
+{
+public:
+	explicit WhileStatementAST(
+		std::unique_ptr<ASTNode> && expr,
+		std::unique_ptr<IStatementAST> && stmt)
+		: m_expr(std::move(expr))
+		, m_stmt(std::move(stmt))
+	{
+	}
+
+private:
+	std::unique_ptr<ASTNode> m_expr;
+	std::unique_ptr<IStatementAST> m_stmt;
+};
+
+class AssignStatementAST : public IStatementAST
+{
+public:
+	explicit AssignStatementAST(const std::string &left, std::unique_ptr<ASTNode> && expr)
+		: m_left(left)
+		, m_expr(std::move(expr))
+	{
+	}
+
+private:
+	std::string m_left;
+	std::unique_ptr<ASTNode> m_expr;
+};
+
+class VariableDeclStatementAST : public IStatementAST
+{
+public:
+	explicit VariableDeclStatementAST(const std::string &name, const std::string &type)
+		: m_name(name)
+		, m_type(type)
+	{
+	}
+
+private:
+	std::string m_name;
+	std::string m_type;
+};
+
+class CompositeStatement : public IStatementAST
+{
+public:
+	void AddStatement(std::unique_ptr<IStatementAST> && stmt)
+	{
+		m_statements.push_back(std::move(stmt));
+	}
+
+private:
+	std::vector<std::unique_ptr<IStatementAST>> m_statements;
+};
+
+class ReturnStatementAST : public IStatementAST
+{
+public:
+	explicit ReturnStatementAST(std::unique_ptr<ASTNode> && expr)
+		: m_expr(std::move(expr))
+	{
+	}
+
+private:
+	std::unique_ptr<ASTNode> m_expr;
+};
+
 class ExpressionCalculator : private IASTVisitor
 {
 public:

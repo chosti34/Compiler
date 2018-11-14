@@ -5,7 +5,7 @@
 
 namespace
 {
-void ProcessIntegerLiteral(std::vector<ASTNode::Ptr>& treeStack, const Token& token)
+void ProcessIntegerConstant(std::vector<ASTNode::Ptr>& treeStack, const Token& token)
 {
 	assert(token.type == Token::IntegerConstant);
 	treeStack.push_back(std::make_unique<LeafNumNode>(std::stoi(*token.value)));
@@ -29,7 +29,7 @@ void ProcessBinaryOperator(std::vector<ASTNode::Ptr>& treeStack, const Token& to
 using namespace std::placeholders;
 
 std::unordered_map<std::string, std::function<void(std::vector<ASTNode::Ptr>&, const Token&)>> ATTRIBUTE_ACTION_MAP = {
-	{ "CreateNumberNode", ProcessIntegerLiteral },
+	{ "CreateNumberNode", ProcessIntegerConstant },
 	{ "CreateUnaryNodeMinus", ProcessUnaryMinus },
 	{ "CreateBinaryNodePlus", std::bind(ProcessBinaryOperator, _1, _2, BinOpNode::Plus) },
 	{ "CreateBinaryNodeMinus", std::bind(ProcessBinaryOperator, _1, _2, BinOpNode::Minus) },
