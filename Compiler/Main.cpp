@@ -168,7 +168,7 @@ void Execute()
 	{
 		var a: Int;
 		var b: Int;
-		var c: Int;
+		var c: Float;
 		a = ((b + c));
 	}
 
@@ -184,8 +184,8 @@ void Execute()
 	if (auto ast = parser->Parse(code))
 	{
 		std::cout << "AST has been successfully built!" << std::endl;
-		StatementVisitor visitor;
-		visitor.Visit(*ast);
+		SemanticsVerifier verifier;
+		verifier.VerifySemantics(*ast);
 	}
 	else
 	{

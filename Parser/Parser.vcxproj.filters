@@ -33,6 +33,12 @@
     <ClInclude Include="LLParserTable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ScopeChain.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ExpressionType.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">

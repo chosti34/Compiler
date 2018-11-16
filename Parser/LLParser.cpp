@@ -50,19 +50,19 @@ public:
 	void OnIntegerTypeParse()
 	{
 		assert(m_token.type == Token::Int);
-		m_types.push_back(ValueType::Int);
+		m_types.push_back(ExpressionType::Int);
 	}
 
 	void OnFloatTypeParse()
 	{
 		assert(m_token.type == Token::Float);
-		m_types.push_back(ValueType::Float);
+		m_types.push_back(ExpressionType::Float);
 	}
 
 	void OnBoolTypeParse()
 	{
 		assert(m_token.type == Token::Bool);
-		m_types.push_back(ValueType::Bool);
+		m_types.push_back(ExpressionType::Bool);
 	}
 
 	void OnIfStatementParse()
@@ -200,7 +200,7 @@ private:
 	std::vector<std::unique_ptr<IExpressionAST>> m_expressions;
 	std::vector<std::unique_ptr<IStatementAST>> m_statements;
 	std::vector<std::vector<std::unique_ptr<IStatementAST>>> m_compositeCache;
-	std::vector<ValueType> m_types;
+	std::vector<ExpressionType> m_types;
 };
 }
 

@@ -1,17 +1,14 @@
 #pragma once
+
 #include <string>
 #include <memory>
 #include <vector>
 #include <cassert>
 #include <optional>
 #include <unordered_map>
+#include <boost/format.hpp>
 
-enum class ValueType
-{
-	Int,
-	Float,
-	Bool
-};
+#include "ScopeChain.h"
 
 class BinaryExpressionAST;
 class NumberConstantAST;
@@ -205,7 +202,7 @@ public:
 class VariableDeclarationAST : public IStatementAST
 {
 public:
-	explicit VariableDeclarationAST(std::unique_ptr<IdentifierAST> && identifier, ValueType type)
+	explicit VariableDeclarationAST(std::unique_ptr<IdentifierAST> && identifier, ExpressionType type)
 		: m_identifier(std::move(identifier))
 		, m_type(type)
 	{
@@ -216,7 +213,7 @@ public:
 		return *m_identifier;
 	}
 
-	ValueType GetType()const
+	ExpressionType GetType()const
 	{
 		return m_type;
 	}
@@ -228,7 +225,7 @@ public:
 
 private:
 	std::unique_ptr<IdentifierAST> m_identifier;
-	ValueType m_type;
+	ExpressionType m_type;
 };
 
 class AssignStatementAST : public IStatementAST
@@ -466,91 +463,24 @@ private:
 	double m_acc;
 };
 
-class Scope
+class TypeEvaluator : public IExpressionVisitor
 {
 public:
-	void Declare(const std::string& name, ValueType type)
+	explicit TypeEvaluator(ScopeChain& scopes)
+		: m_scopes(scopes)
 	{
-		auto found = m_variables.find(name);
-		if (found != m_variables.end())
-		{
-			throw std::runtime_error("variable '" + name + "' already exists");
-		}
-		m_variables.emplace(name, type);
 	}
 
-	std::optional<ValueType> GetType(const std::string& name)
+	ExpressionType Evaluate(const IExpressionAST& expr)
 	{
-		auto found = m_variables.find(name);
-		if (found == m_variables.end())
-		{
-			return std::nullopt;
-		}
-		return found->second;
+		Visit(expr);
+		assert(!m_stack.empty());
+		const ExpressionType type = m_stack.back();
+		m_stack.pop_back();
+		return type;
 	}
 
 private:
-	std::unordered_map<std::string, ValueType> m_variables;
-};
-
-class EvaluationContext
-{
-public:
-	explicit EvaluationContext()
-	{
-		PushScope();
-	}
-
-	~EvaluationContext()
-	{
-		PopScope();
-	}
-
-	void PushScope()
-	{
-		m_scopes.emplace_back();
-	}
-
-	void PopScope()
-	{
-		m_scopes.pop_back();
-	}
-
-	void Declare(const std::string& name, ValueType type)
-	{
-		m_scopes.back().Declare(name, type);
-	}
-
-	ValueType GetType(const std::string& name)
-	{
-		for (auto it = m_scopes.rbegin(); it != m_scopes.rend(); ++it)
-		{
-			std::optional<ValueType> type = it->GetType(name);
-			if (type)
-			{
-				return *type;
-			}
-		}
-		throw std::runtime_error("variable '" + name + "' is not defined");
-	}
-
-private:
-	std::vector<Scope> m_scopes;
-};
-
-class ExpressionVisitor : public IExpressionVisitor
-{
-public:
-	explicit ExpressionVisitor(std::shared_ptr<EvaluationContext> context)
-		: m_context(std::move(context))
-	{
-	}
-
-	ValueType GetValue()const
-	{
-		return m_value;
-	}
-
 	void Visit(const IExpressionAST& expr)
 	{
 		expr.Accept(*this);
@@ -558,107 +488,178 @@ public:
 
 	void Visit(const BinaryExpressionAST& binary) override
 	{
-		Visit(binary.GetLeft());
-		Visit(binary.GetRight());
+		const ExpressionType left = Evaluate(binary.GetLeft());
+		const ExpressionType right = Evaluate(binary.GetRight());
 
-		auto rightType = m_types.back(); m_types.pop_back();
-		auto leftType = m_types.back(); m_types.pop_back();
-
-		if (rightType != leftType)
+		std::string operation;
+		switch (binary.GetOperator())
 		{
-			throw std::runtime_error("types doesn't match");
+		case BinaryExpressionAST::Plus:
+			operation = "+";
+			break;
+		case BinaryExpressionAST::Minus:
+			operation = "-";
+			break;
+		case BinaryExpressionAST::Mul:
+			operation = "*";
+			break;
+		case BinaryExpressionAST::Div:
+			operation = "/";
+			break;
+		default:
+			throw std::logic_error("undefined binary operator");
 		}
 
-		m_value = rightType;
+		if (left != right)
+		{
+			auto fmt = boost::format("can't perform operator '%1%' on operands with types '%2%' and '%3%'")
+				% operation
+				% ToString(left)
+				% ToString(right);
+			throw std::runtime_error(fmt.str());
+		}
+
+		// TODO: check left and right with operator
+		m_stack.push_back(left);
 	}
 
 	void Visit(const NumberConstantAST& number) override
 	{
-		m_types.push_back(number.GetType() == NumberConstantAST::Int ? ValueType::Int : ValueType::Float);
-		m_value = m_types.back();
+		m_stack.push_back(number.GetType() == NumberConstantAST::Int ? ExpressionType::Int : ExpressionType::Float);
 	}
 
 	void Visit(const UnaryAST& unary) override
 	{
-		Visit(unary.GetExpr());
-		m_value = m_types.back();
+		ExpressionType evaluatedType = Evaluate(unary.GetExpr());
+		if (evaluatedType == ExpressionType::String)
+		{
+			const std::string operation = unary.GetOperator() == UnaryAST::Plus ? "+" : "-";
+			throw std::runtime_error("can't perform unary operation '" + operation + "' on string");
+		}
+		m_stack.push_back(evaluatedType);
 	}
 
 	void Visit(const IdentifierAST& identifier) override
 	{
-		m_types.push_back(m_context->GetType(identifier.GetName()));
-		m_value = m_types.back();
+		const std::string& name = identifier.GetName();
+		const Value* value = m_scopes.GetValue(name);
+
+		if (!value)
+		{
+			throw std::runtime_error("identifier '" + name + "' is undefined");
+		}
+
+		m_stack.push_back(value->GetExpressionType());
 	}
 
 private:
-	ValueType m_value;
-	std::vector<ValueType> m_types;
-	std::shared_ptr<EvaluationContext> m_context;
+	std::vector<ExpressionType> m_stack;
+	ScopeChain& m_scopes;
 };
 
-class StatementVisitor : public IStatementVisitor
+class SemanticsVerifier : public IStatementVisitor
 {
 public:
-	explicit StatementVisitor()
-		: m_context(std::make_shared<EvaluationContext>())
-		, m_exprVisitor(std::make_unique<ExpressionVisitor>(m_context))
+	explicit SemanticsVerifier()
+		: m_scopes(std::make_unique<ScopeChain>())
+		, m_evaluator(std::make_unique<TypeEvaluator>(*m_scopes))
 	{
 	}
 
+	void VerifySemantics(const IStatementAST& statement)
+	{
+		m_scopes->PushScope(); // global scope
+		Visit(statement);
+		m_scopes->PopScope();
+	}
+
+private:
 	void Visit(const IStatementAST& stmt)
 	{
 		stmt.Accept(*this);
 	}
 
-	void Visit(const VariableDeclarationAST& vardecl) override
+	void Visit(const VariableDeclarationAST& variableDeclaration) override
 	{
-		m_context->Declare(vardecl.GetIdentifier().GetName(), vardecl.GetType());
+		const Value* value = m_scopes->GetValue(variableDeclaration.GetIdentifier().GetName());
+		const std::string& name = variableDeclaration.GetIdentifier().GetName();
+		const ExpressionType type = variableDeclaration.GetType();
+
+		if (value)
+		{
+			throw std::runtime_error("variable '" + name + "' is already defined as '" + ToString(type) + "'");
+		}
+
+		m_scopes->Define(
+			variableDeclaration.GetIdentifier().GetName(), Value(variableDeclaration.GetType())
+		);
 	}
 
-	void Visit(const AssignStatementAST& assign) override
+	void Visit(const AssignStatementAST& assignment) override
 	{
-		m_exprVisitor->Visit(assign.GetIdentifier());
-		auto vartype = m_exprVisitor->GetValue();
-		m_exprVisitor->Visit(assign.GetExpr());
-		auto exprtype = m_exprVisitor->GetValue();
-		if (vartype != exprtype)
+		Value* value = m_scopes->GetValue(assignment.GetIdentifier().GetName());
+		const std::string& name = assignment.GetIdentifier().GetName();
+
+		if (!value)
 		{
-			throw std::runtime_error("variable '" + assign.GetIdentifier().GetName() + "' can't be assigned to this type");
+			throw std::runtime_error("variable '" + name + "' is not defined");
+		}
+
+		const ExpressionType evaluatedType = m_evaluator->Evaluate(assignment.GetExpr());
+		if (evaluatedType != value->GetExpressionType())
+		{
+			auto fmt = boost::format("can't set expression of type '%1%' to variable '%2' of type '%3%'")
+				% ToString(evaluatedType)
+				% name
+				% ToString(value->GetExpressionType());
+			throw std::runtime_error(fmt.str());
+		}
+
+		// TODO: set value
+	}
+
+	void Visit(const ReturnStatementAST& returnStmt) override
+	{
+		const ExpressionType evaluatedType = m_evaluator->Evaluate(returnStmt.GetExpr());
+		// TODO: check return value of function
+		(void)evaluatedType;
+	}
+
+	void Visit(const IfStatementAST& condition) override
+	{
+		const ExpressionType evaluatedType = m_evaluator->Evaluate(condition.GetExpr());
+		if (!ConvertibleToBool(evaluatedType))
+		{
+			throw std::runtime_error("expression in condition statement must be convertible to bool");
+		}
+
+		Visit(condition.GetThenStmt());
+		if (condition.GetElseStmt())
+		{
+			Visit(*condition.GetElseStmt());
 		}
 	}
 
-	void Visit(const ReturnStatementAST& ret) override
+	void Visit(const WhileStatementAST& whileStmt) override
 	{
-		m_exprVisitor->Visit(ret.GetExpr());
-	}
-
-	void Visit(const IfStatementAST& ifstmt) override
-	{
-		m_exprVisitor->Visit(ifstmt.GetExpr());
-		Visit(ifstmt.GetThenStmt());
-		if (ifstmt.GetElseStmt())
+		const ExpressionType evaluatedType = m_evaluator->Evaluate(whileStmt.GetExpr());
+		if (!ConvertibleToBool(evaluatedType))
 		{
-			Visit(*ifstmt.GetElseStmt());
+			throw std::runtime_error("expression in while statement must be convertible to bool");
 		}
-	}
-
-	void Visit(const WhileStatementAST& loop) override
-	{
-		m_exprVisitor->Visit(loop.GetExpr());
-		Visit(loop.GetStatement());
 	}
 
 	void Visit(const CompositeStatementAST& composite) override
 	{
-		m_context->PushScope();
+		m_scopes->PushScope();
 		for (size_t i = 0; i < composite.GetCount(); ++i)
 		{
 			Visit(composite.GetStatement(i));
 		}
-		m_context->PopScope();
+		m_scopes->PopScope();
 	}
 
 private:
-	std::shared_ptr<EvaluationContext> m_context;
-	std::unique_ptr<ExpressionVisitor> m_exprVisitor;
+	std::unique_ptr<ScopeChain> m_scopes;
+	std::unique_ptr<TypeEvaluator> m_evaluator;
 };
