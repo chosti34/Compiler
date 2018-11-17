@@ -1,9 +1,11 @@
 #pragma once
+
 #include "../grammarlib/GrammarFwd.h"
-#include <set>
+
+#include <boost/optional.hpp>
 #include <memory>
 #include <vector>
-#include <optional>
+#include <set>
 
 class LLParserTable
 {
@@ -17,7 +19,7 @@ public:
 		bool isEnding;
 		bool isAttribute;
 		std::string name;
-		std::optional<size_t> next;
+		boost::optional<size_t> next;
 		std::set<std::string> beginnings;
 	};
 
@@ -31,4 +33,4 @@ private:
 };
 
 std::unique_ptr<LLParserTable> CreateParserTable(const Grammar& grammar);
-bool EntryAcceptsTerminal(const LLParserTable::Entry &entry, const std::string &terminal);
+bool EntryAcceptsTerminal(const LLParserTable::Entry& entry, const std::string& terminal);

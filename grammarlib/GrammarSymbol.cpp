@@ -2,7 +2,7 @@
 #include "GrammarSymbol.h"
 #include <cassert>
 
-GrammarSymbol::GrammarSymbol(std::string text, GrammarSymbolType type, std::optional<std::string> attribute /* = nullopt */)
+GrammarSymbol::GrammarSymbol(std::string text, GrammarSymbolType type, boost::optional<std::string> attribute /* = none */)
 	: m_text(std::move(text))
 	, m_type(type)
 	, m_attribute(std::move(attribute))
@@ -24,7 +24,7 @@ void GrammarSymbol::SetAttribute(std::string attribute)
 	m_attribute = std::move(attribute);
 }
 
-std::optional<std::string> GrammarSymbol::GetAttribute()const
+boost::optional<std::string> GrammarSymbol::GetAttribute()const
 {
 	return m_attribute;
 }

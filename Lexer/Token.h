@@ -1,6 +1,6 @@
 #pragma once
-#include <optional>
 #include <string>
+#include <boost/optional.hpp>
 
 struct Token
 {
@@ -45,15 +45,13 @@ struct Token
 	};
 
 	Type type = EndOfFile;
-	std::optional<std::string> value = std::nullopt;
+	boost::optional<std::string> value = boost::none;
 	size_t offset = 0;
 	size_t line = 0;
 	size_t column = 0;
 };
 
-bool TokenExists(const std::string &token);
-
+bool TokenExists(const std::string& token);
 std::string TokenTypeToString(Token::Type type);
-Token::Type StringToTokenType(const std::string &str);
-
-std::string TokenToString(const Token &token);
+Token::Type StringToTokenType(const std::string& str);
+std::string TokenToString(const Token& token);

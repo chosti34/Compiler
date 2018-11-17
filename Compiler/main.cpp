@@ -14,7 +14,7 @@
 
 namespace
 {
-bool GrammarTerminalsMatchLexerTokens(const Grammar &grammar)
+bool GrammarTerminalsMatchLexerTokens(const Grammar& grammar)
 {
 	for (size_t row = 0; row < grammar.GetProductionsCount(); ++row)
 	{
@@ -32,7 +32,7 @@ bool GrammarTerminalsMatchLexerTokens(const Grammar &grammar)
 	return true;
 }
 
-void WriteGrammar(const Grammar &grammar, std::ostream &os = std::cout)
+void WriteGrammar(const Grammar& grammar, std::ostream& os)
 {
 	for (size_t row = 0; row < grammar.GetProductionsCount(); ++row)
 	{
@@ -69,13 +69,12 @@ void WriteGrammar(const Grammar &grammar, std::ostream &os = std::cout)
 	}
 }
 
-void WriteParserTable(const LLParserTable &parserTable, std::ostream &os = std::cout)
+void WriteParserTable(const LLParserTable& parserTable, std::ostream &os)
 {
 	FormatUtil::Table formatTable;
 	formatTable.Append({ "Index", "Name", "Shift", "Push", "Error", "End", "Next", "Beginnings" });
 
-	const auto boolalpha = [](bool value) -> std::string
-	{
+	const auto toString = [](bool value) -> std::string {
 		return value ? "true" : "false";
 	};
 
@@ -84,8 +83,8 @@ void WriteParserTable(const LLParserTable &parserTable, std::ostream &os = std::
 		auto entry = parserTable.GetEntry(i);
 		formatTable.Append({
 			std::to_string(i), entry->name,
-			boolalpha(entry->doShift), boolalpha(entry->doPush),
-			boolalpha(entry->isError), boolalpha(entry->isEnding),
+			toString(entry->doShift), toString(entry->doPush),
+			toString(entry->isError), toString(entry->isEnding),
 			entry->next ? std::to_string(*entry->next) : "none",
 			StringUtil::Join(entry->beginnings, ", ", "{ ", " }")
 			});
@@ -96,7 +95,7 @@ void WriteParserTable(const LLParserTable &parserTable, std::ostream &os = std::
 	os << formatTable << std::endl;
 }
 
-void WriteTokens(const std::string &text, std::ostream &os = std::cout)
+void WriteTokens(const std::string& text, std::ostream& os)
 {
 	os << "Tokens for: '" << text << "'" << std::endl;
 

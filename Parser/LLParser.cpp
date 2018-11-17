@@ -1,6 +1,5 @@
 #include "stdafx.h"
 #include "LLParser.h"
-#include <iostream>
 #include <functional>
 
 namespace
@@ -27,6 +26,7 @@ std::unique_ptr<Derived> DowncastUniquePtr(std::unique_ptr<Base> && base)
 	return nullptr;
 }
 
+// Название класса не имеет отношения к паттерну
 class ASTBuilder
 {
 public:
@@ -245,8 +245,6 @@ std::unique_ptr<IStatementAST> LLParser::Parse(const std::string& text)
 	while (true)
 	{
 		auto state = m_table->GetEntry(index);
-		std::cout << index << std::endl;
-
 
 		if (state->isAttribute)
 		{
@@ -287,7 +285,8 @@ std::unique_ptr<IStatementAST> LLParser::Parse(const std::string& text)
 			token = m_lexer->GetNextToken();
 		}
 
-		if (state->next != std::nullopt)
+		// boost::optional to bool explicit cast
+		if (bool(state->next))
 		{
 			index = *state->next;
 		}

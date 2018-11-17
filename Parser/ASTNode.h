@@ -1,14 +1,13 @@
 #pragma once
 
+#include "ScopeChain.h"
+
 #include <string>
 #include <memory>
 #include <vector>
 #include <cassert>
-#include <optional>
 #include <unordered_map>
 #include <boost/format.hpp>
-
-#include "ScopeChain.h"
 
 class BinaryExpressionAST;
 class NumberConstantAST;

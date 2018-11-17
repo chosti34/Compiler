@@ -88,7 +88,7 @@ std::unique_ptr<LLParserTable> CreateParserTable(const Grammar& grammar)
 		entry->isError = !ProductionHasAlternative(grammar, i);
 		entry->isEnding = false;
 		entry->beginnings = GatherBeginningSymbolsOfProduction(grammar, static_cast<int>(i));
-		entry->next = std::nullopt; // Will be added later
+		entry->next = boost::none; // Will be added later
 		table->AddEntry(std::move(entry));
 	}
 
@@ -101,7 +101,7 @@ std::unique_ptr<LLParserTable> CreateParserTable(const Grammar& grammar)
 		entry->isError = false;
 		entry->isEnding = production->GetSymbol(col).GetText() == grammar.GetEndSymbol();
 		entry->next = (col == production->GetSymbolsCount() - 1u) ?
-			std::nullopt : std::make_optional<size_t>(table->GetEntriesCount() + 1);
+			boost::none : boost::make_optional<size_t>(table->GetEntriesCount() + 1);
 		entry->name = *production->GetSymbol(col).GetAttribute();
 		entry->isAttribute = true;
 		return entry;
@@ -127,7 +127,7 @@ std::unique_ptr<LLParserTable> CreateParserTable(const Grammar& grammar)
 				entry->isError = true;
 				entry->isEnding = (symbol.GetText() == grammar.GetEndSymbol() && !symbol.GetAttribute());
 				entry->next = (col == production->GetSymbolsCount() - 1u && !symbol.GetAttribute()) ?
-					std::nullopt : std::make_optional<size_t>(table->GetEntriesCount() + 1u);
+					boost::none : boost::make_optional<size_t>(table->GetEntriesCount() + 1u);
 				entry->beginnings = { symbol.GetText() };
 				break;
 			case GrammarSymbolType::Nonterminal:
@@ -147,7 +147,7 @@ std::unique_ptr<LLParserTable> CreateParserTable(const Grammar& grammar)
 				entry->doPush = false;
 				entry->isError = true;
 				entry->isEnding = false;
-				entry->next = symbol.GetAttribute() ? std::make_optional<size_t>(col + 1u) : std::nullopt;
+				entry->next = symbol.GetAttribute() ? boost::make_optional<size_t>(col + 1u) : boost::none;
 				entry->beginnings = GatherBeginningSymbolsOfProduction(grammar, static_cast<int>(row));
 				break;
 			default:
@@ -175,7 +175,7 @@ std::unique_ptr<LLParserTable> CreateParserTable(const Grammar& grammar)
 	return table;
 }
 
-bool EntryAcceptsTerminal(const LLParserTable::Entry &entry, const std::string &terminal)
+bool EntryAcceptsTerminal(const LLParserTable::Entry& entry, const std::string& terminal)
 {
 	return entry.beginnings.find(terminal) != entry.beginnings.end();
 }
