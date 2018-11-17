@@ -88,7 +88,7 @@ void WriteParserTable(const LLParserTable &parserTable, std::ostream &os = std::
 			boolalpha(entry->isError), boolalpha(entry->isEnding),
 			entry->next ? std::to_string(*entry->next) : "none",
 			StringUtil::Join(entry->beginnings, ", ", "{ ", " }")
-		});
+			});
 	}
 
 	using namespace FormatUtil;
@@ -111,8 +111,7 @@ void WriteTokens(const std::string &text, std::ostream &os = std::cout)
 		{
 			break;
 		}
-	}
-	while (true);
+	} while (true);
 }
 
 std::unique_ptr<LLParser> CreateYolangParser()
@@ -164,22 +163,21 @@ void Execute()
 
 	auto code = R"(
 {
-	if (1)
-	{
-		var a: Int;
-		var b: Int;
-		var c: Float;
-		a = ((b + c));
-	}
-
-	var b: Float;
-
-	while (1)
-	{
-		b = 3;
-	}
+if (1)
+{
+	var a: Int;
+	var b: Int;
+	var c: Float;
+	a = ((b + c));
 }
-)";
+
+var b: Float;
+
+while (1)
+{
+	b = 3;
+}
+})";
 
 	if (auto ast = parser->Parse(code))
 	{
