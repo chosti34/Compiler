@@ -1,27 +1,32 @@
-#pragma once
+#ifndef COMPILER_60MIN_GRAMMARUTIL_H
+#define COMPILER_60MIN_GRAMMARUTIL_H
+
+#include "GrammarFwd.h"
+
 #include <set>
 #include <string>
 #include <functional>
-#include "Grammar.h"
 
-// Получить все индексы правил грамматики с заданной левой частью
+// РџРѕР»СѓС‡РёС‚СЊ РІСЃРµ РёРЅРґРµРєСЃС‹ РїСЂР°РІРёР» РіСЂР°РјРјР°С‚РёРєРё СЃ Р·Р°РґР°РЅРЅРѕР№ Р»РµРІРѕР№ С‡Р°СЃС‚СЊСЋ
 std::set<int> GatherProductionIndices(const Grammar& grammar, const std::string& nonterminal);
-// Получить все индексы правил грамматики, удовлетворяющих заданному предикату
+// РџРѕР»СѓС‡РёС‚СЊ РІСЃРµ РёРЅРґРµРєСЃС‹ РїСЂР°РІРёР» РіСЂР°РјРјР°С‚РёРєРё, СѓРґРѕРІР»РµС‚РІРѕСЂСЏСЋС‰РёС… Р·Р°РґР°РЅРЅРѕРјСѓ РїСЂРµРґРёРєР°С‚Сѓ
 std::set<int> GatherProductionIndices(const Grammar& grammar, std::function<bool(const GrammarProduction&)> && predicate);
 
-// Состоит ли правая часть правила только из нетерминалов
+// РЎРѕСЃС‚РѕРёС‚ Р»Рё РїСЂР°РІР°СЏ С‡Р°СЃС‚СЊ РїСЂР°РІРёР»Р° С‚РѕР»СЊРєРѕ РёР· РЅРµС‚РµСЂРјРёРЅР°Р»РѕРІ
 bool ProductionConsistsOfNonterminals(const GrammarProduction& production);
-// Существует ли пустое правило с заданной левой частью
+// РЎСѓС‰РµСЃС‚РІСѓРµС‚ Р»Рё РїСѓСЃС‚РѕРµ РїСЂР°РІРёР»Рѕ СЃ Р·Р°РґР°РЅРЅРѕР№ Р»РµРІРѕР№ С‡Р°СЃС‚СЊСЋ
 bool ExistsEpsilonProduction(const Grammar& grammar, const std::string& nonterminal);
-// Может ли быть нетерминал пустым (учитывая транзитивность)
+// РњРѕР¶РµС‚ Р»Рё Р±С‹С‚СЊ РЅРµС‚РµСЂРјРёРЅР°Р» РїСѓСЃС‚С‹Рј (СѓС‡РёС‚С‹РІР°СЏ С‚СЂР°РЅР·РёС‚РёРІРЅРѕСЃС‚СЊ)
 bool NonterminalHasEmptiness(const Grammar& grammar, const std::string& nonterminal);
 
-// Получить грамматические вхождения нетерминала в грамматике
+// РџРѕР»СѓС‡РёС‚СЊ РіСЂР°РјРјР°С‚РёС‡РµСЃРєРёРµ РІС…РѕР¶РґРµРЅРёРµ РЅРµС‚РµСЂРјРёРЅР°Р»Р° РІ РіСЂР°РјРјР°С‚РёРєРµ
 std::set<std::pair<int, int>> GatherNonterminalOccurrences(const Grammar& grammar, const std::string& nonterminal);
 
-// Получить направляющее множество нетерминала
+// РџРѕР»СѓС‡РёС‚СЊ РЅР°РїСЂР°РІР»СЏСЋС‰РµРµ РјРЅРѕР¶РµСЃС‚РІРѕ РЅРµС‚РµСЂРјРёРЅР°Р»Р°
 std::set<std::string> GatherBeginningSymbolsOfNonterminal(const Grammar& grammar, const std::string& nonterminal);
-// Получить направляющее множество для указанного правила
+// РџРѕР»СѓС‡РёС‚СЊ РЅР°РїСЂР°РІР»СЏСЋС‰РµРµ РјРЅРѕР¶РµСЃС‚РІРѕ РґР»СЏ СѓРєР°Р·Р°РЅРЅРѕРіРѕ РїСЂР°РІРёР»Р°
 std::set<std::string> GatherBeginningSymbolsOfProduction(const Grammar& grammar, int productionIndex);
-// Получить символы-следователи нетерминала
+// РџРѕР»СѓС‡РёС‚СЊ СЃРёРјРІРѕР»С‹-СЃР»РµРґРѕРІР°С‚РµР»Рё РЅРµС‚РµСЂРјРёРЅР°Р»Р°
 std::set<std::string> GatherFollowingSymbols(const Grammar& grammar, const std::string& nonterminal);
+
+#endif //COMPILER_60MIN_GRAMMARUTIL_H

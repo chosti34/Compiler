@@ -1,21 +1,25 @@
-#pragma once
+#ifndef COMPILER_60MIN_GRAMMARPRODUCTION_H
+#define COMPILER_60MIN_GRAMMARPRODUCTION_H
+
 #include "GrammarSymbol.h"
-#include <cassert>
 #include <vector>
 
 class GrammarProduction
 {
 public:
-	GrammarProduction(const std::string& left, const std::vector<GrammarSymbol>& right);
+    GrammarProduction(const std::string& left, const std::vector<GrammarSymbol>& right);
 
-	const std::string& GetLeftPart()const;
-	size_t GetSymbolsCount()const;
+    const std::string& GetLeftPart()const;
 
-	const GrammarSymbol& GetSymbol(size_t index)const;
-	const GrammarSymbol& GetStartSymbol()const;
-	const GrammarSymbol& GetLastSymbol()const;
+    size_t GetSymbolsCount()const;
+    const GrammarSymbol& GetSymbol(size_t index)const;
+
+    const GrammarSymbol& GetStartSymbol()const;
+    const GrammarSymbol& GetLastSymbol()const;
 
 private:
-	std::string m_left;
-	std::vector<GrammarSymbol> m_right;
+    std::string m_left;
+    std::vector<GrammarSymbol> m_right;
 };
+
+#endif //COMPILER_60MIN_GRAMMARPRODUCTION_H

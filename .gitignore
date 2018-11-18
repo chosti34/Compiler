@@ -330,3 +330,12 @@ ASALocalRun/
 
 # Local History for Visual Studio
 .localhistory/
+
+# CLion
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+/cmake-build-*/
+
+# MacOS specific files
+.DS_Store
+
