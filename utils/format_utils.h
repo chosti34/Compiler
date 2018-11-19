@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-namespace FormatUtil
+namespace format_utils
 {
 class Table
 {
@@ -71,6 +71,6 @@ private:
 };
 }
 
-std::ostream& operator <<(std::ostream& os, const FormatUtil::Table& table);
+std::ostream& operator <<(std::ostream& os, const format_utils::Table& table);
 
 #endif //COMPILER_60MIN_FORMATUTIL_H

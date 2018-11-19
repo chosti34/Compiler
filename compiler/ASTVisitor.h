@@ -1,7 +1,7 @@
 #ifndef COMPILER_60MIN_ASTVISITOR_H
 #define COMPILER_60MIN_ASTVISITOR_H
 
-class NumberConstantAST;
+class LiteralConstantAST;
 class IdentifierAST;
 class BinaryExpressionAST;
 class UnaryAST;
@@ -11,7 +11,7 @@ class IExpressionVisitor
 public:
     virtual ~IExpressionVisitor() = default;
     virtual void Visit(const BinaryExpressionAST& node) = 0;
-    virtual void Visit(const NumberConstantAST& node) = 0;
+    virtual void Visit(const LiteralConstantAST& node) = 0;
     virtual void Visit(const UnaryAST& node) = 0;
     virtual void Visit(const IdentifierAST& node) = 0;
 };

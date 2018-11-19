@@ -6,6 +6,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <boost/variant.hpp>
 
 class IExpressionAST
 {
@@ -43,25 +44,18 @@ private:
     Operator m_op;
 };
 
-class NumberConstantAST : public IExpressionAST
+class LiteralConstantAST : public IExpressionAST
 {
 public:
-    enum Type
-    {
-        Int,
-        Float
-    };
+    // TODO: add string literal
+    using Value = boost::variant<int, float>;
 
-    explicit NumberConstantAST(double value, Type type);
-
-    double GetValue()const;
-    Type GetType()const;
-
+    explicit LiteralConstantAST(const Value& value);
+    const Value& GetValue()const;
     void Accept(IExpressionVisitor& visitor)const override;
 
 private:
-    double m_value;
-    Type m_type;
+    Value m_value;
 };
 
 class UnaryAST : public IExpressionAST

@@ -3,7 +3,7 @@
 
 #include <string>
 
-namespace StringUtil
+namespace string_utils
 {
 template <typename Collection>
 std::string JoinStrings(

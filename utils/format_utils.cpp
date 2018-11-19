@@ -1,8 +1,8 @@
-#include "FormatUtil.h"
+#include "format_utils.h"
 #include <cassert>
 #include <iomanip>
 
-using namespace FormatUtil;
+using namespace format_utils;
 
 namespace
 {
@@ -156,7 +156,7 @@ void Table::SetColumnPadding(size_t col, unsigned padding)
     m_columnProperties[col].padding = padding;
 }
 
-void FormatUtil::Table::SetDisplayMethod(DisplayMethod method)
+void format_utils::Table::SetDisplayMethod(DisplayMethod method)
 {
     m_displayMethod = method;
 }

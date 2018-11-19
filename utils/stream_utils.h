@@ -4,7 +4,7 @@
 #include <ostream>
 #include <string>
 
-namespace StreamUtil
+namespace stream_utils
 {
 template <typename Iterable>
 void PrintIterable(

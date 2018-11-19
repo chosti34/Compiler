@@ -1,6 +1,6 @@
-#include "FileUtil.h"
+#include "file_utils.h"
 
-namespace FileUtil
+namespace file_utils
 {
 std::unique_ptr<std::ifstream> OpenFileForReading(const std::string& filepath, std::ios::openmode mode)
 {

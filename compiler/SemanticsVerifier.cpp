@@ -1,6 +1,7 @@
 #include "SemanticsVerifier.h"
 #include <boost/format.hpp>
 #include <cassert>
+#include <llvm/IR/Value.h>
 
 TypeEvaluator::TypeEvaluator(ScopeChain& scopes)
     : m_scopes(scopes)
@@ -34,9 +35,22 @@ void TypeEvaluator::Visit(const IdentifierAST &identifier)
     m_stack.push_back(value->GetExpressionType());
 }
 
-void TypeEvaluator::Visit(const NumberConstantAST &number)
+void TypeEvaluator::Visit(const LiteralConstantAST& literal)
 {
-    m_stack.push_back(number.GetType() == NumberConstantAST::Int ? ExpressionType::Int : ExpressionType::Float);
+    const LiteralConstantAST::Value& value = literal.GetValue();
+    if (value.type() == typeid(int))
+    {
+        m_stack.push_back(ExpressionType::Int);
+    }
+    else if (value.type() == typeid(float))
+    {
+        m_stack.push_back(ExpressionType::Float);
+    }
+    else
+    {
+        assert(false);
+        throw std::logic_error("type evaluation error: undefined constant literal type");
+    }
 }
 
 void TypeEvaluator::Visit(const BinaryExpressionAST &binary)
@@ -167,7 +181,7 @@ void SemanticsVerifier::Visit(const IfStatementAST &condition)
     }
 }
 
-void SemanticsVerifier::Visit(const WhileStatementAST &whileStmt)
+void SemanticsVerifier::Visit(const WhileStatementAST& whileStmt)
 {
     const ExpressionType evaluatedType = m_evaluator->Evaluate(whileStmt.GetExpr());
     if (!ConvertibleToBool(evaluatedType))
@@ -176,7 +190,7 @@ void SemanticsVerifier::Visit(const WhileStatementAST &whileStmt)
     }
 }
 
-void SemanticsVerifier::Visit(const CompositeStatementAST &composite)
+void SemanticsVerifier::Visit(const CompositeStatementAST& composite)
 {
     m_scopes->PushScope();
     for (size_t i = 0; i < composite.GetCount(); ++i)

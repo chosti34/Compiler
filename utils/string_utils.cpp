@@ -1,6 +1,6 @@
-#include "StringUtil.h"
+#include "string_utils.h"
 
-bool StringUtil::TrimString(std::string& str)
+bool string_utils::TrimString(std::string& str)
 {
     int lpos = 0;
     while (lpos < str.length() && std::isspace(str[lpos]))

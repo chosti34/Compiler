@@ -10,12 +10,12 @@ BinaryExpressionAST::BinaryExpressionAST(
 {
 }
 
-const IExpressionAST &BinaryExpressionAST::GetLeft()const
+const IExpressionAST& BinaryExpressionAST::GetLeft()const
 {
     return *m_left;
 }
 
-const IExpressionAST &BinaryExpressionAST::GetRight()const
+const IExpressionAST& BinaryExpressionAST::GetRight()const
 {
     return *m_right;
 }
@@ -31,23 +31,17 @@ void BinaryExpressionAST::Accept(IExpressionVisitor& visitor)const
 }
 
 
-NumberConstantAST::NumberConstantAST(double value, NumberConstantAST::Type type)
+LiteralConstantAST::LiteralConstantAST(const LiteralConstantAST::Value& value)
     : m_value(value)
-    , m_type(type)
 {
 }
 
-double NumberConstantAST::GetValue()const
+const LiteralConstantAST::Value& LiteralConstantAST::GetValue()const
 {
     return m_value;
 }
 
-NumberConstantAST::Type NumberConstantAST::GetType()const
-{
-    return m_type;
-}
-
-void NumberConstantAST::Accept(IExpressionVisitor& visitor)const
+void LiteralConstantAST::Accept(IExpressionVisitor& visitor)const
 {
     visitor.Visit(*this);
 }

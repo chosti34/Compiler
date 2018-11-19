@@ -1,18 +1,18 @@
-#include "../utils/FileUtil.h"
-#include "../utils/FormatUtil.h"
-#include "../utils/StringUtil.h"
-#include "../utils/StreamUtil.h"
+#include "../utils/file_utils.h"
+#include "../utils/format_utils.h"
+#include "../utils/string_utils.h"
+#include "../utils/stream_utils.h"
 
 #include "../grammarlib/Grammar.h"
 #include "../grammarlib/GrammarUtil.h"
 #include "../grammarlib/GrammarBuilder.h"
-#include "../grammarlib/GrammarProductionFactory.h"
 
-#include "../Lexer/Lexer.h"
+#include "../lexer/Lexer.h"
 
 #include "LLParser.h"
 #include "LLParserTable.h"
 #include "SemanticsVerifier.h"
+#include "LLVMCodeGenerator.h"
 
 #include <iostream>
 
@@ -69,13 +69,13 @@ void WriteGrammar(const Grammar& grammar, std::ostream& os)
             }
         }
 
-        StreamUtil::PrintIterable(os, GatherBeginningSymbolsOfProduction(grammar, int(row)), ", ", " / {", "}");
+        stream_utils::PrintIterable(os, GatherBeginningSymbolsOfProduction(grammar, int(row)), ", ", " / {", "}");
     }
 }
 
 void WriteParserTable(const LLParserTable& parserTable, std::ostream& os)
 {
-    FormatUtil::Table formatTable;
+    format_utils::Table formatTable;
     formatTable.Append({ "Index", "Name", "Shift", "Push", "Error", "End", "Next", "Beginnings" });
 
     const auto toString = [](bool value) -> std::string {
@@ -89,10 +89,10 @@ void WriteParserTable(const LLParserTable& parserTable, std::ostream& os)
         toString(entry->doShift), toString(entry->doPush),
         toString(entry->isError), toString(entry->isEnding),
         entry->next ? std::to_string(*entry->next) : "none",
-        StringUtil::JoinStrings(entry->beginnings, ", ", "{ ", " }")});
+        string_utils::JoinStrings(entry->beginnings, ", ", "{ ", " }")});
     }
 
-    using namespace FormatUtil;
+    using namespace format_utils;
     formatTable.SetDisplayMethod(Table::DisplayMethod::ColumnsLineSeparated);
     os << formatTable << std::endl;
 }
@@ -158,11 +158,34 @@ std::unique_ptr<LLParser> CreateYolangParser()
     return std::make_unique<LLParser>(std::make_unique<Lexer>(), CreateParserTable(*grammar));
 }
 
+std::unique_ptr<LLParser> CreateCalcParser()
+{
+    auto grammar = GrammarBuilder(std::make_unique<GrammarProductionFactory>())
+        .AddProduction("<Program>       -> <Expr> EndOfFile")
+        .AddProduction("<Expr>          -> <Term> <ExprHelper>")
+        .AddProduction("<ExprHelper>    -> Plus <Term> {OnBinaryPlusParse} <ExprHelper>")
+        .AddProduction("<ExprHelper>    -> Minus <Term> {OnBinaryMinusParse} <ExprHelper>")
+        .AddProduction("<ExprHelper>    -> #Eps#")
+        .AddProduction("<Term>          -> <Factor> <TermHelper>")
+        .AddProduction("<TermHelper>    -> Mul <Factor> {OnBinaryMulParse} <TermHelper>")
+        .AddProduction("<TermHelper>    -> Div <Factor> {OnBinaryDivParse} <TermHelper>")
+        .AddProduction("<TermHelper>    -> #Eps#")
+        .AddProduction("<Factor>        -> LeftParenthesis <Expr> RightParenthesis")
+        .AddProduction("<Factor>        -> IntegerConstant {OnIntegerConstantParse}")
+        .AddProduction("<Factor>        -> FloatConstant {OnFloatConstantParse}")
+        .AddProduction("<Factor>        -> Identifier {OnIdentifierParse}")
+        .AddProduction("<Factor>        -> Minus <Factor> {OnUnaryMinusParse}")
+        .Build();
+
+    assert(GrammarTerminalsMatchLexerTokens(*grammar));
+    return std::make_unique<LLParser>(std::make_unique<Lexer>(), CreateParserTable(*grammar));
+}
+
 void Execute()
 {
-    auto parser = CreateYolangParser();
+    auto parser = CreateCalcParser();
 
-    auto code = R"(
+    const std::string code = R"(
     {
         if (1)
         {
@@ -181,15 +204,21 @@ void Execute()
     }
 )";
 
-    if (auto ast = parser->Parse(code))
+    std::string line;
+    if (std::cout << ">>> " && getline(std::cin, line))
     {
-        std::cout << "AST has been successfully built!" << std::endl;
-        SemanticsVerifier verifier;
-        verifier.VerifySemantics(*ast);
-    }
-    else
-    {
-        std::cout << "AST can't be built..." << std::endl;
+        if (auto ast = parser->Parse(line))
+        {
+            LLVMCodeGenerator generator;
+            generator.CodegenFuncReturningExpression(*ast);
+
+            auto& module = generator.GetLLVMModule();
+            module.print(llvm::errs(), nullptr);
+        }
+        else
+        {
+            std::cout << "AST can't be built..." << std::endl;
+        }
     }
 }
 }
