@@ -10,7 +10,6 @@
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/CodeGen/Analysis.h>
 
-#include <iostream>
 #include <vector>
 
 class LLVMCodeGenerator : public IExpressionVisitor
@@ -24,8 +23,6 @@ public:
     const llvm::Module& GetLLVMModule()const;
 
 private:
-    void Visit(const IExpressionAST& ast);
-
     void Visit(const BinaryExpressionAST& node) override;
     void Visit(const LiteralConstantAST& node) override;
     void Visit(const UnaryAST& node) override;

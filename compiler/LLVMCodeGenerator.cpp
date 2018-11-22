@@ -61,7 +61,7 @@ LLVMCodeGenerator::LLVMCodeGenerator()
 
 void LLVMCodeGenerator::CodegenFuncReturningExpression(const IExpressionAST& ast)
 {
-    Visit(ast);
+    ast.Accept(*this);
     llvm::Value* value = m_stack.back();
     m_stack.pop_back();
 
@@ -102,15 +102,10 @@ const llvm::Module& LLVMCodeGenerator::GetLLVMModule()const
     return m_module;
 }
 
-void LLVMCodeGenerator::Visit(const IExpressionAST& ast)
-{
-    ast.Accept(*this);
-}
-
 void LLVMCodeGenerator::Visit(const BinaryExpressionAST& node)
 {
-    Visit(node.GetLeft());
-    Visit(node.GetRight());
+    node.GetLeft().Accept(*this);
+    node.GetRight().Accept(*this);
 
     llvm::Value *right = m_stack.back();
     m_stack.pop_back();
@@ -166,7 +161,7 @@ void LLVMCodeGenerator::Visit(const LiteralConstantAST& node)
 
 void LLVMCodeGenerator::Visit(const UnaryAST& node)
 {
-    Visit(node.GetExpr());
+    node.GetExpr().Accept(*this);
 
     llvm::Value* value = m_stack.back();
     m_stack.pop_back();

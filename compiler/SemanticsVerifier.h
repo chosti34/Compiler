@@ -12,8 +12,6 @@ public:
     ExpressionType Evaluate(const IExpressionAST& expr);
 
 private:
-    void Visit(const IExpressionAST& expr);
-
     void Visit(const IdentifierAST& identifier) override;
     void Visit(const LiteralConstantAST& number) override;
     void Visit(const BinaryExpressionAST& binary) override;

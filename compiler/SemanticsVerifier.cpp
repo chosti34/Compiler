@@ -3,23 +3,43 @@
 #include <cassert>
 #include <llvm/IR/Value.h>
 
+namespace
+{
+std::string ToString(BinaryExpressionAST::Operator operation)
+{
+    switch (operation)
+    {
+    case BinaryExpressionAST::Plus:
+        return "+";
+    case BinaryExpressionAST::Minus:
+        return "-";
+    case BinaryExpressionAST::Mul:
+        return "*";
+    case BinaryExpressionAST::Div:
+        return "/";
+    }
+    throw std::logic_error("can't cast undefined binary operator to string");
+}
+}
+
 TypeEvaluator::TypeEvaluator(ScopeChain& scopes)
     : m_scopes(scopes)
 {
 }
 
-ExpressionType TypeEvaluator::Evaluate(const IExpressionAST &expr)
-{
-    Visit(expr);
-    assert(!m_stack.empty());
-    const ExpressionType type = m_stack.back();
-    m_stack.pop_back();
-    return type;
-}
-
-void TypeEvaluator::Visit(const IExpressionAST &expr)
+ExpressionType TypeEvaluator::Evaluate(const IExpressionAST& expr)
 {
     expr.Accept(*this);
+    if (!m_stack.empty())
+    {
+        const ExpressionType evaluated = m_stack[m_stack.size() - 1];
+        m_stack.pop_back();
+        return evaluated;
+    }
+    else
+    {
+        throw std::logic_error("type evaluating error: stack is empty");
+    }
 }
 
 void TypeEvaluator::Visit(const IdentifierAST &identifier)
@@ -58,35 +78,22 @@ void TypeEvaluator::Visit(const BinaryExpressionAST &binary)
     const ExpressionType left = Evaluate(binary.GetLeft());
     const ExpressionType right = Evaluate(binary.GetRight());
 
-    std::string operation;
-    switch (binary.GetOperator())
-    {
-        case BinaryExpressionAST::Plus:
-            operation = "+";
-            break;
-        case BinaryExpressionAST::Minus:
-            operation = "-";
-            break;
-        case BinaryExpressionAST::Mul:
-            operation = "*";
-            break;
-        case BinaryExpressionAST::Div:
-            operation = "/";
-            break;
-        default:
-            throw std::logic_error("undefined binary operator");
-    }
+    // '+', '-', '*', '/'
+    // float int
+    // int float
+    // int int
+    // float float
 
+    // TODO: check left and right with operator
     if (left != right)
     {
         auto fmt = boost::format("can't perform operator '%1%' on operands with types '%2%' and '%3%'")
-                   % operation
+                   % ToString(binary.GetOperator())
                    % ToString(left)
                    % ToString(right);
         throw std::runtime_error(fmt.str());
     }
 
-    // TODO: check left and right with operator
     m_stack.push_back(left);
 }
 
@@ -136,7 +143,7 @@ void SemanticsVerifier::Visit(const VariableDeclarationAST &variableDeclaration)
     );
 }
 
-void SemanticsVerifier::Visit(const AssignStatementAST &assignment)
+void SemanticsVerifier::Visit(const AssignStatementAST& assignment)
 {
     Value* value = m_scopes->GetValue(assignment.GetIdentifier().GetName());
     const std::string& name = assignment.GetIdentifier().GetName();
@@ -149,6 +156,9 @@ void SemanticsVerifier::Visit(const AssignStatementAST &assignment)
     const ExpressionType evaluatedType = m_evaluator->Evaluate(assignment.GetExpr());
     if (evaluatedType != value->GetExpressionType())
     {
+        // Если тип вычисленного выражения может быть неявно преобразован в тип присваиваемой переменной
+        // то нужно выполнить это преобразование, иначе ошибка
+        // TODO: попытаться выполнить преобразование
         auto fmt = boost::format("can't set expression of type '%1%' to variable '%2' of type '%3%'")
                    % ToString(evaluatedType)
                    % name

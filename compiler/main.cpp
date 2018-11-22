@@ -212,7 +212,7 @@ void Execute()
             LLVMCodeGenerator generator;
             generator.CodegenFuncReturningExpression(*ast);
 
-            auto& module = generator.GetLLVMModule();
+            auto &module = generator.GetLLVMModule();
             module.print(llvm::errs(), nullptr);
         }
         else
@@ -223,8 +223,11 @@ void Execute()
 }
 }
 
-int main()
+int main(int argc, char* argv[])
 {
+    (void)argc;
+    (void)argv;
+
     try
     {
         Execute();
