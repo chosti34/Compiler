@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>15.0</VCProjectVersion>
+    <ProjectGuid>{5D8E1090-A39D-4EDC-BD37-BB5D17EFD955}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>Compiler</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level4</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_SCL_SECURE_NO_WARNINGS;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level4</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_SCL_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>C:\Home\Utils\llvm\llvm7-install-x64d\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\Home\Utils\llvm\llvm7-install-x64d\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMMIRParser.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMDlltoolDriver.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMFuzzMutate.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMObjectYAML.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMCoverage.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMXCoreDisassembler.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMXCoreCodeGen.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMXCoreDesc.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMXCoreInfo.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMXCoreAsmPrinter.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMSystemZDisassembler.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMSystemZCodeGen.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMSystemZAsmParser.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMSystemZDesc.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMSystemZInfo.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMSystemZAsmPrinter.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMSparcDisassembler.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMSparcCodeGen.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMSparcAsmParser.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMSparcDesc.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMSparcInfo.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMSparcAsmPrinter.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMPowerPCDisassembler.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMPowerPCCodeGen.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMPowerPCAsmParser.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMPowerPCDesc.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMPowerPCInfo.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMPowerPCAsmPrinter.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMNVPTXCodeGen.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMNVPTXDesc.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMNVPTXInfo.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMNVPTXAsmPrinter.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMMSP430CodeGen.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMMSP430Desc.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMMSP430Info.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMMSP430AsmPrinter.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMMipsDisassembler.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMMipsCodeGen.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMMipsAsmParser.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMMipsDesc.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMMipsInfo.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMMipsAsmPrinter.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMLanaiDisassembler.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMLanaiCodeGen.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMLanaiAsmParser.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMLanaiDesc.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMLanaiAsmPrinter.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMLanaiInfo.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMHexagonDisassembler.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMHexagonCodeGen.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMHexagonAsmParser.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMHexagonDesc.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMHexagonInfo.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMBPFDisassembler.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMBPFCodeGen.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMBPFAsmParser.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMBPFDesc.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMBPFInfo.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMBPFAsmPrinter.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMARMDisassembler.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMARMCodeGen.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMARMAsmParser.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMARMDesc.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMARMInfo.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMARMAsmPrinter.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMARMUtils.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMAMDGPUDisassembler.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMAMDGPUCodeGen.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMAMDGPUAsmParser.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMAMDGPUDesc.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMAMDGPUInfo.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMAMDGPUAsmPrinter.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMAMDGPUUtils.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMAArch64Disassembler.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMAArch64CodeGen.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMAArch64AsmParser.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMAArch64Desc.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMAArch64Info.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMAArch64AsmPrinter.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMAArch64Utils.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMOrcJIT.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMWindowsManifest.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMInterpreter.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMTableGen.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMCoroutines.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMLTO.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMPasses.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMObjCARCOpts.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMipo.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMInstrumentation.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMVectorize.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMLinker.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMIRReader.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMAsmParser.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMLibDriver.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMOption.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMX86Disassembler.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMX86AsmParser.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMX86CodeGen.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMGlobalISel.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMSelectionDAG.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMAsmPrinter.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMCodeGen.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMScalarOpts.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMInstCombine.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMAggressiveInstCombine.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMTransformUtils.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMBitWriter.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMX86Desc.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMMCDisassembler.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMX86Info.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMX86AsmPrinter.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMX86Utils.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMMCJIT.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMExecutionEngine.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMTarget.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMAnalysis.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMProfileData.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMRuntimeDyld.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMSymbolize.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMDebugInfoPDB.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMDebugInfoDWARF.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMObject.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMMCParser.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMMC.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMDebugInfoCodeView.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMDebugInfoMSF.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMBitReader.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMCore.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMBinaryFormat.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMLineEditor.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMSupport.lib;C:\Home\Utils\llvm\llvm7-install-x64d\lib\LLVMDemangle.lib
+;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level4</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_SCL_SECURE_NO_WARNINGS;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level4</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_SCL_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="LLVMCodeGenerator.h" />
+    <ClInclude Include="SemanticsVerifier.h" />
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="targetver.h" />
+    <ClInclude Include="VariablesScopeChain.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="LLVMCodeGenerator.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="SemanticsVerifier.cpp" />
+    <ClCompile Include="stdafx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\AST\AST.vcxproj">
+      <Project>{cea229a6-7729-45b7-9072-1543ff8bbd70}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\grammarlib\grammarlib.vcxproj">
+      <Project>{4d2f2ccc-8a9c-4b71-804b-65c487ebd394}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\Lexer\Lexer.vcxproj">
+      <Project>{b6fdc775-7bd0-465a-a74d-2ecdc529c459}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\Parser\Parser.vcxproj">
+      <Project>{36c23056-b937-4949-b58d-0c23cca7ddc6}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\Utils\Utils.vcxproj">
+      <Project>{4bafa773-95e4-4941-a8a1-58821588d80e}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
