@@ -1,23 +1,25 @@
 #pragma once
 #include "../AST/AST.h"
-#include "VariablesScopeChain.h"
+#include "ScopeChain.h"
 
-// Вычисляет тип выражения любой сложности
+using TypeScopeChain = ScopeChain<ASTExpressionType>;
+
+// Вычисляет тип AST выражения
 class TypeEvaluator : public IExpressionVisitor
 {
 public:
-	explicit TypeEvaluator(ScopeChain& scopes);
+	explicit TypeEvaluator(TypeScopeChain& scopes);
 	ASTExpressionType Evaluate(const IExpressionAST& expr);
 
 private:
-	void Visit(const IdentifierAST& identifier) override;
-	void Visit(const LiteralConstantAST& number) override;
-	void Visit(const BinaryExpressionAST& binary) override;
-	void Visit(const UnaryAST& unary) override;
+	void Visit(const IdentifierAST& node) override;
+	void Visit(const LiteralConstantAST& node) override;
+	void Visit(const BinaryExpressionAST& node) override;
+	void Visit(const UnaryAST& node) override;
 
 private:
 	std::vector<ASTExpressionType> m_stack;
-	ScopeChain& m_scopes;
+	TypeScopeChain& m_scopes;
 };
 
 // Проверяет AST на семантическую корректность
@@ -25,19 +27,17 @@ class SemanticsVerifier : public IStatementVisitor
 {
 public:
 	explicit SemanticsVerifier();
-	void VerifySemantics(const IStatementAST& statement);
+	void VerifySemantics(const IStatementAST& node);
 
 private:
-	void Visit(const IStatementAST& stmt);
-
-	void Visit(const VariableDeclarationAST& variableDeclaration) override;
-	void Visit(const AssignStatementAST& assignment) override;
-	void Visit(const ReturnStatementAST& returnStmt) override;
-	void Visit(const IfStatementAST& condition) override;
-	void Visit(const WhileStatementAST& whileStmt) override;
-	void Visit(const CompositeStatementAST& composite) override;
+	void Visit(const VariableDeclarationAST& node) override;
+	void Visit(const AssignStatementAST& node) override;
+	void Visit(const ReturnStatementAST& node) override;
+	void Visit(const IfStatementAST& node) override;
+	void Visit(const WhileStatementAST& node) override;
+	void Visit(const CompositeStatementAST& node) override;
 
 private:
-	std::unique_ptr<ScopeChain> m_scopes;
+	std::unique_ptr<TypeScopeChain> m_scopes;
 	std::unique_ptr<TypeEvaluator> m_evaluator;
 };

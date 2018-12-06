@@ -20,7 +20,8 @@ std::string ToString(BinaryExpressionAST::Operator operation)
 }
 }
 
-TypeEvaluator::TypeEvaluator(ScopeChain& scopes)
+// Type evaluator
+TypeEvaluator::TypeEvaluator(TypeScopeChain& scopes)
 	: m_scopes(scopes)
 {
 }
@@ -30,7 +31,7 @@ ASTExpressionType TypeEvaluator::Evaluate(const IExpressionAST& expr)
 	expr.Accept(*this);
 	if (!m_stack.empty())
 	{
-		const ASTExpressionType evaluated = m_stack[m_stack.size() - 1];
+		const ASTExpressionType evaluated = m_stack.back();
 		m_stack.pop_back();
 		return evaluated;
 	}
@@ -40,41 +41,41 @@ ASTExpressionType TypeEvaluator::Evaluate(const IExpressionAST& expr)
 	}
 }
 
-void TypeEvaluator::Visit(const IdentifierAST &identifier)
+void TypeEvaluator::Visit(const IdentifierAST& node)
 {
-	const std::string& name = identifier.GetName();
-	const Value* value = m_scopes.GetValue(name);
+	const std::string& name = node.GetName();
+	const auto type = m_scopes.GetValue(name);
 
-	if (!value)
+	if (!bool(type))
 	{
 		throw std::runtime_error("identifier '" + name + "' is undefined");
 	}
 
-	m_stack.push_back(value->GetExpressionType());
+	m_stack.push_back(*type);
 }
 
-void TypeEvaluator::Visit(const LiteralConstantAST& literal)
+void TypeEvaluator::Visit(const LiteralConstantAST& node)
 {
-	const LiteralConstantAST::Value& value = literal.GetValue();
+	const LiteralConstantAST::Value& value = node.GetValue();
 	if (value.type() == typeid(int))
 	{
 		m_stack.push_back(ASTExpressionType::Int);
 	}
-	else if (value.type() == typeid(float))
+	else if (value.type() == typeid(double))
 	{
 		m_stack.push_back(ASTExpressionType::Float);
 	}
 	else
 	{
 		assert(false);
-		throw std::logic_error("type evaluation error: undefined constant literal type");
+		throw std::logic_error("type evaluation error: undefined literal constant type");
 	}
 }
 
-void TypeEvaluator::Visit(const BinaryExpressionAST &binary)
+void TypeEvaluator::Visit(const BinaryExpressionAST& node)
 {
-	const ASTExpressionType left = Evaluate(binary.GetLeft());
-	const ASTExpressionType right = Evaluate(binary.GetRight());
+	const ASTExpressionType left = Evaluate(node.GetLeft());
+	const ASTExpressionType right = Evaluate(node.GetRight());
 
 	// '+', '-', '*', '/'
 	// float int
@@ -86,7 +87,7 @@ void TypeEvaluator::Visit(const BinaryExpressionAST &binary)
 	if (left != right)
 	{
 		auto fmt = boost::format("can't perform operator '%1%' on operands with types '%2%' and '%3%'")
-			% ToString(binary.GetOperator())
+			% ToString(node.GetOperator())
 			% ToString(left)
 			% ToString(right);
 		throw std::runtime_error(fmt.str());
@@ -95,103 +96,97 @@ void TypeEvaluator::Visit(const BinaryExpressionAST &binary)
 	m_stack.push_back(left);
 }
 
-void TypeEvaluator::Visit(const UnaryAST &unary)
+void TypeEvaluator::Visit(const UnaryAST& node)
 {
-	ASTExpressionType evaluatedType = Evaluate(unary.GetExpr());
+	ASTExpressionType evaluatedType = Evaluate(node.GetExpr());
 	if (evaluatedType == ASTExpressionType::String)
 	{
-		const std::string operation = unary.GetOperator() == UnaryAST::Plus ? "+" : "-";
+		const std::string operation = node.GetOperator() == UnaryAST::Plus ? "+" : "-";
 		throw std::runtime_error("can't perform unary operation '" + operation + "' on string");
 	}
 	m_stack.push_back(evaluatedType);
 }
 
-
+// Semantics verifier
 SemanticsVerifier::SemanticsVerifier()
-	: m_scopes(std::make_unique<ScopeChain>())
+	: m_scopes(std::make_unique<TypeScopeChain>())
 	, m_evaluator(std::make_unique<TypeEvaluator>(*m_scopes))
 {
 }
 
-void SemanticsVerifier::VerifySemantics(const IStatementAST &statement)
+void SemanticsVerifier::VerifySemantics(const IStatementAST& node)
 {
 	m_scopes->PushScope(); // global scope
-	Visit(statement);
+	node.Accept(*this);
 	m_scopes->PopScope();
 }
 
-void SemanticsVerifier::Visit(const IStatementAST &stmt)
+void SemanticsVerifier::Visit(const VariableDeclarationAST& node)
 {
-	stmt.Accept(*this);
-}
+	const std::string& name = node.GetIdentifier().GetName();
+	const ASTExpressionType type = node.GetType();
 
-void SemanticsVerifier::Visit(const VariableDeclarationAST &variableDeclaration)
-{
-	const Value* value = m_scopes->GetValue(variableDeclaration.GetIdentifier().GetName());
-	const std::string& name = variableDeclaration.GetIdentifier().GetName();
-	const ASTExpressionType type = variableDeclaration.GetType();
-
-	if (value)
+	const auto defined = m_scopes->GetValue(node.GetIdentifier().GetName());
+	if (bool(defined))
 	{
-		throw std::runtime_error("variable '" + name + "' is already defined as '" + ToString(type) + "'");
+		throw std::runtime_error("variable '" + name + "' is already defined as '" + ToString(*defined) + "'");
 	}
 
-	m_scopes->Define(
-		variableDeclaration.GetIdentifier().GetName(), Value(variableDeclaration.GetType())
-	);
+	m_scopes->Define(node.GetIdentifier().GetName(), node.GetType());
 }
 
-void SemanticsVerifier::Visit(const AssignStatementAST& assignment)
+void SemanticsVerifier::Visit(const AssignStatementAST& node)
 {
-	Value* value = m_scopes->GetValue(assignment.GetIdentifier().GetName());
-	const std::string& name = assignment.GetIdentifier().GetName();
+	const auto type = m_scopes->GetValue(node.GetIdentifier().GetName());
+	const std::string& name = node.GetIdentifier().GetName();
 
-	if (!value)
+	if (!bool(type))
 	{
 		throw std::runtime_error("variable '" + name + "' is not defined");
 	}
 
-	const ASTExpressionType evaluatedType = m_evaluator->Evaluate(assignment.GetExpr());
-	if (evaluatedType != value->GetExpressionType())
+	const ASTExpressionType evaluatedType = m_evaluator->Evaluate(node.GetExpr());
+	if (evaluatedType != type)
 	{
 		// Если тип вычисленного выражения может быть неявно преобразован в тип присваиваемой переменной
 		// то нужно выполнить это преобразование, иначе ошибка
 		// TODO: попытаться выполнить преобразование
-		auto fmt = boost::format("can't set expression of type '%1%' to variable '%2' of type '%3%'")
+		auto fmt = boost::format("can't set expression of type '%1%' to variable '%2%' of type '%3%'")
 			% ToString(evaluatedType)
 			% name
-			% ToString(value->GetExpressionType());
+			% ToString(*type);
 		throw std::runtime_error(fmt.str());
 	}
 
-	// TODO: set value
+	bool assigned = m_scopes->Assign(name, evaluatedType);
+	assert(assigned);
 }
 
-void SemanticsVerifier::Visit(const ReturnStatementAST &returnStmt)
+void SemanticsVerifier::Visit(const ReturnStatementAST& node)
 {
-	const ASTExpressionType evaluatedType = m_evaluator->Evaluate(returnStmt.GetExpr());
+	const ASTExpressionType evaluatedType = m_evaluator->Evaluate(node.GetExpr());
 	// TODO: check return value of function
 	(void)evaluatedType;
 }
 
-void SemanticsVerifier::Visit(const IfStatementAST &condition)
+void SemanticsVerifier::Visit(const IfStatementAST& node)
 {
-	const ASTExpressionType evaluatedType = m_evaluator->Evaluate(condition.GetExpr());
+	const ASTExpressionType evaluatedType = m_evaluator->Evaluate(node.GetExpr());
 	if (!ConvertibleToBool(evaluatedType))
 	{
 		throw std::runtime_error("expression in condition statement must be convertible to bool");
 	}
 
-	Visit(condition.GetThenStmt());
-	if (condition.GetElseStmt())
+	node.GetThenStmt().Accept(*this);
+	if (node.GetElseStmt())
 	{
-		Visit(*condition.GetElseStmt());
+		node.GetElseStmt()->Accept(*this);
 	}
 }
 
-void SemanticsVerifier::Visit(const WhileStatementAST& whileStmt)
+void SemanticsVerifier::Visit(const WhileStatementAST& node)
 {
-	const ASTExpressionType evaluatedType = m_evaluator->Evaluate(whileStmt.GetExpr());
+	const ASTExpressionType evaluatedType = m_evaluator->Evaluate(node.GetExpr());
 	if (!ConvertibleToBool(evaluatedType))
 	{
 		throw std::runtime_error("expression in while statement must be convertible to bool");
@@ -203,7 +198,7 @@ void SemanticsVerifier::Visit(const CompositeStatementAST& composite)
 	m_scopes->PushScope();
 	for (size_t i = 0; i < composite.GetCount(); ++i)
 	{
-		Visit(composite.GetStatement(i));
+		composite.GetStatement(i).Accept(*this);
 	}
 	m_scopes->PopScope();
 }

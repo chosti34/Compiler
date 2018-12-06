@@ -1,4 +1,8 @@
 {
 	var a: Int;
 	a = 3;
+	{
+		var b: Float;
+		b = 3.3;
+	}
 }

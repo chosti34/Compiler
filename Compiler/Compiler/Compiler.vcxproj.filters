@@ -24,13 +24,13 @@
     <ClInclude Include="SemanticsVerifier.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="VariablesScopeChain.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="CodegenVisitor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="WriteHelpers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ScopeChain.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
