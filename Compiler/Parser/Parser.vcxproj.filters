@@ -30,6 +30,9 @@
     <ClInclude Include="LLParser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="LLParserFwd.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">

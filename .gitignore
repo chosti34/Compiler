@@ -339,3 +339,5 @@ ASALocalRun/
 # MacOS specific files
 .DS_Store
 
+# LLVM-IR compiler output file
+output.ll

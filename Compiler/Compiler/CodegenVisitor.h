@@ -14,9 +14,9 @@
 
 #include <vector>
 
-struct LLVMCodegen
+struct CodegenUtils
 {
-	explicit LLVMCodegen();
+	explicit CodegenUtils();
 	llvm::LLVMContext context;
 	llvm::IRBuilder<> builder;
 	llvm::Module module;
@@ -25,7 +25,7 @@ struct LLVMCodegen
 class ExpressionCodegen : public IExpressionVisitor
 {
 public:
-	explicit ExpressionCodegen(LLVMCodegen& llvmCodegen);
+	explicit ExpressionCodegen(CodegenUtils& utils);
 
 	void CodegenFuncReturningExpression(const IExpressionAST& node);
 
@@ -36,7 +36,7 @@ private:
 	void Visit(const IdentifierAST& node) override;
 
 private:
-	LLVMCodegen & m_llvmCodegen;
+	CodegenUtils& m_utils;
 	std::vector<llvm::Value*> m_stack;
 };
 
@@ -44,8 +44,7 @@ class StatementCodegen : public IStatementVisitor
 {
 public:
 	explicit StatementCodegen();
-	void Codegen(const IStatementAST& node);
-	void Run(const IExpressionAST& node);
+	void Generate(const IStatementAST& node, std::ostream& out);
 
 private:
 	void Visit(const VariableDeclarationAST& node) override;
@@ -56,6 +55,6 @@ private:
 	void Visit(const CompositeStatementAST& node) override;
 
 private:
-	LLVMCodegen m_llvmCodegen;
+	CodegenUtils m_utils;
 	ExpressionCodegen m_expressionCodegen;
 };
