@@ -21,13 +21,13 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="LLVMCodeGenerator.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="SemanticsVerifier.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="VariablesScopeChain.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CodegenVisitor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -38,10 +38,10 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="LLVMCodeGenerator.cpp">
+    <ClCompile Include="SemanticsVerifier.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SemanticsVerifier.cpp">
+    <ClCompile Include="CodegenVisitor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
