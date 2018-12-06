@@ -179,7 +179,7 @@ public:
 	void OnFloatConstantParse()
 	{
 		assert(m_token.type == Token::FloatConstant);
-		m_expressions.push_back(std::make_unique<LiteralConstantAST>(std::stof(*m_token.value)));
+		m_expressions.push_back(std::make_unique<LiteralConstantAST>(std::stod(*m_token.value)));
 	}
 
 	void OnUnaryMinusParse()
@@ -222,7 +222,7 @@ LLParser::LLParser(std::unique_ptr<ILexer> && lexer, std::unique_ptr<LLParserTab
 {
 }
 
-std::unique_ptr<IExpressionAST> LLParser::Parse(const std::string& text)
+std::unique_ptr<IStatementAST> LLParser::Parse(const std::string& text)
 {
 	m_lexer->SetText(text);
 	Token token = m_lexer->GetNextToken();
@@ -286,7 +286,7 @@ std::unique_ptr<IExpressionAST> LLParser::Parse(const std::string& text)
 		if (state->isEnding)
 		{
 			assert(addresses.empty());
-			return astBuilder.PopBuiltExpression();
+			return astBuilder.PopBuiltStatement();
 		}
 		if (state->doPush)
 		{

@@ -46,8 +46,8 @@ private:
 class LiteralConstantAST : public IExpressionAST
 {
 public:
-	// TODO: add string literal
-	using Value = boost::variant<int, float>;
+	// TODO: add bool, string literal
+	using Value = boost::variant<int, double>;
 
 	explicit LiteralConstantAST(const Value& value);
 	const Value& GetValue()const;
