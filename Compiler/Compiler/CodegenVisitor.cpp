@@ -208,7 +208,7 @@ void StatementCodegen::Codegen(const IStatementAST& node)
 	node.Accept(*this);
 }
 
-void StatementCodegen::Run(const IExpressionAST & node)
+void StatementCodegen::Run(const IExpressionAST& node)
 {
 	m_expressionCodegen.CodegenFuncReturningExpression(node);
 
@@ -221,27 +221,33 @@ void StatementCodegen::Visit(const VariableDeclarationAST& node)
 	(void)node;
 }
 
-void StatementCodegen::Visit(const ReturnStatementAST& node)
-{
-	(void)node;
-}
-
 void StatementCodegen::Visit(const AssignStatementAST& node)
 {
 	(void)node;
 }
 
+void StatementCodegen::Visit(const ReturnStatementAST& node)
+{
+	(void)node;
+	throw std::logic_error("code generation for return statement is not implemented");
+}
+
 void StatementCodegen::Visit(const IfStatementAST& node)
 {
 	(void)node;
+	throw std::logic_error("code generation for if statement is not implemented");
 }
 
 void StatementCodegen::Visit(const WhileStatementAST& node)
 {
 	(void)node;
+	throw std::logic_error("code generation for while statement is not implemented");
 }
 
 void StatementCodegen::Visit(const CompositeStatementAST& node)
 {
-	(void)node;
+	for (size_t i = 0; i < node.GetCount(); ++i)
+	{
+		node.GetStatement(i).Accept(*this);
+	}
 }
