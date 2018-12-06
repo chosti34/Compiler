@@ -116,9 +116,7 @@ SemanticsVerifier::SemanticsVerifier()
 
 void SemanticsVerifier::VerifySemantics(const IStatementAST& node)
 {
-	m_scopes->PushScope(); // global scope
 	node.Accept(*this);
-	m_scopes->PopScope();
 }
 
 void SemanticsVerifier::Visit(const VariableDeclarationAST& node)
@@ -201,4 +199,13 @@ void SemanticsVerifier::Visit(const CompositeStatementAST& composite)
 		composite.GetStatement(i).Accept(*this);
 	}
 	m_scopes->PopScope();
+}
+
+void SemanticsVerifier::Visit(const PrintAST& node)
+{
+	const ASTExpressionType type = m_evaluator->Evaluate(node.GetExpression());
+	if (type == ASTExpressionType::Bool || type == ASTExpressionType::String)
+	{
+		throw std::runtime_error("booleans and strings can't be printed out yet");
+	}
 }

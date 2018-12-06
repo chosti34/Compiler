@@ -36,6 +36,7 @@ private:
 	void Visit(const IfStatementAST& node) override;
 	void Visit(const WhileStatementAST& node) override;
 	void Visit(const CompositeStatementAST& node) override;
+	void Visit(const PrintAST& node) override;
 
 private:
 	std::unique_ptr<TypeScopeChain> m_scopes;

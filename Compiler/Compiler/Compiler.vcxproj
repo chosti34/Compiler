@@ -151,6 +151,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="CodegenContext.h" />
     <ClInclude Include="CodegenVisitor.h" />
     <ClInclude Include="SemanticsVerifier.h" />
     <ClInclude Include="stdafx.h" />
@@ -159,6 +160,7 @@
     <ClInclude Include="WriteHelpers.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CodegenContext.cpp" />
     <ClCompile Include="CodegenVisitor.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="SemanticsVerifier.cpp" />

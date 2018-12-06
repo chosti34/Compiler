@@ -10,7 +10,7 @@ struct Token
 		EndOfFile,
 
 		// Keyword
-		Func, Int, Float, Bool, Array, If,
+		Func, Int, Float, Bool, Array, If, Print,
 		Else, While, Var, Return, True, False,
 
 		// Mutable

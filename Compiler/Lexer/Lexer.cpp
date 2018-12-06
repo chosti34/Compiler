@@ -10,6 +10,7 @@ const std::unordered_map<std::string, Token::Type> gcKeywords = {
 	{ "Bool", Token::Bool },
 	{ "Array", Token::Array },
 	{ "if", Token::If },
+	{ "print", Token::Print },
 	{ "else", Token::Else },
 	{ "while", Token::While },
 	{ "var", Token::Var },

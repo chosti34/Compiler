@@ -244,3 +244,18 @@ void ProgramAST::AddFunction(std::unique_ptr<FunctionAST> && function)
 {
 	m_functions.push_back(std::move(function));
 }
+
+PrintAST::PrintAST(std::unique_ptr<IExpressionAST>&& expression)
+	: m_expression(std::move(expression))
+{
+}
+
+const IExpressionAST& PrintAST::GetExpression()const
+{
+	return *m_expression;
+}
+
+void PrintAST::Accept(IStatementVisitor& visitor)const
+{
+	visitor.Visit(*this);
+}

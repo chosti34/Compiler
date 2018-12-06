@@ -21,6 +21,7 @@ class ReturnStatementAST;
 class IfStatementAST;
 class WhileStatementAST;
 class CompositeStatementAST;
+class PrintAST;
 
 class IStatementVisitor
 {
@@ -32,4 +33,5 @@ public:
 	virtual void Visit(const IfStatementAST& node) = 0;
 	virtual void Visit(const WhileStatementAST& node) = 0;
 	virtual void Visit(const CompositeStatementAST& node) = 0;
+	virtual void Visit(const PrintAST& node) = 0;
 };

@@ -193,6 +193,18 @@ private:
 	std::vector<std::unique_ptr<IStatementAST>> m_statements;
 };
 
+class PrintAST : public IStatementAST
+{
+public:
+	explicit PrintAST(std::unique_ptr<IExpressionAST> && expression);
+	const IExpressionAST& GetExpression()const;
+
+	void Accept(IStatementVisitor& visitor)const override;
+
+private:
+	std::unique_ptr<IExpressionAST> m_expression;
+};
+
 class FunctionAST
 {
 public:

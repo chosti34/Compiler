@@ -144,6 +144,11 @@ public:
 		m_compositeCache.back().push_back(Pop(m_statements));
 	}
 
+	void OnPrintStatementParse()
+	{
+		m_statements.push_back(std::make_unique<PrintAST>(Pop(m_expressions)));
+	}
+
 	void OnBinaryPlusParse()
 	{
 		OnBinaryExpr(BinaryExpressionAST::Plus);
@@ -241,6 +246,7 @@ std::unique_ptr<IStatementAST> LLParser::Parse(const std::string& text)
 		{ "OnCompositeStatementBeginParse", std::bind(&ASTBuilder::OnCompositeStatementBeginParse, &astBuilder) },
 		{ "OnCompositeStatementParse", std::bind(&ASTBuilder::OnCompositeStatementParse, &astBuilder) },
 		{ "OnCompositeStatementPartParse", std::bind(&ASTBuilder::OnCompositeStatementPartParse, &astBuilder) },
+		{ "OnPrintStatementParse", std::bind(&ASTBuilder::OnPrintStatementParse, &astBuilder) },
 		{ "OnIntegerTypeParse", std::bind(&ASTBuilder::OnIntegerTypeParse, &astBuilder) },
 		{ "OnFloatTypeParse", std::bind(&ASTBuilder::OnFloatTypeParse, &astBuilder) },
 		{ "OnBoolTypeParse", std::bind(&ASTBuilder::OnBoolTypeParse, &astBuilder) },
