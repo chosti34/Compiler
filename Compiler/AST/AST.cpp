@@ -245,15 +245,56 @@ void CompositeStatementAST::Accept(IStatementVisitor& visitor)const
 }
 
 // Function node
-FunctionAST::FunctionAST(std::unique_ptr<IStatementAST> && stmt)
-	: m_stmt(std::move(stmt))
+FunctionAST::FunctionAST(
+	ASTExpressionType returnType,
+	std::unique_ptr<IdentifierAST> && identifier,
+	std::vector<Parameter> && params,
+	std::unique_ptr<IStatementAST> && stmt)
+	: m_returnType(returnType)
+	, m_identifier(std::move(identifier))
+	, m_params(std::move(params))
+	, m_stmt(std::move(stmt))
 {
+}
+
+ASTExpressionType FunctionAST::GetReturnType()const
+{
+	return m_returnType;
+}
+
+const IdentifierAST& FunctionAST::GetIdentifier()const
+{
+	return *m_identifier;
+}
+
+const std::vector<FunctionAST::Parameter>& FunctionAST::GetParamList()const
+{
+	return m_params;
+}
+
+const IStatementAST& FunctionAST::GetStatement()const
+{
+	return *m_stmt;
 }
 
 // Program node (root)
 void ProgramAST::AddFunction(std::unique_ptr<FunctionAST> && function)
 {
 	m_functions.push_back(std::move(function));
+}
+
+size_t ProgramAST::GetFunctionsCount()const
+{
+	return m_functions.size();
+}
+
+const FunctionAST& ProgramAST::GetFunction(size_t index)const
+{
+	if (index >= m_functions.size())
+	{
+		throw std::invalid_argument("index must be less than functions count");
+	}
+	return *m_functions[index];
 }
 
 PrintAST::PrintAST(std::unique_ptr<IExpressionAST>&& expression)

@@ -1,3 +1,4 @@
+func main(argc: Int) -> Int:
 {
 	var a: Int = 12;
 	print a;
@@ -8,3 +9,6 @@
 
 	print a - b;
 }
+
+func foo(unused1: Float, unused2: Float, unused3: Int) -> Float:
+	return 0.0;

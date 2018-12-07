@@ -38,37 +38,70 @@ public:
 	{
 	}
 
-	std::unique_ptr<IExpressionAST> PopBuiltExpression()
+	std::unique_ptr<ProgramAST> BuildProgramAST()
 	{
-		assert(m_expressions.size() == 1);
-		return std::move(Pop(m_expressions));
+		auto program = std::make_unique<ProgramAST>();
+		for (auto& func : m_functions)
+		{
+			program->AddFunction(std::move(func));
+		}
+		return program;
 	}
 
-	std::unique_ptr<IStatementAST> PopBuiltStatement()
+	void OnFunctionParsed()
 	{
-		assert(m_statements.size() == 1);
-		return std::move(Pop(m_statements));
+		assert(!m_statements.empty());
+		assert(!m_expressions.empty());
+		assert(!m_types.empty());
+
+		auto statement = Pop(m_statements);
+		auto identifier = DowncastUniquePtr<IdentifierAST>(Pop(m_expressions));
+		assert(identifier);
+
+		auto type = Pop(m_types);
+		auto params = std::move(m_funcParams);
+		m_funcParams.clear();
+
+		m_functions.push_back(
+			std::make_unique<FunctionAST>(
+				type, std::move(identifier), std::move(params), std::move(statement)));
 	}
 
-	void OnIntegerTypeParse()
+	void OnFunctionParamParsed()
+	{
+		assert(!m_expressions.empty());
+		assert(!m_types.empty());
+
+		// Достаем распарсенный идентификатор из стека (если выражение из стека имеет тип не идентификатора, то внутренняя ошибка)
+		auto identifier = DowncastUniquePtr<IdentifierAST>(Pop(m_expressions));
+		assert(identifier);
+
+		FunctionAST::Parameter param;
+		param.first = identifier->GetName();
+		param.second = Pop(m_types);
+
+		m_funcParams.push_back(param);
+	}
+
+	void OnIntegerTypeParsed()
 	{
 		assert(m_token.type == Token::Int);
 		m_types.push_back(ASTExpressionType::Int);
 	}
 
-	void OnFloatTypeParse()
+	void OnFloatTypeParsed()
 	{
 		assert(m_token.type == Token::Float);
 		m_types.push_back(ASTExpressionType::Float);
 	}
 
-	void OnBoolTypeParse()
+	void OnBoolTypeParsed()
 	{
 		assert(m_token.type == Token::Bool);
 		m_types.push_back(ASTExpressionType::Bool);
 	}
 
-	void OnIfStatementParse()
+	void OnIfStatementParsed()
 	{
 		assert(!m_expressions.empty());
 		assert(!m_statements.empty());
@@ -77,7 +110,7 @@ public:
 		m_statements.push_back(std::make_unique<IfStatementAST>(std::move(expr), std::move(then)));
 	}
 
-	void OnOptionalElseClauseParse()
+	void OnOptionalElseClauseParsed()
 	{
 		assert(m_statements.size() >= 2);
 		auto stmt = Pop(m_statements);
@@ -86,7 +119,7 @@ public:
 		m_statements.push_back(std::move(ifStmt));
 	}
 
-	void OnWhileLoopParse()
+	void OnWhileLoopParsed()
 	{
 		assert(!m_expressions.empty());
 		assert(!m_statements.empty());
@@ -96,7 +129,7 @@ public:
 			std::move(expr), std::move(stmt)));
 	}
 
-	void OnVariableDeclarationParse()
+	void OnVariableDeclarationParsed()
 	{
 		// Если при вызове этой функции не были распарсены тип и идентификатор, то внутренняя ошибка
 		assert(!m_expressions.empty());
@@ -128,7 +161,7 @@ public:
 		m_expressionsCache.push_back(std::move(Pop(m_expressions)));
 	}
 
-	void OnAssignStatementParse()
+	void OnAssignStatementParsed()
 	{
 		assert(m_expressions.size() >= 2);
 		auto expr = Pop(m_expressions);
@@ -138,18 +171,18 @@ public:
 			std::move(identifier), std::move(expr)));
 	}
 
-	void OnReturnStatementParse()
+	void OnReturnStatementParsed()
 	{
 		assert(!m_expressions.empty());
 		m_statements.push_back(std::make_unique<ReturnStatementAST>(Pop(m_expressions)));
 	}
 
-	void OnCompositeStatementBeginParse()
+	void OnCompositeStatementBeginParsed()
 	{
 		m_compositeCache.emplace_back();
 	}
 
-	void OnCompositeStatementParse()
+	void OnCompositeStatementParsed()
 	{
 		auto composite = std::make_unique<CompositeStatementAST>();
 		for (auto& stmt : m_compositeCache.back())
@@ -160,63 +193,63 @@ public:
 		m_statements.push_back(std::move(composite));
 	}
 
-	void OnCompositeStatementPartParse()
+	void OnCompositeStatementPartParsed()
 	{
 		assert(!m_statements.empty());
 		m_compositeCache.back().push_back(Pop(m_statements));
 	}
 
-	void OnPrintStatementParse()
+	void OnPrintStatementParsed()
 	{
 		m_statements.push_back(std::make_unique<PrintAST>(Pop(m_expressions)));
 	}
 
-	void OnBinaryPlusParse()
+	void OnBinaryPlusParsed()
 	{
-		OnBinaryExpr(BinaryExpressionAST::Plus);
+		OnBinaryExprParsedHelper(BinaryExpressionAST::Plus);
 	}
 
-	void OnBinaryMinusParse()
+	void OnBinaryMinusParsed()
 	{
-		OnBinaryExpr(BinaryExpressionAST::Minus);
+		OnBinaryExprParsedHelper(BinaryExpressionAST::Minus);
 	}
 
-	void OnBinaryMulParse()
+	void OnBinaryMulParsed()
 	{
-		OnBinaryExpr(BinaryExpressionAST::Mul);
+		OnBinaryExprParsedHelper(BinaryExpressionAST::Mul);
 	}
 
-	void OnBinaryDivParse()
+	void OnBinaryDivParsed()
 	{
-		OnBinaryExpr(BinaryExpressionAST::Div);
+		OnBinaryExprParsedHelper(BinaryExpressionAST::Div);
 	}
 
-	void OnIdentifierParse()
+	void OnIdentifierParsed()
 	{
 		assert(m_token.type == Token::Identifier);
 		m_expressions.push_back(std::make_unique<IdentifierAST>(*m_token.value));
 	}
 
-	void OnIntegerConstantParse()
+	void OnIntegerConstantParsed()
 	{
 		assert(m_token.type == Token::IntegerConstant);
 		m_expressions.push_back(std::make_unique<LiteralConstantAST>(std::stoi(*m_token.value)));
 	}
 
-	void OnFloatConstantParse()
+	void OnFloatConstantParsed()
 	{
 		assert(m_token.type == Token::FloatConstant);
 		m_expressions.push_back(std::make_unique<LiteralConstantAST>(std::stod(*m_token.value)));
 	}
 
-	void OnUnaryMinusParse()
+	void OnUnaryMinusParsed()
 	{
 		auto node = std::move(m_expressions.back()); m_expressions.pop_back();
 		m_expressions.push_back(std::make_unique<UnaryAST>(std::move(node), UnaryAST::Minus));
 	}
 
 private:
-	void OnBinaryExpr(BinaryExpressionAST::Operator op)
+	void OnBinaryExprParsedHelper(BinaryExpressionAST::Operator op)
 	{
 		auto right = Pop(m_expressions);
 		auto left = Pop(m_expressions);
@@ -232,6 +265,9 @@ private:
 	// Стек для временного хранения считанных типов
 	std::vector<ASTExpressionType> m_types;
 
+	// Стек для временного хранения считанных параметров функции
+	std::vector<FunctionAST::Parameter> m_funcParams;
+
 	// Стек для постепенного создания AST выражений
 	std::vector<std::unique_ptr<IExpressionAST>> m_expressions;
 
@@ -243,6 +279,9 @@ private:
 
 	// Стек для временного хранения узлов AST вложенных инструкций
 	std::vector<std::vector<std::unique_ptr<IStatementAST>>> m_compositeCache;
+
+	// Стек для хранения AST функций
+	std::vector<std::unique_ptr<FunctionAST>> m_functions;
 };
 }
 
@@ -252,7 +291,7 @@ LLParser::LLParser(std::unique_ptr<ILexer> && lexer, std::unique_ptr<LLParserTab
 {
 }
 
-std::unique_ptr<IStatementAST> LLParser::Parse(const std::string& text)
+std::unique_ptr<ProgramAST> LLParser::Parse(const std::string& text)
 {
 	m_lexer->SetText(text);
 	Token token = m_lexer->GetNextToken();
@@ -262,28 +301,30 @@ std::unique_ptr<IStatementAST> LLParser::Parse(const std::string& text)
 
 	ASTBuilder astBuilder(token);
 	std::unordered_map<std::string, std::function<void()>> actions = {
-		{ "OnIfStatementParsed", std::bind(&ASTBuilder::OnIfStatementParse, &astBuilder) },
-		{ "OnOptionalElseClauseParsed", std::bind(&ASTBuilder::OnOptionalElseClauseParse, &astBuilder) },
-		{ "OnWhileLoopParsed", std::bind(&ASTBuilder::OnWhileLoopParse, &astBuilder) },
-		{ "OnVariableDeclarationParsed", std::bind(&ASTBuilder::OnVariableDeclarationParse, &astBuilder) },
+		{ "OnFunctionParsed", std::bind(&ASTBuilder::OnFunctionParsed, &astBuilder) },
+		{ "OnFunctionParamParsed", std::bind(&ASTBuilder::OnFunctionParamParsed, &astBuilder) },
+		{ "OnIfStatementParsed", std::bind(&ASTBuilder::OnIfStatementParsed, &astBuilder) },
+		{ "OnOptionalElseClauseParsed", std::bind(&ASTBuilder::OnOptionalElseClauseParsed, &astBuilder) },
+		{ "OnWhileLoopParsed", std::bind(&ASTBuilder::OnWhileLoopParsed, &astBuilder) },
+		{ "OnVariableDeclarationParsed", std::bind(&ASTBuilder::OnVariableDeclarationParsed, &astBuilder) },
 		{ "OnOptionalAssignParsed", std::bind(&ASTBuilder::OnOptionalAssignParsed, &astBuilder) },
-		{ "OnAssignStatementParsed", std::bind(&ASTBuilder::OnAssignStatementParse, &astBuilder) },
-		{ "OnReturnStatementParsed", std::bind(&ASTBuilder::OnReturnStatementParse, &astBuilder) },
-		{ "OnCompositeStatementBeginParsed", std::bind(&ASTBuilder::OnCompositeStatementBeginParse, &astBuilder) },
-		{ "OnCompositeStatementParsed", std::bind(&ASTBuilder::OnCompositeStatementParse, &astBuilder) },
-		{ "OnCompositeStatementPartParsed", std::bind(&ASTBuilder::OnCompositeStatementPartParse, &astBuilder) },
-		{ "OnPrintStatementParsed", std::bind(&ASTBuilder::OnPrintStatementParse, &astBuilder) },
-		{ "OnIntegerTypeParsed", std::bind(&ASTBuilder::OnIntegerTypeParse, &astBuilder) },
-		{ "OnFloatTypeParsed", std::bind(&ASTBuilder::OnFloatTypeParse, &astBuilder) },
-		{ "OnBoolTypeParsed", std::bind(&ASTBuilder::OnBoolTypeParse, &astBuilder) },
-		{ "OnBinaryPlusParsed", std::bind(&ASTBuilder::OnBinaryPlusParse, &astBuilder) },
-		{ "OnBinaryMinusParsed", std::bind(&ASTBuilder::OnBinaryMinusParse, &astBuilder) },
-		{ "OnBinaryMulParsed", std::bind(&ASTBuilder::OnBinaryMulParse, &astBuilder) },
-		{ "OnBinaryDivParsed", std::bind(&ASTBuilder::OnBinaryDivParse, &astBuilder) },
-		{ "OnIdentifierParsed", std::bind(&ASTBuilder::OnIdentifierParse, &astBuilder) },
-		{ "OnIntegerConstantParsed", std::bind(&ASTBuilder::OnIntegerConstantParse, &astBuilder) },
-		{ "OnFloatConstantParsed", std::bind(&ASTBuilder::OnFloatConstantParse, &astBuilder) },
-		{ "OnUnaryMinusParsed", std::bind(&ASTBuilder::OnUnaryMinusParse, &astBuilder) },
+		{ "OnAssignStatementParsed", std::bind(&ASTBuilder::OnAssignStatementParsed, &astBuilder) },
+		{ "OnReturnStatementParsed", std::bind(&ASTBuilder::OnReturnStatementParsed, &astBuilder) },
+		{ "OnCompositeStatementBeginParsed", std::bind(&ASTBuilder::OnCompositeStatementBeginParsed, &astBuilder) },
+		{ "OnCompositeStatementParsed", std::bind(&ASTBuilder::OnCompositeStatementParsed, &astBuilder) },
+		{ "OnCompositeStatementPartParsed", std::bind(&ASTBuilder::OnCompositeStatementPartParsed, &astBuilder) },
+		{ "OnPrintStatementParsed", std::bind(&ASTBuilder::OnPrintStatementParsed, &astBuilder) },
+		{ "OnIntegerTypeParsed", std::bind(&ASTBuilder::OnIntegerTypeParsed, &astBuilder) },
+		{ "OnFloatTypeParsed", std::bind(&ASTBuilder::OnFloatTypeParsed, &astBuilder) },
+		{ "OnBoolTypeParsed", std::bind(&ASTBuilder::OnBoolTypeParsed, &astBuilder) },
+		{ "OnBinaryPlusParsed", std::bind(&ASTBuilder::OnBinaryPlusParsed, &astBuilder) },
+		{ "OnBinaryMinusParsed", std::bind(&ASTBuilder::OnBinaryMinusParsed, &astBuilder) },
+		{ "OnBinaryMulParsed", std::bind(&ASTBuilder::OnBinaryMulParsed, &astBuilder) },
+		{ "OnBinaryDivParsed", std::bind(&ASTBuilder::OnBinaryDivParsed, &astBuilder) },
+		{ "OnIdentifierParsed", std::bind(&ASTBuilder::OnIdentifierParsed, &astBuilder) },
+		{ "OnIntegerConstantParsed", std::bind(&ASTBuilder::OnIntegerConstantParsed, &astBuilder) },
+		{ "OnFloatConstantParsed", std::bind(&ASTBuilder::OnFloatConstantParsed, &astBuilder) },
+		{ "OnUnaryMinusParsed", std::bind(&ASTBuilder::OnUnaryMinusParsed, &astBuilder) },
 	};
 
 	while (true)
@@ -318,7 +359,7 @@ std::unique_ptr<IStatementAST> LLParser::Parse(const std::string& text)
 		if (state->isEnding)
 		{
 			assert(addresses.empty());
-			return astBuilder.PopBuiltStatement();
+			return astBuilder.BuildProgramAST();
 		}
 		if (state->doPush)
 		{

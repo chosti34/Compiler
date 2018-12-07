@@ -212,9 +212,23 @@ private:
 class FunctionAST
 {
 public:
-	explicit FunctionAST(std::unique_ptr<IStatementAST> && stmt);
+	using Parameter = std::pair<std::string, ASTExpressionType>;
+
+	explicit FunctionAST(
+		ASTExpressionType returnType,
+		std::unique_ptr<IdentifierAST> && identifier,
+		std::vector<Parameter> && params,
+		std::unique_ptr<IStatementAST> && stmt);
+
+	ASTExpressionType GetReturnType()const;
+	const IdentifierAST& GetIdentifier()const;
+	const std::vector<Parameter>& GetParamList()const;
+	const IStatementAST& GetStatement()const;
 
 private:
+	ASTExpressionType m_returnType;
+	std::vector<Parameter> m_params;
+	std::unique_ptr<IdentifierAST> m_identifier;
 	std::unique_ptr<IStatementAST> m_stmt;
 };
 
@@ -222,6 +236,9 @@ class ProgramAST
 {
 public:
 	void AddFunction(std::unique_ptr<FunctionAST> && function);
+
+	size_t GetFunctionsCount()const;
+	const FunctionAST& GetFunction(size_t index)const;
 
 private:
 	std::vector<std::unique_ptr<FunctionAST>> m_functions;
