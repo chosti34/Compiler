@@ -52,3 +52,13 @@
 <AtomExpr>       -> LeftParenthesis <Expression> RightParenthesis
 <AtomExpr>       -> Minus <AtomExpr> {OnUnaryMinusParse}
 ```
+### Пример кода на языке
+```
+func sqr(n: Float) -> Float: return n * n;
+
+func main() -> Int:
+{
+    print sqr(3.0); // Должно напечатать 9.0
+    return 0;
+}
+```
