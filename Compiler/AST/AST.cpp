@@ -90,7 +90,18 @@ void IdentifierAST::Accept(IExpressionVisitor& visitor)const
 VariableDeclarationAST::VariableDeclarationAST(std::unique_ptr<IdentifierAST> && identifier, ASTExpressionType type)
 	: m_identifier(std::move(identifier))
 	, m_type(type)
+	, m_expr(nullptr)
 {
+}
+
+void VariableDeclarationAST::SetExpression(std::unique_ptr<IExpressionAST> && expr)
+{
+	m_expr = std::move(expr);
+}
+
+const IExpressionAST* VariableDeclarationAST::GetExpression()const
+{
+	return m_expr.get();
 }
 
 const IdentifierAST& VariableDeclarationAST::GetIdentifier()const

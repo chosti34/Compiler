@@ -35,6 +35,24 @@ llvm::Value* EmitDefaultValue(ASTExpressionType type, CodegenUtils& utils)
 		throw std::logic_error("can't emit code for undefined ast expression type");
 	}
 }
+
+class ContextScopeHelper
+{
+public:
+	explicit ContextScopeHelper(CodegenContext& context)
+		: m_context(context)
+	{
+		m_context.PushScope();
+	}
+
+	~ContextScopeHelper()
+	{
+		m_context.PopScope();
+	}
+
+private:
+	CodegenContext& m_context;
+};
 }
 
 // Expression codegen visitor
@@ -44,60 +62,61 @@ ExpressionCodegen::ExpressionCodegen(CodegenContext& context)
 {
 }
 
-void ExpressionCodegen::CodegenFuncReturningExpression(const IExpressionAST& node)
-{
-	CodegenUtils& utils = m_context.GetUtils();
-
-	node.Accept(*this);
-	llvm::Value* value = m_stack.back();
-	m_stack.pop_back();
-
-	// Создаем тип функции
-	llvm::FunctionType* fnType = fnType = llvm::FunctionType::get(
-		llvm::Type::getInt32Ty(utils.context), llvm::ArrayRef<llvm::Type*>(), false);
-
-	// Создаем функцию main
-	llvm::Function* fn = llvm::Function::Create(
-		fnType, llvm::Function::InternalLinkage, "main", &utils.module);
-
-	// Создаем базовый блок для функции, куда будет вставлен следующий код
-	llvm::BasicBlock* bb = llvm::BasicBlock::Create(utils.context, "entry", fn);
-	utils.builder.SetInsertPoint(bb);
-
-	// Создаем функцию printf
-	// 1. Создаем вектор типов аргументов, которая принимает функция printf
-	std::vector<llvm::Type*> printfProtoArgsTypes;
-	printfProtoArgsTypes.push_back(utils.builder.getInt8Ty()->getPointerTo());
-
-	// 2. Создаем тип функции (возвращает int32, принимаем указатель на int8, переменное число аргументов)
-	llvm::FunctionType *printfType = llvm::FunctionType::get(
-		utils.builder.getInt32Ty(), printfProtoArgsTypes, true);
-
-	// 3. Создаем саму функцию
-	llvm::Constant* printfFunc = utils.module.getOrInsertFunction("printf", printfType);
-
-	// 4. В зависимости от типа вычисленного значения, формируем входные данные для функции
-	const std::string fmt = value->getType()->isFloatingPointTy() ? "%f\n" : "%d\n";
-
-	// 5. Генерируем код вызова созданного printf'а
-	llvm::ArrayRef<llvm::Value*> printfArgs = { 
-		EmitStringLiteral(utils.context, utils.module, fmt),
-		value
-	};
-	utils.builder.CreateCall(printfFunc, printfArgs);
-
-	// 6. Генерируем код для инструкции возврата со значением 0
-	llvm::Value* exitCode = llvm::ConstantInt::get(
-		utils.context, llvm::APInt(32, uint64_t(0), true));
-	utils.builder.CreateRet(exitCode);
-
-	// 7. Верифицируем функцию
-	if (llvm::verifyFunction(*fn))
-	{
-		fn->eraseFromParent();
-		throw std::runtime_error("error while generating code for main function");
-	}
-}
+//void ExpressionCodegen::CodegenFuncReturningExpression(const IExpressionAST& node)
+//{
+//	CodegenUtils& utils = m_context.GetUtils();
+//	ContextScopeHelper helper(m_context);
+//
+//	node.Accept(*this);
+//	llvm::Value* value = m_stack.back();
+//	m_stack.pop_back();
+//
+//	// Создаем тип функции
+//	llvm::FunctionType* fnType = fnType = llvm::FunctionType::get(
+//		llvm::Type::getInt32Ty(utils.context), llvm::ArrayRef<llvm::Type*>(), false);
+//
+//	// Создаем функцию main
+//	llvm::Function* fn = llvm::Function::Create(
+//		fnType, llvm::Function::InternalLinkage, "main", &utils.module);
+//
+//	// Создаем базовый блок для функции, куда будет вставлен следующий код
+//	llvm::BasicBlock* bb = llvm::BasicBlock::Create(utils.context, "entry", fn);
+//	utils.builder.SetInsertPoint(bb);
+//
+//	// Создаем функцию printf
+//	// 1. Создаем вектор типов аргументов, которая принимает функция printf
+//	std::vector<llvm::Type*> printfProtoArgsTypes;
+//	printfProtoArgsTypes.push_back(utils.builder.getInt8Ty()->getPointerTo());
+//
+//	// 2. Создаем тип функции (возвращает int32, принимаем указатель на int8, переменное число аргументов)
+//	llvm::FunctionType *printfType = llvm::FunctionType::get(
+//		utils.builder.getInt32Ty(), printfProtoArgsTypes, true);
+//
+//	// 3. Создаем саму функцию
+//	llvm::Constant* printfFunc = utils.module.getOrInsertFunction("printf", printfType);
+//
+//	// 4. В зависимости от типа вычисленного значения, формируем входные данные для функции
+//	const std::string fmt = value->getType()->isFloatingPointTy() ? "%f\n" : "%d\n";
+//
+//	// 5. Генерируем код вызова созданного printf'а
+//	llvm::ArrayRef<llvm::Value*> printfArgs = { 
+//		EmitStringLiteral(utils.context, utils.module, fmt),
+//		value
+//	};
+//	utils.builder.CreateCall(printfFunc, printfArgs);
+//
+//	// 6. Генерируем код для инструкции возврата со значением 0
+//	llvm::Value* exitCode = llvm::ConstantInt::get(
+//		utils.context, llvm::APInt(32, uint64_t(0), true));
+//	utils.builder.CreateRet(exitCode);
+//
+//	// 7. Верифицируем функцию
+//	if (llvm::verifyFunction(*fn))
+//	{
+//		fn->eraseFromParent();
+//		throw std::runtime_error("error while generating code for main function");
+//	}
+//}
 
 llvm::Value* ExpressionCodegen::Visit(const IExpressionAST& node)
 {
@@ -239,6 +258,7 @@ StatementCodegen::StatementCodegen(CodegenContext& context)
 void StatementCodegen::GenerateMainFn(const IStatementAST& node)
 {
 	CodegenUtils& utils = m_context.GetUtils();
+	ContextScopeHelper helper(m_context);
 
 	// Создаем тип функции main
 	llvm::FunctionType* fnType = fnType = llvm::FunctionType::get(
@@ -274,6 +294,12 @@ void StatementCodegen::Visit(const VariableDeclarationAST& node)
 		node.GetIdentifier().GetName(),
 		EmitDefaultValue(node.GetType(), m_context.GetUtils())
 	);
+
+	if (auto expression = node.GetExpression())
+	{
+		llvm::Value* value = m_expressionCodegen.Visit(*expression);
+		m_context.Assign(node.GetIdentifier().GetName(), value);
+	}
 }
 
 void StatementCodegen::Visit(const AssignStatementAST& node)

@@ -124,6 +124,7 @@ void SemanticsVerifier::Visit(const VariableDeclarationAST& node)
 	const std::string& name = node.GetIdentifier().GetName();
 	const ASTExpressionType type = node.GetType();
 
+	// is variable with passed identifier already defined?
 	const auto defined = m_scopes->GetValue(node.GetIdentifier().GetName());
 	if (bool(defined))
 	{
@@ -131,6 +132,25 @@ void SemanticsVerifier::Visit(const VariableDeclarationAST& node)
 	}
 
 	m_scopes->Define(node.GetIdentifier().GetName(), node.GetType());
+
+	// Обрабатываем блок опционального присваивания
+	if (auto expression = node.GetExpression())
+	{
+		const ASTExpressionType evaluatedType = m_evaluator->Evaluate(*expression);
+		if (evaluatedType != node.GetType())
+		{
+			// Если тип вычисленного выражения может быть неявно преобразован в тип присваиваемой переменной
+			// то нужно выполнить это преобразование, иначе ошибка
+			// TODO: попытаться выполнить преобразование
+			auto fmt = boost::format("can't set expression of type '%1%' to variable '%2%' of type '%3%'")
+				% ToString(evaluatedType)
+				% name
+				% ToString(type);
+			throw std::runtime_error(fmt.str());
+		}
+		bool assigned = m_scopes->Assign(name, evaluatedType);
+		assert(assigned);
+	}
 }
 
 void SemanticsVerifier::Visit(const AssignStatementAST& node)

@@ -103,6 +103,9 @@ class VariableDeclarationAST : public IStatementAST
 public:
 	explicit VariableDeclarationAST(std::unique_ptr<IdentifierAST> && identifier, ASTExpressionType type);
 
+	void SetExpression(std::unique_ptr<IExpressionAST> && expr);
+	const IExpressionAST* GetExpression()const;
+
 	const IdentifierAST& GetIdentifier()const;
 	ASTExpressionType GetType()const;
 
@@ -111,6 +114,7 @@ public:
 private:
 	std::unique_ptr<IdentifierAST> m_identifier;
 	ASTExpressionType m_type;
+	std::unique_ptr<IExpressionAST> m_expr; // can be nullptr
 };
 
 class AssignStatementAST : public IStatementAST

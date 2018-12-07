@@ -98,12 +98,34 @@ public:
 
 	void OnVariableDeclarationParse()
 	{
+		// Если при вызове этой функции не были распарсены тип и идентификатор, то внутренняя ошибка
 		assert(!m_expressions.empty());
 		assert(!m_types.empty());
+
+		// Достаем из стека тип объявляемой переменной
 		auto type = Pop(m_types);
+
+		// Достаем из стека идентификатор объявляемой переменной (если тип не IdentifierAST, тогда это внутренняя ошибка)
 		auto identifier = DowncastUniquePtr<IdentifierAST>(std::move(Pop(m_expressions)));
-		m_statements.push_back(std::make_unique<VariableDeclarationAST>(
-			std::move(identifier), type));
+		assert(identifier);
+
+		// Создаем узел объявления переменной
+		auto node = std::make_unique<VariableDeclarationAST>(std::move(identifier), type);
+
+		// Если был распарсен блок опционального присваивания при объявлении, то достаем выражение и сохраняем его
+		if (!m_expressionsCache.empty())
+		{
+			node->SetExpression(std::move(Pop(m_expressionsCache)));
+		}
+
+		// Добавляем узел объявления переменной в стек
+		m_statements.push_back(std::move(node));
+	}
+
+	void OnOptionalAssignParsed()
+	{
+		assert(!m_expressions.empty());
+		m_expressionsCache.push_back(std::move(Pop(m_expressions)));
 	}
 
 	void OnAssignStatementParse()
@@ -210,10 +232,13 @@ private:
 	// Стек для временного хранения считанных типов
 	std::vector<ASTExpressionType> m_types;
 
-	// Стек для постепенного создания AST для выражения
+	// Стек для постепенного создания AST выражений
 	std::vector<std::unique_ptr<IExpressionAST>> m_expressions;
 
-	// Стек для постепенного создания AST для инструкции
+	// Стек для временного хранения вспомогательных узлов AST выражений
+	std::vector<std::unique_ptr<IExpressionAST>> m_expressionsCache;
+
+	// Стек для постепенного создания AST инструкций
 	std::vector<std::unique_ptr<IStatementAST>> m_statements;
 
 	// Стек для временного хранения узлов AST вложенных инструкций
@@ -237,27 +262,28 @@ std::unique_ptr<IStatementAST> LLParser::Parse(const std::string& text)
 
 	ASTBuilder astBuilder(token);
 	std::unordered_map<std::string, std::function<void()>> actions = {
-		{ "OnIfStatementParse", std::bind(&ASTBuilder::OnIfStatementParse, &astBuilder) },
-		{ "OnOptionalElseClauseParse", std::bind(&ASTBuilder::OnOptionalElseClauseParse, &astBuilder) },
-		{ "OnWhileLoopParse", std::bind(&ASTBuilder::OnWhileLoopParse, &astBuilder) },
-		{ "OnVariableDeclarationParse", std::bind(&ASTBuilder::OnVariableDeclarationParse, &astBuilder) },
-		{ "OnAssignStatementParse", std::bind(&ASTBuilder::OnAssignStatementParse, &astBuilder) },
-		{ "OnReturnStatementParse", std::bind(&ASTBuilder::OnReturnStatementParse, &astBuilder) },
-		{ "OnCompositeStatementBeginParse", std::bind(&ASTBuilder::OnCompositeStatementBeginParse, &astBuilder) },
-		{ "OnCompositeStatementParse", std::bind(&ASTBuilder::OnCompositeStatementParse, &astBuilder) },
-		{ "OnCompositeStatementPartParse", std::bind(&ASTBuilder::OnCompositeStatementPartParse, &astBuilder) },
-		{ "OnPrintStatementParse", std::bind(&ASTBuilder::OnPrintStatementParse, &astBuilder) },
-		{ "OnIntegerTypeParse", std::bind(&ASTBuilder::OnIntegerTypeParse, &astBuilder) },
-		{ "OnFloatTypeParse", std::bind(&ASTBuilder::OnFloatTypeParse, &astBuilder) },
-		{ "OnBoolTypeParse", std::bind(&ASTBuilder::OnBoolTypeParse, &astBuilder) },
-		{ "OnBinaryPlusParse", std::bind(&ASTBuilder::OnBinaryPlusParse, &astBuilder) },
-		{ "OnBinaryMinusParse", std::bind(&ASTBuilder::OnBinaryMinusParse, &astBuilder) },
-		{ "OnBinaryMulParse", std::bind(&ASTBuilder::OnBinaryMulParse, &astBuilder) },
-		{ "OnBinaryDivParse", std::bind(&ASTBuilder::OnBinaryDivParse, &astBuilder) },
-		{ "OnIdentifierParse", std::bind(&ASTBuilder::OnIdentifierParse, &astBuilder) },
-		{ "OnIntegerConstantParse", std::bind(&ASTBuilder::OnIntegerConstantParse, &astBuilder) },
-		{ "OnFloatConstantParse", std::bind(&ASTBuilder::OnFloatConstantParse, &astBuilder) },
-		{ "OnUnaryMinusParse", std::bind(&ASTBuilder::OnUnaryMinusParse, &astBuilder) },
+		{ "OnIfStatementParsed", std::bind(&ASTBuilder::OnIfStatementParse, &astBuilder) },
+		{ "OnOptionalElseClauseParsed", std::bind(&ASTBuilder::OnOptionalElseClauseParse, &astBuilder) },
+		{ "OnWhileLoopParsed", std::bind(&ASTBuilder::OnWhileLoopParse, &astBuilder) },
+		{ "OnVariableDeclarationParsed", std::bind(&ASTBuilder::OnVariableDeclarationParse, &astBuilder) },
+		{ "OnOptionalAssignParsed", std::bind(&ASTBuilder::OnOptionalAssignParsed, &astBuilder) },
+		{ "OnAssignStatementParsed", std::bind(&ASTBuilder::OnAssignStatementParse, &astBuilder) },
+		{ "OnReturnStatementParsed", std::bind(&ASTBuilder::OnReturnStatementParse, &astBuilder) },
+		{ "OnCompositeStatementBeginParsed", std::bind(&ASTBuilder::OnCompositeStatementBeginParse, &astBuilder) },
+		{ "OnCompositeStatementParsed", std::bind(&ASTBuilder::OnCompositeStatementParse, &astBuilder) },
+		{ "OnCompositeStatementPartParsed", std::bind(&ASTBuilder::OnCompositeStatementPartParse, &astBuilder) },
+		{ "OnPrintStatementParsed", std::bind(&ASTBuilder::OnPrintStatementParse, &astBuilder) },
+		{ "OnIntegerTypeParsed", std::bind(&ASTBuilder::OnIntegerTypeParse, &astBuilder) },
+		{ "OnFloatTypeParsed", std::bind(&ASTBuilder::OnFloatTypeParse, &astBuilder) },
+		{ "OnBoolTypeParsed", std::bind(&ASTBuilder::OnBoolTypeParse, &astBuilder) },
+		{ "OnBinaryPlusParsed", std::bind(&ASTBuilder::OnBinaryPlusParse, &astBuilder) },
+		{ "OnBinaryMinusParsed", std::bind(&ASTBuilder::OnBinaryMinusParse, &astBuilder) },
+		{ "OnBinaryMulParsed", std::bind(&ASTBuilder::OnBinaryMulParse, &astBuilder) },
+		{ "OnBinaryDivParsed", std::bind(&ASTBuilder::OnBinaryDivParse, &astBuilder) },
+		{ "OnIdentifierParsed", std::bind(&ASTBuilder::OnIdentifierParse, &astBuilder) },
+		{ "OnIntegerConstantParsed", std::bind(&ASTBuilder::OnIntegerConstantParse, &astBuilder) },
+		{ "OnFloatConstantParsed", std::bind(&ASTBuilder::OnFloatConstantParse, &astBuilder) },
+		{ "OnUnaryMinusParsed", std::bind(&ASTBuilder::OnUnaryMinusParse, &astBuilder) },
 	};
 
 	while (true)
@@ -273,7 +299,7 @@ std::unique_ptr<IStatementAST> LLParser::Parse(const std::string& text)
 			}
 			else
 			{
-				throw std::logic_error("attribute '" + state->name + "' doesn't have action");
+				throw std::logic_error("attribute '" + state->name + "' doesn't have associated action");
 			}
 		}
 		else if (!EntryAcceptsTerminal(*state, TokenTypeToString(token.type)))

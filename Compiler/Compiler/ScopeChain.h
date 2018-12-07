@@ -22,6 +22,10 @@ private:
 template <typename Value>
 void ScopeChain<Value>::PopScope()
 {
+	if (m_scopes.empty())
+	{
+		throw std::runtime_error("no scopes to pop");
+	}
 	m_scopes.pop_back();
 }
 
@@ -34,6 +38,10 @@ void ScopeChain<Value>::PushScope()
 template <typename Value>
 void ScopeChain<Value>::Define(const std::string& name, const Value& value)
 {
+	if (m_scopes.empty())
+	{
+		throw std::logic_error("you can't define anything without creating a scope");
+	}
 	m_scopes.back()[name] = value;
 }
 

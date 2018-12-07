@@ -23,7 +23,7 @@
     <ProjectGuid>{B6FDC775-7BD0-465A-A74D-2ECDC529C459}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>Lexer</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

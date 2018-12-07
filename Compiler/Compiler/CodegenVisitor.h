@@ -7,8 +7,6 @@ class ExpressionCodegen : public IExpressionVisitor
 {
 public:
 	explicit ExpressionCodegen(CodegenContext& context);
-
-	void CodegenFuncReturningExpression(const IExpressionAST& node);
 	llvm::Value* Visit(const IExpressionAST& node);
 
 private:
