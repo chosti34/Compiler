@@ -1,6 +1,7 @@
 # compiler-60min
 
 ### Грамматика языка
+```
 <Program>        -> <FunctionList> EndOfFile
 <FunctionList>   -> <Function> {CreateFunction} <FunctionList>
 <FunctionList>   -> #Eps#
@@ -50,3 +51,4 @@
 <AtomExpr>       -> FloatConstant {OnFloatConstantParse}
 <AtomExpr>       -> LeftParenthesis <Expression> RightParenthesis
 <AtomExpr>       -> Minus <AtomExpr> {OnUnaryMinusParse}
+```
