@@ -86,6 +86,38 @@ void IdentifierAST::Accept(IExpressionVisitor& visitor)const
 	visitor.Visit(*this);
 }
 
+FunctionCallExprAST::FunctionCallExprAST(
+	const std::string& name,
+	std::vector<std::unique_ptr<IExpressionAST>> && params)
+	: m_name(name)
+	, m_params(std::move(params))
+{
+}
+
+const std::string& FunctionCallExprAST::GetName()const
+{
+	return m_name;
+}
+
+size_t FunctionCallExprAST::GetParamsCount() const
+{
+	return m_params.size();
+}
+
+const IExpressionAST& FunctionCallExprAST::GetParam(size_t index)const
+{
+	if (index < m_params.size())
+	{
+		return *m_params[index];
+	}
+	throw std::runtime_error("index must be less than function call's params count");
+}
+
+void FunctionCallExprAST::Accept(IExpressionVisitor& visitor)const
+{
+	visitor.Visit(*this);
+}
+
 // Variable declaration node
 VariableDeclarationAST::VariableDeclarationAST(std::unique_ptr<IdentifierAST> && identifier, ASTExpressionType type)
 	: m_identifier(std::move(identifier))
@@ -267,7 +299,7 @@ const IdentifierAST& FunctionAST::GetIdentifier()const
 	return *m_identifier;
 }
 
-const std::vector<FunctionAST::Parameter>& FunctionAST::GetParamList()const
+const std::vector<FunctionAST::Parameter>& FunctionAST::GetParams()const
 {
 	return m_params;
 }
@@ -308,6 +340,21 @@ const IExpressionAST& PrintAST::GetExpression()const
 }
 
 void PrintAST::Accept(IStatementVisitor& visitor)const
+{
+	visitor.Visit(*this);
+}
+
+FunctionCallStatementAST::FunctionCallStatementAST(std::unique_ptr<FunctionCallExprAST> && call)
+	: m_call(std::move(call))
+{
+}
+
+const IExpressionAST& FunctionCallStatementAST::GetCall()const
+{
+	return *m_call;
+}
+
+void FunctionCallStatementAST::Accept(IStatementVisitor& visitor) const
 {
 	visitor.Visit(*this);
 }

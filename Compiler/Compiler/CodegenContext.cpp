@@ -69,6 +69,22 @@ CodegenUtils& CodegenContext::GetUtils()
 	return m_utils;
 }
 
+void CodegenContext::AddFunction(const std::string& name, llvm::Function* func)
+{
+	assert(func);
+	m_functions[name] = func;
+}
+
+llvm::Function* CodegenContext::GetFunction(const std::string& name)
+{
+	auto found = m_functions.find(name);
+	if (found != m_functions.end())
+	{
+		return found->second;
+	}
+	return nullptr;
+}
+
 void CodegenContext::Dump(std::ostream& out)
 {
 	llvm::raw_os_ostream os(out);

@@ -146,9 +146,10 @@ public:
 		auto node = std::make_unique<VariableDeclarationAST>(std::move(identifier), type);
 
 		// Если был распарсен блок опционального присваивания при объявлении, то достаем выражение и сохраняем его
-		if (!m_expressionsCache.empty())
+		if (m_optionalAssignExpression)
 		{
-			node->SetExpression(std::move(Pop(m_expressionsCache)));
+			node->SetExpression(std::move(m_optionalAssignExpression));
+			m_optionalAssignExpression = nullptr;
 		}
 
 		// Добавляем узел объявления переменной в стек
@@ -158,7 +159,7 @@ public:
 	void OnOptionalAssignParsed()
 	{
 		assert(!m_expressions.empty());
-		m_expressionsCache.push_back(std::move(Pop(m_expressions)));
+		m_optionalAssignExpression = std::move(Pop(m_expressions));
 	}
 
 	void OnAssignStatementParsed()
@@ -169,6 +170,18 @@ public:
 
 		m_statements.push_back(std::make_unique<AssignStatementAST>(
 			std::move(identifier), std::move(expr)));
+	}
+
+	void OnExprListMemberParsed()
+	{
+		assert(!m_expressions.empty());
+		m_functionCallParams.push_back(std::move(Pop(m_expressions)));
+	}
+
+	void OnFunctionCallStatementParsed()
+	{
+		auto funcCall = CreateFunctionCallExprAST();
+		m_statements.push_back(std::make_unique<FunctionCallStatementAST>(std::move(funcCall)));
 	}
 
 	void OnReturnStatementParsed()
@@ -248,7 +261,30 @@ public:
 		m_expressions.push_back(std::make_unique<UnaryAST>(std::move(node), UnaryAST::Minus));
 	}
 
+	void OnFunctionCallExprParsed()
+	{
+		auto funcCall = CreateFunctionCallExprAST();
+		m_expressions.push_back(std::move(funcCall));
+	}
+
 private:
+	std::unique_ptr<FunctionCallExprAST> CreateFunctionCallExprAST()
+	{
+		assert(!m_expressions.empty());
+
+		auto identifier = DowncastUniquePtr<IdentifierAST>(Pop(m_expressions));
+		assert(identifier);
+
+		std::vector<std::unique_ptr<IExpressionAST>> exprList;
+		for (auto& expr : m_functionCallParams)
+		{
+			exprList.push_back(std::move(expr));
+		}
+		m_functionCallParams.clear();
+
+		return std::make_unique<FunctionCallExprAST>(identifier->GetName(), std::move(exprList));
+	}
+
 	void OnBinaryExprParsedHelper(BinaryExpressionAST::Operator op)
 	{
 		auto right = Pop(m_expressions);
@@ -271,8 +307,11 @@ private:
 	// Стек для постепенного создания AST выражений
 	std::vector<std::unique_ptr<IExpressionAST>> m_expressions;
 
-	// Стек для временного хранения вспомогательных узлов AST выражений
-	std::vector<std::unique_ptr<IExpressionAST>> m_expressionsCache;
+	// Если был распарсен опциональный блок присваивания при объявлении, эта переменная будет не пуста
+	std::unique_ptr<IExpressionAST> m_optionalAssignExpression;
+
+	// Вспомогательный стек для хранения параметров вызова функции
+	std::vector<std::unique_ptr<IExpressionAST>> m_functionCallParams;
 
 	// Стек для постепенного создания AST инструкций
 	std::vector<std::unique_ptr<IStatementAST>> m_statements;
@@ -301,6 +340,8 @@ std::unique_ptr<ProgramAST> LLParser::Parse(const std::string& text)
 
 	ASTBuilder astBuilder(token);
 	std::unordered_map<std::string, std::function<void()>> actions = {
+		{ "OnFunctionCallStatementParsed", std::bind(&ASTBuilder::OnFunctionCallStatementParsed, &astBuilder) },
+		{ "OnExprListMemberParsed", std::bind(&ASTBuilder::OnExprListMemberParsed, &astBuilder ) },
 		{ "OnFunctionParsed", std::bind(&ASTBuilder::OnFunctionParsed, &astBuilder) },
 		{ "OnFunctionParamParsed", std::bind(&ASTBuilder::OnFunctionParamParsed, &astBuilder) },
 		{ "OnIfStatementParsed", std::bind(&ASTBuilder::OnIfStatementParsed, &astBuilder) },
@@ -325,6 +366,7 @@ std::unique_ptr<ProgramAST> LLParser::Parse(const std::string& text)
 		{ "OnIntegerConstantParsed", std::bind(&ASTBuilder::OnIntegerConstantParsed, &astBuilder) },
 		{ "OnFloatConstantParsed", std::bind(&ASTBuilder::OnFloatConstantParsed, &astBuilder) },
 		{ "OnUnaryMinusParsed", std::bind(&ASTBuilder::OnUnaryMinusParsed, &astBuilder) },
+		{ "OnFunctionCallExprParsed", std::bind(&ASTBuilder::OnFunctionCallExprParsed, &astBuilder) }
 	};
 
 	while (true)

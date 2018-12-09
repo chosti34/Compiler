@@ -90,6 +90,24 @@ private:
 	std::string m_name;
 };
 
+class FunctionCallExprAST : public IExpressionAST
+{
+public:
+	explicit FunctionCallExprAST(
+		const std::string& name,
+		std::vector<std::unique_ptr<IExpressionAST>> && params);
+
+	const std::string& GetName()const;
+	size_t GetParamsCount()const;
+	const IExpressionAST& GetParam(size_t index)const;
+
+	void Accept(IExpressionVisitor& visitor)const override;
+
+private:
+	std::string m_name;
+	std::vector<std::unique_ptr<IExpressionAST>> m_params;
+};
+
 class IStatementAST
 {
 public:
@@ -209,6 +227,19 @@ private:
 	std::unique_ptr<IExpressionAST> m_expression;
 };
 
+// Function call, or dummy statement like: "123;" or "a;"
+class FunctionCallStatementAST : public IStatementAST
+{
+public:
+	explicit FunctionCallStatementAST(std::unique_ptr<FunctionCallExprAST> && call);
+	const IExpressionAST& GetCall()const;
+
+	void Accept(IStatementVisitor& visitor)const override;
+
+private:
+	std::unique_ptr<FunctionCallExprAST> m_call;
+};
+
 class FunctionAST
 {
 public:
@@ -222,7 +253,7 @@ public:
 
 	ASTExpressionType GetReturnType()const;
 	const IdentifierAST& GetIdentifier()const;
-	const std::vector<Parameter>& GetParamList()const;
+	const std::vector<Parameter>& GetParams()const;
 	const IStatementAST& GetStatement()const;
 
 private:

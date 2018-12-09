@@ -107,6 +107,11 @@ void TypeEvaluator::Visit(const UnaryAST& node)
 	m_stack.push_back(evaluatedType);
 }
 
+void TypeEvaluator::Visit(const FunctionCallExprAST& node)
+{
+	(void)node;
+}
+
 // Semantics verifier
 SemanticsVerifier::SemanticsVerifier()
 	: m_scopes(std::make_unique<TypeScopeChain>())
@@ -228,4 +233,9 @@ void SemanticsVerifier::Visit(const PrintAST& node)
 	{
 		throw std::runtime_error("booleans and strings can't be printed out yet");
 	}
+}
+
+void SemanticsVerifier::Visit(const FunctionCallStatementAST& node)
+{
+	(void)node;
 }

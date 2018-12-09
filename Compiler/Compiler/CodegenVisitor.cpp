@@ -3,6 +3,29 @@
 
 namespace
 {
+llvm::Type* CreateLLVMType(ASTExpressionType type, CodegenUtils& utils)
+{
+	switch (type)
+	{
+	case ASTExpressionType::Int:
+		return llvm::Type::getInt32Ty(utils.context);
+	case ASTExpressionType::Float:
+		return llvm::Type::getDoubleTy(utils.context);
+	default:
+		throw std::logic_error("booleans and strings are not supported yet");
+	}
+}
+
+std::vector<llvm::Type*> CreateFunctionArgumentTypes(const std::vector<FunctionAST::Parameter>& params, CodegenUtils& utils)
+{
+	std::vector<llvm::Type*> types;
+	for (const auto& param : params)
+	{
+		types.push_back(CreateLLVMType(param.second, utils));
+	}
+	return types;
+}
+
 llvm::Constant* EmitStringLiteral(llvm::LLVMContext& context, llvm::Module& module, const std::string& value)
 {
 	llvm::Constant* constant = llvm::ConstantDataArray::getString(context, value, true);
@@ -61,62 +84,6 @@ ExpressionCodegen::ExpressionCodegen(CodegenContext& context)
 	, m_stack()
 {
 }
-
-//void ExpressionCodegen::CodegenFuncReturningExpression(const IExpressionAST& node)
-//{
-//	CodegenUtils& utils = m_context.GetUtils();
-//	ContextScopeHelper helper(m_context);
-//
-//	node.Accept(*this);
-//	llvm::Value* value = m_stack.back();
-//	m_stack.pop_back();
-//
-//	// Создаем тип функции
-//	llvm::FunctionType* fnType = fnType = llvm::FunctionType::get(
-//		llvm::Type::getInt32Ty(utils.context), llvm::ArrayRef<llvm::Type*>(), false);
-//
-//	// Создаем функцию main
-//	llvm::Function* fn = llvm::Function::Create(
-//		fnType, llvm::Function::InternalLinkage, "main", &utils.module);
-//
-//	// Создаем базовый блок для функции, куда будет вставлен следующий код
-//	llvm::BasicBlock* bb = llvm::BasicBlock::Create(utils.context, "entry", fn);
-//	utils.builder.SetInsertPoint(bb);
-//
-//	// Создаем функцию printf
-//	// 1. Создаем вектор типов аргументов, которая принимает функция printf
-//	std::vector<llvm::Type*> printfProtoArgsTypes;
-//	printfProtoArgsTypes.push_back(utils.builder.getInt8Ty()->getPointerTo());
-//
-//	// 2. Создаем тип функции (возвращает int32, принимаем указатель на int8, переменное число аргументов)
-//	llvm::FunctionType *printfType = llvm::FunctionType::get(
-//		utils.builder.getInt32Ty(), printfProtoArgsTypes, true);
-//
-//	// 3. Создаем саму функцию
-//	llvm::Constant* printfFunc = utils.module.getOrInsertFunction("printf", printfType);
-//
-//	// 4. В зависимости от типа вычисленного значения, формируем входные данные для функции
-//	const std::string fmt = value->getType()->isFloatingPointTy() ? "%f\n" : "%d\n";
-//
-//	// 5. Генерируем код вызова созданного printf'а
-//	llvm::ArrayRef<llvm::Value*> printfArgs = { 
-//		EmitStringLiteral(utils.context, utils.module, fmt),
-//		value
-//	};
-//	utils.builder.CreateCall(printfFunc, printfArgs);
-//
-//	// 6. Генерируем код для инструкции возврата со значением 0
-//	llvm::Value* exitCode = llvm::ConstantInt::get(
-//		utils.context, llvm::APInt(32, uint64_t(0), true));
-//	utils.builder.CreateRet(exitCode);
-//
-//	// 7. Верифицируем функцию
-//	if (llvm::verifyFunction(*fn))
-//	{
-//		fn->eraseFromParent();
-//		throw std::runtime_error("error while generating code for main function");
-//	}
-//}
 
 llvm::Value* ExpressionCodegen::Visit(const IExpressionAST& node)
 {
@@ -248,6 +215,32 @@ void ExpressionCodegen::Visit(const IdentifierAST& node)
 	m_stack.push_back(value);
 }
 
+void ExpressionCodegen::Visit(const FunctionCallExprAST& node)
+{
+	CodegenUtils& utils = m_context.GetUtils();
+
+	llvm::Function* func = m_context.GetFunction(node.GetName());
+	if (!func)
+	{
+		throw std::runtime_error("function '" + node.GetName() + "' is undefined");
+	}
+
+	if (func->arg_size() != node.GetParamsCount())
+	{
+		boost::format fmt("function '%1%' expects %2% params, %3% given");
+		throw std::runtime_error((fmt % node.GetName() % func->arg_size() % node.GetParamsCount()).str());
+	}
+
+	std::vector<llvm::Value*> args;
+	for (size_t i = 0; i < node.GetParamsCount(); ++i)
+	{
+		args.push_back(Visit(node.GetParam(i)));
+	}
+
+	llvm::Value* value = utils.builder.CreateCall(func, args, "calltmp");
+	m_stack.push_back(value);
+}
+
 // Statement codegen visitor
 StatementCodegen::StatementCodegen(CodegenContext& context)
 	: m_context(context)
@@ -255,37 +248,9 @@ StatementCodegen::StatementCodegen(CodegenContext& context)
 {
 }
 
-void StatementCodegen::GenerateMainFn(const IStatementAST& node)
+void StatementCodegen::Visit(const IStatementAST& node)
 {
-	CodegenUtils& utils = m_context.GetUtils();
-	ContextScopeHelper helper(m_context);
-
-	// Создаем тип функции main
-	llvm::FunctionType* fnType = fnType = llvm::FunctionType::get(
-		llvm::Type::getInt32Ty(utils.context), llvm::ArrayRef<llvm::Type*>(), false);
-
-	// Создаем функцию main
-	llvm::Function* fn = llvm::Function::Create(
-		fnType, llvm::Function::ExternalLinkage, "main", &utils.module);
-
-	// Создаем базовый блок для функции, куда будет вставлен следующий генерируемый код
-	llvm::BasicBlock* bb = llvm::BasicBlock::Create(utils.context, "entry", fn);
-	utils.builder.SetInsertPoint(bb);
-
-	// Генерируем основной код
 	node.Accept(*this);
-
-	// Генерируем код для инструкции возврата со значением 0
-	llvm::Value* exitCode = llvm::ConstantInt::get(
-		utils.context, llvm::APInt(32, uint64_t(0), true));
-	utils.builder.CreateRet(exitCode);
-
-	// 7. Верифицируем функцию
-	if (llvm::verifyFunction(*fn))
-	{
-		fn->eraseFromParent();
-		throw std::runtime_error("error while generating code for main function");
-	}
 }
 
 void StatementCodegen::Visit(const VariableDeclarationAST& node)
@@ -295,7 +260,7 @@ void StatementCodegen::Visit(const VariableDeclarationAST& node)
 		EmitDefaultValue(node.GetType(), m_context.GetUtils())
 	);
 
-	if (auto expression = node.GetExpression())
+	if (const IExpressionAST* expression = node.GetExpression())
 	{
 		llvm::Value* value = m_expressionCodegen.Visit(*expression);
 		m_context.Assign(node.GetIdentifier().GetName(), value);
@@ -310,8 +275,10 @@ void StatementCodegen::Visit(const AssignStatementAST& node)
 
 void StatementCodegen::Visit(const ReturnStatementAST& node)
 {
-	(void)node;
-	throw std::logic_error("code generation for return statement is not implemented");
+	CodegenUtils& utils = m_context.GetUtils();
+
+	llvm::Value* value = m_expressionCodegen.Visit(node.GetExpr());
+	utils.builder.CreateRet(value);
 }
 
 void StatementCodegen::Visit(const IfStatementAST& node)
@@ -328,12 +295,15 @@ void StatementCodegen::Visit(const WhileStatementAST& node)
 
 void StatementCodegen::Visit(const CompositeStatementAST& node)
 {
-	m_context.PushScope();
+	ContextScopeHelper scopedContext(m_context);
 	for (size_t i = 0; i < node.GetCount(); ++i)
 	{
 		node.GetStatement(i).Accept(*this);
+		if (m_context.GetUtils().builder.GetInsertBlock()->getTerminator())
+		{
+			break;
+		}
 	}
-	m_context.PopScope();
 }
 
 void StatementCodegen::Visit(const PrintAST& node)
@@ -347,4 +317,69 @@ void StatementCodegen::Visit(const PrintAST& node)
 	std::vector<llvm::Value*> args = { EmitStringLiteral(utils.context, utils.module, fmt), value };
 
 	utils.builder.CreateCall(printf, args);
+}
+
+void StatementCodegen::Visit(const FunctionCallStatementAST& node)
+{
+	m_expressionCodegen.Visit(node.GetCall());
+}
+
+Codegen::Codegen(CodegenContext& context)
+	: m_context(context)
+	, m_statementCodegen(context)
+{
+}
+
+void Codegen::Generate(const ProgramAST& program)
+{
+	for (size_t i = 0; i < program.GetFunctionsCount(); ++i)
+	{
+		Generate(program.GetFunction(i));
+	}
+}
+
+void Codegen::Generate(const FunctionAST& func)
+{
+	CodegenUtils& utils = m_context.GetUtils();
+
+	// Задаем возвращаемый тип и типы аргументов функции
+	llvm::Type* returnType = CreateLLVMType(func.GetReturnType(), utils);
+	std::vector<llvm::Type*> argumentTypes = CreateFunctionArgumentTypes(func.GetParams(), utils);
+
+	// Создаем прототип и саму функцию
+	llvm::FunctionType* funcType = llvm::FunctionType::get(returnType, argumentTypes, false);
+	llvm::Function* llvmFunc = llvm::Function::Create(
+		funcType, llvm::Function::ExternalLinkage, func.GetIdentifier().GetName(), &utils.module);
+
+	// Задаем имена аргументов функции, добавляем переменные в контекст
+	ContextScopeHelper scopedContext(m_context);
+
+	size_t index = 0;
+	const std::vector<FunctionAST::Parameter> &params = func.GetParams();
+
+	for (llvm::Argument& argument : llvmFunc->args())
+	{
+		assert(index < params.size());
+		argument.setName(params[index].first);
+		m_context.Define(params[index].first, &argument);
+		++index;
+	}
+
+	// Создаем базовый блок для вставки инструкции функции
+	llvm::BasicBlock* bb = llvm::BasicBlock::Create(utils.context, func.GetIdentifier().GetName() + "_entry", llvmFunc);
+	utils.builder.SetInsertPoint(bb);
+
+	// Генерируем код инструкции функции (может быть композитной)
+	m_statementCodegen.Visit(func.GetStatement());
+
+	std::string output;
+	llvm::raw_string_ostream out(output);
+
+	if (llvm::verifyFunction(*llvmFunc, &out))
+	{
+		llvmFunc->eraseFromParent();
+		throw std::runtime_error(out.str());
+	}
+
+	m_context.AddFunction(func.GetIdentifier().GetName(), llvmFunc);
 }

@@ -4,6 +4,7 @@ class LiteralConstantAST;
 class IdentifierAST;
 class BinaryExpressionAST;
 class UnaryAST;
+class FunctionCallExprAST;
 
 class IExpressionVisitor
 {
@@ -13,6 +14,7 @@ public:
 	virtual void Visit(const LiteralConstantAST& node) = 0;
 	virtual void Visit(const UnaryAST& node) = 0;
 	virtual void Visit(const IdentifierAST& node) = 0;
+	virtual void Visit(const FunctionCallExprAST& node) = 0;
 };
 
 class VariableDeclarationAST;
@@ -22,6 +24,7 @@ class IfStatementAST;
 class WhileStatementAST;
 class CompositeStatementAST;
 class PrintAST;
+class FunctionCallStatementAST;
 
 class IStatementVisitor
 {
@@ -34,4 +37,5 @@ public:
 	virtual void Visit(const WhileStatementAST& node) = 0;
 	virtual void Visit(const CompositeStatementAST& node) = 0;
 	virtual void Visit(const PrintAST& node) = 0;
+	virtual void Visit(const FunctionCallStatementAST& node) = 0;
 };

@@ -1,14 +1,8 @@
+func sqr(n: Float) -> Float: return n * n;
+
 func main(argc: Int) -> Int:
 {
-	var a: Int = 12;
+	var a: Float = sqr(3.0) - 9 + -sqr(sqr(1.0));
 	print a;
-
-	var b: Int;
-	a = 11;
-	b = 12;
-
-	print a - b;
+	return 0;
 }
-
-func foo(unused1: Float, unused2: Float, unused3: Int) -> Float:
-	return 0.0;

@@ -38,10 +38,16 @@ public:
 	llvm::Function* GetPrintf();
 	CodegenUtils& GetUtils();
 
+	void AddFunction(const std::string& name, llvm::Function* func);
+	// Возвращает nullptr, если функция не найдена в текущем состоянии контекста
+	llvm::Function* GetFunction(const std::string& name);
+
 	void Dump(std::ostream& out);
 
 private:
 	CodegenUtils m_utils;
 	ScopeChain<llvm::Value*> m_scopes;
-	llvm::Function* m_printf;
+
+	llvm::Function* m_printf; // builtin function
+	std::unordered_map<std::string, llvm::Function*> m_functions; // user defined
 };

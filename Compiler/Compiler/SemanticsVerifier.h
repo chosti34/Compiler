@@ -16,6 +16,7 @@ private:
 	void Visit(const LiteralConstantAST& node) override;
 	void Visit(const BinaryExpressionAST& node) override;
 	void Visit(const UnaryAST& node) override;
+	void Visit(const FunctionCallExprAST& node) override;
 
 private:
 	std::vector<ASTExpressionType> m_stack;
@@ -37,6 +38,7 @@ private:
 	void Visit(const WhileStatementAST& node) override;
 	void Visit(const CompositeStatementAST& node) override;
 	void Visit(const PrintAST& node) override;
+	void Visit(const FunctionCallStatementAST& node) override;
 
 private:
 	std::unique_ptr<TypeScopeChain> m_scopes;
