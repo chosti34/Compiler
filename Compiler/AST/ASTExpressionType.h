@@ -9,5 +9,6 @@ enum class ASTExpressionType
 	String
 };
 
+bool Convertible(ASTExpressionType from, ASTExpressionType to);
 bool ConvertibleToBool(ASTExpressionType type);
 std::string ToString(ASTExpressionType type);

@@ -21,9 +21,6 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SemanticsVerifier.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="CodegenVisitor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -42,9 +39,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="SemanticsVerifier.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CodegenVisitor.cpp">

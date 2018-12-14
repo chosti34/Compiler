@@ -280,12 +280,12 @@ void CompositeStatementAST::Accept(IStatementVisitor& visitor)const
 FunctionAST::FunctionAST(
 	ASTExpressionType returnType,
 	std::unique_ptr<IdentifierAST> && identifier,
-	std::vector<Parameter> && params,
-	std::unique_ptr<IStatementAST> && stmt)
+	std::vector<Param> && params,
+	std::unique_ptr<IStatementAST> && statement)
 	: m_returnType(returnType)
 	, m_identifier(std::move(identifier))
 	, m_params(std::move(params))
-	, m_stmt(std::move(stmt))
+	, m_statement(std::move(statement))
 {
 }
 
@@ -299,14 +299,14 @@ const IdentifierAST& FunctionAST::GetIdentifier()const
 	return *m_identifier;
 }
 
-const std::vector<FunctionAST::Parameter>& FunctionAST::GetParams()const
+const std::vector<FunctionAST::Param>& FunctionAST::GetParams()const
 {
 	return m_params;
 }
 
 const IStatementAST& FunctionAST::GetStatement()const
 {
-	return *m_stmt;
+	return *m_statement;
 }
 
 // Program node (root)

@@ -4,8 +4,6 @@
 
 class ILexer;
 class LLParserTable;
-class IStatementAST;
-class IExpressionAST;
 
 class LLParser : public IParser<std::unique_ptr<ProgramAST>>
 {

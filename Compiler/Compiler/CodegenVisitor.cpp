@@ -3,6 +3,35 @@
 
 namespace
 {
+std::string ToString(BinaryExpressionAST::Operator operation)
+{
+	switch (operation)
+	{
+	case BinaryExpressionAST::Plus:
+		return "+";
+	case BinaryExpressionAST::Minus:
+		return "-";
+	case BinaryExpressionAST::Mul:
+		return "*";
+	case BinaryExpressionAST::Div:
+		return "/";
+	}
+	throw std::logic_error("can't cast undefined binary operator to string");
+}
+
+ASTExpressionType GetASTExprType(llvm::Type* type)
+{
+	if (type->isIntegerTy())
+	{
+		return ASTExpressionType::Int;
+	}
+	if (type->isDoubleTy())
+	{
+		return ASTExpressionType::Float;
+	}
+	throw std::invalid_argument("unsupported llvm type");
+}
+
 llvm::Type* CreateLLVMType(ASTExpressionType type, CodegenUtils& utils)
 {
 	switch (type)
@@ -16,10 +45,11 @@ llvm::Type* CreateLLVMType(ASTExpressionType type, CodegenUtils& utils)
 	}
 }
 
-std::vector<llvm::Type*> CreateFunctionArgumentTypes(const std::vector<FunctionAST::Parameter>& params, CodegenUtils& utils)
+std::vector<llvm::Type*> CreateFunctionArgumentTypes(const std::vector<FunctionAST::Param> &params, CodegenUtils& utils)
 {
 	std::vector<llvm::Type*> types;
-	for (const auto& param : params)
+	types.reserve(params.size());
+	for (const FunctionAST::Param& param : params)
 	{
 		types.push_back(CreateLLVMType(param.second, utils));
 	}
@@ -47,8 +77,7 @@ llvm::Value* EmitDefaultValue(ASTExpressionType type, CodegenUtils& utils)
 	case ASTExpressionType::Int:
 		return llvm::ConstantInt::get(
 			llvm::Type::getInt32Ty(utils.context),
-			llvm::APInt(32, uint64_t(0), true)
-		);
+			llvm::APInt(32, uint64_t(0), true));
 	case ASTExpressionType::Float:
 		return llvm::ConstantFP::get(llvm::Type::getDoubleTy(utils.context), 0.0);
 	case ASTExpressionType::Bool:
@@ -57,6 +86,57 @@ llvm::Value* EmitDefaultValue(ASTExpressionType type, CodegenUtils& utils)
 	default:
 		throw std::logic_error("can't emit code for undefined ast expression type");
 	}
+}
+
+bool Cast(GeneratedExpr& generated, ASTExpressionType to, CodegenUtils& utils)
+{
+	assert(generated.type != to);
+	if (!Convertible(generated.type, to))
+	{
+		return false;
+	}
+
+	if (generated.type == ASTExpressionType::Int)
+	{
+		if (to == ASTExpressionType::Float)
+		{
+			generated.value = utils.builder.CreateSIToFP(
+				generated.value, llvm::Type::getDoubleTy(utils.context), "casttmp");
+			generated.type = ASTExpressionType::Float;
+			return true;
+		}
+	}
+	if (generated.type == ASTExpressionType::Float)
+	{
+		if (to == ASTExpressionType::Int)
+		{
+			generated.value = utils.builder.CreateFPToSI(
+				generated.value, llvm::Type::getInt32Ty(utils.context), "casttmp");
+			generated.type = ASTExpressionType::Int;
+			return true;
+		}
+	}
+	return false;
+}
+
+bool CastToMatchBinaryExpression(
+	GeneratedExpr& left,
+	GeneratedExpr& right,
+	BinaryExpressionAST::Operator op,
+	CodegenUtils& utils)
+{
+	assert(left.type != right.type);
+	(void)op;
+
+	if (left.type == ASTExpressionType::Float && right.type == ASTExpressionType::Int)
+	{
+		return Cast(right, ASTExpressionType::Float, utils);
+	}
+	if (left.type == ASTExpressionType::Int && right.type == ASTExpressionType::Float)
+	{
+		return Cast(left, ASTExpressionType::Float, utils);
+	}
+	return false;
 }
 
 class ContextScopeHelper
@@ -85,12 +165,12 @@ ExpressionCodegen::ExpressionCodegen(CodegenContext& context)
 {
 }
 
-llvm::Value* ExpressionCodegen::Visit(const IExpressionAST& node)
+GeneratedExpr ExpressionCodegen::Visit(const IExpressionAST& node)
 {
 	node.Accept(*this);
 	if (!m_stack.empty())
 	{
-		llvm::Value* value = m_stack.back();
+		GeneratedExpr value = m_stack.back();
 		m_stack.pop_back();
 		return value;
 	}
@@ -103,59 +183,57 @@ void ExpressionCodegen::Visit(const BinaryExpressionAST& node)
 	node.GetLeft().Accept(*this);
 	node.GetRight().Accept(*this);
 
-	llvm::Value* right = m_stack.back();
+	GeneratedExpr right = m_stack.back();
 	m_stack.pop_back();
 
-	llvm::Value* left = m_stack.back();
+	GeneratedExpr left = m_stack.back();
 	m_stack.pop_back();
 
-	// Если левый аргумент нецелое число, тогда преобразуем правый аргумент в нецелое число
-	if (left->getType()->isFloatingPointTy() &&
-		!right->getType()->isFloatingPointTy())
+	if (right.type != left.type)
 	{
-		right = utils.builder.CreateSIToFP(
-			right, llvm::Type::getDoubleTy(utils.context), "casttmp");
+		if (!CastToMatchBinaryExpression(left, right, node.GetOperator(), utils))
+		{
+			auto fmt = boost::format("can't perform operator '%1%' on operands with types '%2%' and '%3%'")
+				% ToString(node.GetOperator())
+				% ToString(left.type)
+				% ToString(right.type);
+			throw std::runtime_error(fmt.str());
+		}
+		// TODO: produce warning here
 	}
 
-	// Если правый аргумент не целое число, тогда преобразуем левый аргумент в нецелое число
-	if (right->getType()->isFloatingPointTy() &&
-		!left->getType()->isFloatingPointTy())
-	{
-		left = utils.builder.CreateSIToFP(
-			left, llvm::Type::getDoubleTy(utils.context), "casttmp");
-	}
-
-	assert(left->getType()->isFloatingPointTy() == right->getType()->isFloatingPointTy());
-	const bool isFloat = left->getType()->isFloatingPointTy();
+	assert(left.type == right.type);
+	const bool isFloat = left.type == ASTExpressionType::Float;
 
 	llvm::Value *value = nullptr;
+
 	switch (node.GetOperator())
 	{
 	case BinaryExpressionAST::Plus:
 		value = !isFloat ?
-			utils.builder.CreateAdd(left, right, "addtmp") :
-			utils.builder.CreateFAdd(left, right, "faddtmp");
+			utils.builder.CreateAdd(left.value, right.value, "addtmp") :
+			utils.builder.CreateFAdd(left.value, right.value, "faddtmp");
 		break;
 	case BinaryExpressionAST::Minus:
 		value = !isFloat ?
-			utils.builder.CreateSub(left, right, "subtmp") :
-			utils.builder.CreateFSub(left, right, "fsubtmp");
+			utils.builder.CreateSub(left.value, right.value, "subtmp") :
+			utils.builder.CreateFSub(left.value, right.value, "fsubtmp");
 		break;
 	case BinaryExpressionAST::Mul:
 		value = !isFloat ?
-			utils.builder.CreateMul(left, right, "multmp") :
-			utils.builder.CreateFMul(left, right, "fmultmp");
+			utils.builder.CreateMul(left.value, right.value, "multmp") :
+			utils.builder.CreateFMul(left.value, right.value, "fmultmp");
 		break;
 	case BinaryExpressionAST::Div:
-		value = isFloat ?
-			utils.builder.CreateSDiv(left, right, "divtmp") :
-			utils.builder.CreateFDiv(left, right, "fdivtmp");
+		value = !isFloat ?
+			utils.builder.CreateSDiv(left.value, right.value, "fdivtmp") :
+			utils.builder.CreateFDiv(left.value, right.value, "divtmp");
 		break;
 	default:
 		throw std::logic_error("can't generate code for undefined binary operator");
 	}
 
-	m_stack.push_back(value);
+	m_stack.push_back({ value, (isFloat ? ASTExpressionType::Float : ASTExpressionType::Int) });
 }
 
 void ExpressionCodegen::Visit(const LiteralConstantAST& node)
@@ -167,13 +245,13 @@ void ExpressionCodegen::Visit(const LiteralConstantAST& node)
 	{
 		const int number = boost::get<int>(literal);
 		llvm::Value* value = llvm::ConstantInt::get(llvm::Type::getInt32Ty(utils.context), number);
-		m_stack.push_back(value);
+		m_stack.push_back({ value, ASTExpressionType::Int });
 	}
 	else if (literal.type() == typeid(double))
 	{
 		const double number = boost::get<double>(literal);
 		llvm::Value* value = llvm::ConstantFP::get(llvm::Type::getDoubleTy(utils.context), number);
-		m_stack.push_back(value);
+		m_stack.push_back({ value, ASTExpressionType::Float });
 	}
 	else
 	{
@@ -187,21 +265,21 @@ void ExpressionCodegen::Visit(const UnaryAST& node)
 	CodegenUtils& utils = m_context.GetUtils();
 	node.GetExpr().Accept(*this);
 
-	llvm::Value* value = m_stack.back();
+	GeneratedExpr generated = m_stack.back();
 	m_stack.pop_back();
 
-	if (value->getType()->isIntegerTy())
+	if (generated.type == ASTExpressionType::Int)
 	{
-		m_stack.push_back(utils.builder.CreateNeg(value, "negtmp"));
+		m_stack.push_back({ utils.builder.CreateNeg(generated.value, "negtmp"), ASTExpressionType::Int });
 	}
-	else if (value->getType()->isFloatingPointTy())
+	else if (generated.type == ASTExpressionType::Float)
 	{
-		m_stack.push_back(utils.builder.CreateFNeg(value, "fnegtmp"));
+		m_stack.push_back({ utils.builder.CreateFNeg(generated.value, "fnegtmp"), ASTExpressionType::Float });
 	}
 	else
 	{
 		assert(false);
-		throw std::logic_error("code generation error: can't codegen for unary operator on undefined literal type");
+		throw std::logic_error("can't codegen for unary operator on undefined literal type");
 	}
 }
 
@@ -212,7 +290,7 @@ void ExpressionCodegen::Visit(const IdentifierAST& node)
 	{
 		throw std::runtime_error("variable '" + node.GetName() + "' is not defined");
 	}
-	m_stack.push_back(value);
+	m_stack.push_back({ value, GetASTExprType(value->getType()) });
 }
 
 void ExpressionCodegen::Visit(const FunctionCallExprAST& node)
@@ -231,14 +309,34 @@ void ExpressionCodegen::Visit(const FunctionCallExprAST& node)
 		throw std::runtime_error((fmt % node.GetName() % func->arg_size() % node.GetParamsCount()).str());
 	}
 
+	size_t index = 0;
 	std::vector<llvm::Value*> args;
-	for (size_t i = 0; i < node.GetParamsCount(); ++i)
+
+	for (llvm::Argument& arg : func->args())
 	{
-		args.push_back(Visit(node.GetParam(i)));
+		GeneratedExpr generatedParam = Visit(node.GetParam(index));
+		ASTExpressionType formalParamType = GetASTExprType(arg.getType());
+
+		if (generatedParam.type != formalParamType)
+		{
+			bool casted = Cast(generatedParam, formalParamType, utils);
+			if (!casted)
+			{
+				auto fmt = boost::format("function '%1%' expects '%2%' as parameter, '%3%' given (can't cast)")
+					% func->getName().str()
+					% ToString(formalParamType)
+					% ToString(generatedParam.type);
+				throw std::runtime_error(fmt.str());
+			}
+		}
+
+		assert(generatedParam.type == formalParamType);
+		args.push_back(generatedParam.value);
+		++index;
 	}
 
 	llvm::Value* value = utils.builder.CreateCall(func, args, "calltmp");
-	m_stack.push_back(value);
+	m_stack.push_back({ value, GetASTExprType(func->getReturnType()) });
 }
 
 // Statement codegen visitor
@@ -255,30 +353,83 @@ void StatementCodegen::Visit(const IStatementAST& node)
 
 void StatementCodegen::Visit(const VariableDeclarationAST& node)
 {
+	const std::string& name = node.GetIdentifier().GetName();
+	if (m_context.GetVariable(name))
+	{
+		throw std::runtime_error("variable '" + name + "' is already defined");
+	}
+
 	m_context.Define(
 		node.GetIdentifier().GetName(),
 		EmitDefaultValue(node.GetType(), m_context.GetUtils())
 	);
 
-	if (const IExpressionAST* expression = node.GetExpression())
+	const IExpressionAST* expression = node.GetExpression();
+	if (!expression)
 	{
-		llvm::Value* value = m_expressionCodegen.Visit(*expression);
-		m_context.Assign(node.GetIdentifier().GetName(), value);
+		return;
 	}
+
+	GeneratedExpr generated = m_expressionCodegen.Visit(*expression);
+	if (generated.type != node.GetType())
+	{
+		if (!Cast(generated, node.GetType(), m_context.GetUtils()))
+		{
+			auto fmt = boost::format("can't set expression of type '%1%' to variable '%2%' of type '%3%'")
+				% ToString(generated.type)
+				% name
+				% ToString(node.GetType());
+			throw std::runtime_error(fmt.str());
+		}
+		// TODO: produce warning here
+	}
+	m_context.Assign(name, generated.value);
 }
 
 void StatementCodegen::Visit(const AssignStatementAST& node)
 {
-	llvm::Value* value = m_expressionCodegen.Visit(node.GetExpr());
-	m_context.Assign(node.GetIdentifier().GetName(), value);
+	const std::string& name = node.GetIdentifier().GetName();
+	llvm::Value* variable = m_context.GetVariable(name);
+	ASTExpressionType variableType = GetASTExprType(variable->getType());
+
+	if (!variable)
+	{
+		throw std::runtime_error("can't assign because variable '" + name + "' is not defined");
+	}
+
+	GeneratedExpr generated = m_expressionCodegen.Visit(node.GetExpr());
+	if (generated.type != variableType)
+	{
+		if (!Cast(generated, variableType, m_context.GetUtils()))
+		{
+			auto fmt = boost::format("can't set expression of type '%1%' to variable '%2%' of type '%3%'")
+				% ToString(generated.type)
+				% name
+				% ToString(variableType);
+			throw std::runtime_error(fmt.str());
+		}
+		// TODO: produce warning here
+	}
+	m_context.Assign(node.GetIdentifier().GetName(), generated.value);
 }
 
 void StatementCodegen::Visit(const ReturnStatementAST& node)
 {
 	CodegenUtils& utils = m_context.GetUtils();
+	llvm::Function* func = utils.builder.GetInsertBlock()->getParent();
+	ASTExpressionType funcReturnType = GetASTExprType(func->getReturnType());
 
-	llvm::Value* value = m_expressionCodegen.Visit(node.GetExpr());
-	utils.builder.CreateRet(value);
+	GeneratedExpr generated = m_expressionCodegen.Visit(node.GetExpr());
+	if (generated.type != funcReturnType)
+	{
+		bool casted = Cast(generated, funcReturnType, utils);
+		if (!casted)
+		{
+			throw std::runtime_error("returning expression must be at least convertible to function return type");
+		}
+	}
+	assert(generated.type == funcReturnType);
+	utils.builder.CreateRet(generated.value);
 }
 
 void StatementCodegen::Visit(const IfStatementAST& node)
@@ -303,6 +454,7 @@ void StatementCodegen::Visit(const CompositeStatementAST& node)
 		{
 			break;
 		}
+		// TODO: produce warning about unreachable code
 	}
 }
 
@@ -310,11 +462,17 @@ void StatementCodegen::Visit(const PrintAST& node)
 {
 	CodegenUtils& utils = m_context.GetUtils();
 
-	llvm::Value* value = m_expressionCodegen.Visit(node.GetExpression());
+	GeneratedExpr generated = m_expressionCodegen.Visit(node.GetExpression());
+	if (generated.type != ASTExpressionType::Int &&
+		generated.type != ASTExpressionType::Float)
+	{
+		throw std::runtime_error("strings and booleans can't be printed out yet");
+	}
+
 	llvm::Function* printf = m_context.GetPrintf();
 
-	const std::string& fmt = value->getType()->isDoubleTy() ? "%f\n" : "%d\n";
-	std::vector<llvm::Value*> args = { EmitStringLiteral(utils.context, utils.module, fmt), value };
+	const std::string& fmt = generated.value->getType()->isDoubleTy() ? "%f\n" : "%d\n";
+	std::vector<llvm::Value*> args = { EmitStringLiteral(utils.context, utils.module, fmt), generated.value };
 
 	utils.builder.CreateCall(printf, args);
 }
@@ -322,6 +480,7 @@ void StatementCodegen::Visit(const PrintAST& node)
 void StatementCodegen::Visit(const FunctionCallStatementAST& node)
 {
 	m_expressionCodegen.Visit(node.GetCall());
+	// TODO: produce warning about unused function result
 }
 
 Codegen::Codegen(CodegenContext& context)
@@ -334,11 +493,11 @@ void Codegen::Generate(const ProgramAST& program)
 {
 	for (size_t i = 0; i < program.GetFunctionsCount(); ++i)
 	{
-		Generate(program.GetFunction(i));
+		GenerateFunc(program.GetFunction(i));
 	}
 }
 
-void Codegen::Generate(const FunctionAST& func)
+void Codegen::GenerateFunc(const FunctionAST& func)
 {
 	CodegenUtils& utils = m_context.GetUtils();
 
@@ -355,7 +514,7 @@ void Codegen::Generate(const FunctionAST& func)
 	ContextScopeHelper scopedContext(m_context);
 
 	size_t index = 0;
-	const std::vector<FunctionAST::Parameter> &params = func.GetParams();
+	const std::vector<FunctionAST::Param> &params = func.GetParams();
 
 	for (llvm::Argument& argument : llvmFunc->args())
 	{

@@ -3,11 +3,17 @@
 #include "CodegenContext.h"
 #include <vector>
 
+struct GeneratedExpr
+{
+	llvm::Value* value;
+	ASTExpressionType type;
+};
+
 class ExpressionCodegen : public IExpressionVisitor
 {
 public:
 	explicit ExpressionCodegen(CodegenContext& context);
-	llvm::Value* Visit(const IExpressionAST& node);
+	GeneratedExpr Visit(const IExpressionAST& node);
 
 private:
 	void Visit(const BinaryExpressionAST& node) override;
@@ -18,7 +24,7 @@ private:
 
 private:
 	CodegenContext& m_context;
-	std::vector<llvm::Value*> m_stack;
+	std::vector<GeneratedExpr> m_stack;
 };
 
 class StatementCodegen : public IStatementVisitor
@@ -49,7 +55,7 @@ public:
 	void Generate(const ProgramAST& program);
 
 private:
-	void Generate(const FunctionAST& func);
+	void GenerateFunc(const FunctionAST& func);
 
 private:
 	CodegenContext& m_context;

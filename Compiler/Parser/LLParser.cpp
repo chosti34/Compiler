@@ -76,7 +76,7 @@ public:
 		auto identifier = DowncastUniquePtr<IdentifierAST>(Pop(m_expressions));
 		assert(identifier);
 
-		FunctionAST::Parameter param;
+		FunctionAST::Param param;
 		param.first = identifier->GetName();
 		param.second = Pop(m_types);
 
@@ -302,7 +302,7 @@ private:
 	std::vector<ASTExpressionType> m_types;
 
 	// Стек для временного хранения считанных параметров функции
-	std::vector<FunctionAST::Parameter> m_funcParams;
+	std::vector<FunctionAST::Param> m_funcParams;
 
 	// Стек для постепенного создания AST выражений
 	std::vector<std::unique_ptr<IExpressionAST>> m_expressions;

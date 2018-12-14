@@ -227,7 +227,7 @@ private:
 	std::unique_ptr<IExpressionAST> m_expression;
 };
 
-// Function call, or dummy statement like: "123;" or "a;"
+// Function call statement with ignoring returning value of a function
 class FunctionCallStatementAST : public IStatementAST
 {
 public:
@@ -243,24 +243,24 @@ private:
 class FunctionAST
 {
 public:
-	using Parameter = std::pair<std::string, ASTExpressionType>;
+	using Param = std::pair<std::string, ASTExpressionType>;
 
 	explicit FunctionAST(
 		ASTExpressionType returnType,
 		std::unique_ptr<IdentifierAST> && identifier,
-		std::vector<Parameter> && params,
-		std::unique_ptr<IStatementAST> && stmt);
+		std::vector<Param> && params,
+		std::unique_ptr<IStatementAST> && statement);
 
 	ASTExpressionType GetReturnType()const;
 	const IdentifierAST& GetIdentifier()const;
-	const std::vector<Parameter>& GetParams()const;
+	const std::vector<Param>& GetParams()const;
 	const IStatementAST& GetStatement()const;
 
 private:
 	ASTExpressionType m_returnType;
-	std::vector<Parameter> m_params;
+	std::vector<Param> m_params;
 	std::unique_ptr<IdentifierAST> m_identifier;
-	std::unique_ptr<IStatementAST> m_stmt;
+	std::unique_ptr<IStatementAST> m_statement;
 };
 
 class ProgramAST
