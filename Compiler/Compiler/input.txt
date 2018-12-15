@@ -1,9 +1,9 @@
-func foo(a: Int, b: Float) -> Int:
-	return a + b;
+func foo(a: Int, b: Int) -> Int:
+	return a % b;
 
 func main(argc: Int) -> Int:
 {
-	var a: Float = foo(3.0, 3);
+	var a: Bool = foo(4, 5);
 	print a;
 	return 0;
 }

@@ -237,6 +237,11 @@ public:
 		OnBinaryExprParsedHelper(BinaryExpressionAST::Div);
 	}
 
+	void OnBinaryModuloParsed()
+	{
+		OnBinaryExprParsedHelper(BinaryExpressionAST::Mod);
+	}
+
 	void OnIdentifierParsed()
 	{
 		assert(m_token.type == Token::Identifier);
@@ -362,6 +367,7 @@ std::unique_ptr<ProgramAST> LLParser::Parse(const std::string& text)
 		{ "OnBinaryMinusParsed", std::bind(&ASTBuilder::OnBinaryMinusParsed, &astBuilder) },
 		{ "OnBinaryMulParsed", std::bind(&ASTBuilder::OnBinaryMulParsed, &astBuilder) },
 		{ "OnBinaryDivParsed", std::bind(&ASTBuilder::OnBinaryDivParsed, &astBuilder) },
+		{ "OnBinaryModuloParsed", std::bind(&ASTBuilder::OnBinaryModuloParsed, &astBuilder) },
 		{ "OnIdentifierParsed", std::bind(&ASTBuilder::OnIdentifierParsed, &astBuilder) },
 		{ "OnIntegerConstantParsed", std::bind(&ASTBuilder::OnIntegerConstantParsed, &astBuilder) },
 		{ "OnFloatConstantParsed", std::bind(&ASTBuilder::OnFloatConstantParsed, &astBuilder) },

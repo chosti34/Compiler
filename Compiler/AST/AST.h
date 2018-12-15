@@ -23,7 +23,8 @@ public:
 		Plus,
 		Minus,
 		Mul,
-		Div
+		Div,
+		Mod
 	};
 
 	explicit BinaryExpressionAST(

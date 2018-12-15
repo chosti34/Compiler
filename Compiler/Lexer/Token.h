@@ -17,7 +17,7 @@ struct Token
 		Identifier, IntegerConstant, FloatConstant,
 
 		// Operator
-		Assign, Plus, Minus, Mul, Div,
+		Assign, Plus, Minus, Mul, Div, Mod,
 
 		// Separator
 		LeftParenthesis, RightParenthesis, LeftBracket,

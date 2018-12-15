@@ -29,11 +29,11 @@ public:
 	void PushScope();
 	void PopScope();
 
-	void Define(const std::string& name, llvm::Value* value);
-	void Assign(const std::string& name, llvm::Value* value);
+	void Define(const std::string& name, llvm::AllocaInst* value);
+	void Assign(const std::string& name, llvm::AllocaInst* value);
 
 	// Возвращает nullptr, если переменная не найдена в текущем состоянии контекста
-	llvm::Value* GetVariable(const std::string& name);
+	llvm::AllocaInst* GetVariable(const std::string& name);
 
 	llvm::Function* GetPrintf();
 	CodegenUtils& GetUtils();
@@ -46,7 +46,7 @@ public:
 
 private:
 	CodegenUtils m_utils;
-	ScopeChain<llvm::Value*> m_scopes;
+	ScopeChain<llvm::AllocaInst*> m_scopes;
 
 	llvm::Function* m_printf; // builtin function
 	std::unordered_map<std::string, llvm::Function*> m_functions; // user defined

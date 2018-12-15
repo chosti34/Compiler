@@ -43,17 +43,17 @@ void CodegenContext::PopScope()
 	m_scopes.PopScope();
 }
 
-void CodegenContext::Define(const std::string& name, llvm::Value* value)
+void CodegenContext::Define(const std::string& name, llvm::AllocaInst* value)
 {
 	m_scopes.Define(name, value);
 }
 
-void CodegenContext::Assign(const std::string& name, llvm::Value* value)
+void CodegenContext::Assign(const std::string& name, llvm::AllocaInst* value)
 {
 	m_scopes.Assign(name, value);
 }
 
-llvm::Value* CodegenContext::GetVariable(const std::string& name)
+llvm::AllocaInst* CodegenContext::GetVariable(const std::string& name)
 {
 	auto variable = m_scopes.GetValue(name);
 	return variable.value_or(nullptr);
