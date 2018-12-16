@@ -30,7 +30,7 @@ private:
 class StatementCodegen : public IStatementVisitor
 {
 public:
-	explicit StatementCodegen(CodegenContext& context);
+	explicit StatementCodegen(CodegenContext& context, std::vector<llvm::BasicBlock*> & continueBlocks);
 	void Visit(const IStatementAST& node);
 
 private:
@@ -46,6 +46,7 @@ private:
 private:
 	CodegenContext& m_context;
 	ExpressionCodegen m_expressionCodegen;
+	std::vector<llvm::BasicBlock*> & m_continueBlocks;
 };
 
 class Codegen
@@ -59,5 +60,4 @@ private:
 
 private:
 	CodegenContext& m_context;
-	StatementCodegen m_statementCodegen;
 };

@@ -42,6 +42,8 @@ public:
 	// Возвращает nullptr, если функция не найдена в текущем состоянии контекста
 	llvm::Function* GetFunction(const std::string& name);
 
+	//std::vector<llvm::BasicBlock*> &GetRemoveCandidates();
+
 	void Dump(std::ostream& out);
 
 private:

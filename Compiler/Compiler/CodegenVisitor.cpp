@@ -420,9 +420,10 @@ void ExpressionCodegen::Visit(const FunctionCallExprAST& node)
 }
 
 // Statement codegen visitor
-StatementCodegen::StatementCodegen(CodegenContext& context)
+StatementCodegen::StatementCodegen(CodegenContext& context, std::vector<llvm::BasicBlock*> & continueBlocks)
 	: m_context(context)
 	, m_expressionCodegen(context)
+	, m_continueBlocks(continueBlocks)
 {
 }
 
@@ -559,6 +560,7 @@ void StatementCodegen::Visit(const IfStatementAST& node)
 	}
 
 	builder.SetInsertPoint(continueBlock);
+	m_continueBlocks.push_back(continueBlock);
 }
 
 void StatementCodegen::Visit(const WhileStatementAST& node)
@@ -608,7 +610,6 @@ void StatementCodegen::Visit(const FunctionCallStatementAST& node)
 
 Codegen::Codegen(CodegenContext& context)
 	: m_context(context)
-	, m_statementCodegen(context)
 {
 }
 
@@ -623,6 +624,7 @@ void Codegen::Generate(const ProgramAST& program)
 void Codegen::GenerateFunc(const FunctionAST& func)
 {
 	CodegenUtils& utils = m_context.GetUtils();
+	const std::string& name = func.GetIdentifier().GetName();
 
 	// Задаем возвращаемый тип и типы аргументов функции
 	llvm::Type* returnType = ConvertToTypeLLVM(func.GetReturnType(), utils.context);
@@ -637,7 +639,7 @@ void Codegen::GenerateFunc(const FunctionAST& func)
 	ContextScopeHelper scopedContext(m_context);
 
 	// Создаем базовый блок для вставки инструкции функции
-	llvm::BasicBlock* bb = llvm::BasicBlock::Create(utils.context, func.GetIdentifier().GetName() + "_entry", llvmFunc);
+	llvm::BasicBlock* bb = llvm::BasicBlock::Create(utils.context, name + "_entry", llvmFunc);
 	utils.builder.SetInsertPoint(bb);
 
 	size_t index = 0;
@@ -655,7 +657,29 @@ void Codegen::GenerateFunc(const FunctionAST& func)
 	}
 
 	// Генерируем код инструкции функции (может быть композитной)
-	m_statementCodegen.Visit(func.GetStatement());
+	std::vector<llvm::BasicBlock*> continueBlocks;
+	StatementCodegen statementCodegen(m_context, continueBlocks);
+	statementCodegen.Visit(func.GetStatement());
+
+	// Связываем блоки continue условных инструкции
+	for (auto it = continueBlocks.begin(); it != continueBlocks.end(); ++it)
+	{
+		llvm::BasicBlock* block = *it;
+		if (!block->getTerminator() && std::next(it) != continueBlocks.end())
+		{
+			llvm::BasicBlock* next = *std::next(it);
+			utils.builder.SetInsertPoint(block);
+			utils.builder.CreateBr(next);
+		};
+	}
+
+	for (llvm::BasicBlock& basicBlock : llvmFunc->getBasicBlockList())
+	{
+		if (!basicBlock.getTerminator())
+		{
+			throw std::runtime_error("every path must have return statement in function '" + name + "'");
+		}
+	}
 
 	std::string output;
 	llvm::raw_string_ostream out(output);

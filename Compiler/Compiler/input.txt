@@ -5,13 +5,16 @@ func main(argc: Int) -> Int:
 {
 	var a: Float = 1;
 	var b: Float = -0.2;
-	if (1.2 + b - 1 + 0.01)
+	if (a + b)
 	{
-		print 1;	
-	}
-	else
-	{
-		print 0;
+		if (a)
+		{
+
+		}
+		else
+		{
+
+		}
 	}
 	return 0;
 }
