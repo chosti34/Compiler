@@ -119,7 +119,7 @@ void FunctionCallExprAST::Accept(IExpressionVisitor& visitor)const
 }
 
 // Variable declaration node
-VariableDeclarationAST::VariableDeclarationAST(std::unique_ptr<IdentifierAST> && identifier, ASTExpressionType type)
+VariableDeclarationAST::VariableDeclarationAST(std::unique_ptr<IdentifierAST> && identifier, ExpressionTypeAST type)
 	: m_identifier(std::move(identifier))
 	, m_type(type)
 	, m_expr(nullptr)
@@ -141,7 +141,7 @@ const IdentifierAST& VariableDeclarationAST::GetIdentifier()const
 	return *m_identifier;
 }
 
-ASTExpressionType VariableDeclarationAST::GetType()const
+ExpressionTypeAST VariableDeclarationAST::GetType()const
 {
 	return m_type;
 }
@@ -278,7 +278,7 @@ void CompositeStatementAST::Accept(IStatementVisitor& visitor)const
 
 // Function node
 FunctionAST::FunctionAST(
-	ASTExpressionType returnType,
+	ExpressionTypeAST returnType,
 	std::unique_ptr<IdentifierAST> && identifier,
 	std::vector<Param> && params,
 	std::unique_ptr<IStatementAST> && statement)
@@ -289,7 +289,7 @@ FunctionAST::FunctionAST(
 {
 }
 
-ASTExpressionType FunctionAST::GetReturnType()const
+ExpressionTypeAST FunctionAST::GetReturnType()const
 {
 	return m_returnType;
 }

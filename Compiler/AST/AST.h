@@ -1,6 +1,6 @@
 #pragma once
-#include "ASTVisitor.h"
-#include "ASTExpressionType.h"
+#include "VisitorAST.h"
+#include "ExpressionTypeAST.h"
 
 #include <memory>
 #include <string>
@@ -120,19 +120,19 @@ public:
 class VariableDeclarationAST : public IStatementAST
 {
 public:
-	explicit VariableDeclarationAST(std::unique_ptr<IdentifierAST> && identifier, ASTExpressionType type);
+	explicit VariableDeclarationAST(std::unique_ptr<IdentifierAST> && identifier, ExpressionTypeAST type);
 
 	void SetExpression(std::unique_ptr<IExpressionAST> && expr);
 	const IExpressionAST* GetExpression()const;
 
 	const IdentifierAST& GetIdentifier()const;
-	ASTExpressionType GetType()const;
+	ExpressionTypeAST GetType()const;
 
 	void Accept(IStatementVisitor& visitor)const override;
 
 private:
 	std::unique_ptr<IdentifierAST> m_identifier;
-	ASTExpressionType m_type;
+	ExpressionTypeAST m_type;
 	std::unique_ptr<IExpressionAST> m_expr; // can be nullptr
 };
 
@@ -244,21 +244,21 @@ private:
 class FunctionAST
 {
 public:
-	using Param = std::pair<std::string, ASTExpressionType>;
+	using Param = std::pair<std::string, ExpressionTypeAST>;
 
 	explicit FunctionAST(
-		ASTExpressionType returnType,
+		ExpressionTypeAST returnType,
 		std::unique_ptr<IdentifierAST> && identifier,
 		std::vector<Param> && params,
 		std::unique_ptr<IStatementAST> && statement);
 
-	ASTExpressionType GetReturnType()const;
+	ExpressionTypeAST GetReturnType()const;
 	const IdentifierAST& GetIdentifier()const;
 	const std::vector<Param>& GetParams()const;
 	const IStatementAST& GetStatement()const;
 
 private:
-	ASTExpressionType m_returnType;
+	ExpressionTypeAST m_returnType;
 	std::vector<Param> m_params;
 	std::unique_ptr<IdentifierAST> m_identifier;
 	std::unique_ptr<IStatementAST> m_statement;

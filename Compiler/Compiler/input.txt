@@ -3,7 +3,15 @@ func foo(a: Int, b: Int) -> Int:
 
 func main(argc: Int) -> Int:
 {
-	var a: Bool = foo(4, 5);
-	print a;
+	var a: Float = 1;
+	var b: Float = -0.2;
+	if (1.2 + b - 1 + 0.01)
+	{
+		print 1;	
+	}
+	else
+	{
+		print 0;
+	}
 	return 0;
 }

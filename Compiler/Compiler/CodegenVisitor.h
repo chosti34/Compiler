@@ -6,7 +6,7 @@
 struct GeneratedExpression
 {
 	llvm::Value* value;
-	ASTExpressionType type;
+	ExpressionTypeAST type;
 };
 
 class ExpressionCodegen : public IExpressionVisitor

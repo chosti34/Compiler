@@ -86,19 +86,19 @@ public:
 	void OnIntegerTypeParsed()
 	{
 		assert(m_token.type == Token::Int);
-		m_types.push_back(ASTExpressionType::Int);
+		m_types.push_back(ExpressionTypeAST::Int);
 	}
 
 	void OnFloatTypeParsed()
 	{
 		assert(m_token.type == Token::Float);
-		m_types.push_back(ASTExpressionType::Float);
+		m_types.push_back(ExpressionTypeAST::Float);
 	}
 
 	void OnBoolTypeParsed()
 	{
 		assert(m_token.type == Token::Bool);
-		m_types.push_back(ASTExpressionType::Bool);
+		m_types.push_back(ExpressionTypeAST::Bool);
 	}
 
 	void OnIfStatementParsed()
@@ -304,7 +304,7 @@ private:
 	const Token& m_token;
 
 	// Стек для временного хранения считанных типов
-	std::vector<ASTExpressionType> m_types;
+	std::vector<ExpressionTypeAST> m_types;
 
 	// Стек для временного хранения считанных параметров функции
 	std::vector<FunctionAST::Param> m_funcParams;
