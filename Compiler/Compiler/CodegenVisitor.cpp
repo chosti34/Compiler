@@ -77,19 +77,20 @@ llvm::Type* ConvertToTypeLLVM(ExpressionTypeAST type, llvm::LLVMContext& context
 	}
 }
 
-llvm::Value* ConvertToBooleanValue(llvm::Value* value, CodegenUtils& utils)
+llvm::Value* ConvertToBooleanValue(
+	llvm::Value* value,
+	llvm::LLVMContext& llvmContext,
+	llvm::IRBuilder<>& builder)
 {
 	ExpressionTypeAST typeAST = ConvertToExpressionTypeAST(value->getType());
 	switch (typeAST)
 	{
 	case ExpressionTypeAST::Int:
-		return utils.builder.CreateICmpEQ(
-			value, llvm::ConstantInt::get(llvm::Type::getInt32Ty(utils.context), uint64_t(1)), "iboolcast");
+		return builder.CreateICmpEQ(value, llvm::ConstantInt::get(
+			llvm::Type::getInt32Ty(llvmContext), uint64_t(1)), "iboolcast");
 	case ExpressionTypeAST::Float:
-		return utils.builder.CreateNot(
-			utils.builder.CreateFCmpOEQ(
-				value, llvm::ConstantFP::get(llvm::Type::getDoubleTy(utils.context), 0.0), "fboolcast"),
-			"nottmp");
+		return builder.CreateNot(builder.CreateFCmpOEQ(
+				value, llvm::ConstantFP::get(llvm::Type::getDoubleTy(llvmContext), 0.0), "fboolcast"), "nottmp");
 	case ExpressionTypeAST::Bool:
 		return value;
 	case ExpressionTypeAST::String:
@@ -101,8 +102,8 @@ llvm::Value* ConvertToBooleanValue(llvm::Value* value, CodegenUtils& utils)
 }
 
 std::vector<llvm::Type*> CreateFunctionArgumentTypes(
-	const std::vector<FunctionAST::Param> &params,
-	llvm::LLVMContext& context)
+	const std::vector<FunctionAST::Param>& params,
+	llvm::LLVMContext& llvmContext)
 {
 	std::vector<llvm::Type*> typesLLVM;
 	typesLLVM.reserve(params.size());
@@ -110,40 +111,43 @@ std::vector<llvm::Type*> CreateFunctionArgumentTypes(
 	for (const FunctionAST::Param& param : params)
 	{
 		const ExpressionTypeAST& typeAST = param.second;
-		typesLLVM.push_back(ConvertToTypeLLVM(typeAST, context));
+		typesLLVM.push_back(ConvertToTypeLLVM(typeAST, llvmContext));
 	}
 
 	return typesLLVM;
 }
 
-llvm::Constant* EmitStringLiteral(llvm::LLVMContext& context, llvm::Module& module, const std::string& value)
+llvm::Constant* CreateGlobalStringLiteral(
+	llvm::LLVMContext& llvmContext,
+	llvm::Module& llvmModule,
+	const std::string& value)
 {
-	llvm::Constant* constant = llvm::ConstantDataArray::getString(context, value, true);
+	llvm::Constant* constant = llvm::ConstantDataArray::getString(llvmContext, value, true);
 
 	// ???
 	llvm::GlobalVariable* global = new llvm::GlobalVariable(
-		module, constant->getType(), true, llvm::GlobalVariable::InternalLinkage, constant, "str");
+		llvmModule, constant->getType(), true,
+		llvm::GlobalVariable::InternalLinkage, constant, "str");
 
-	llvm::Constant* index = llvm::Constant::getNullValue(llvm::IntegerType::getInt32Ty(context));
+	llvm::Constant* index = llvm::Constant::getNullValue(llvm::IntegerType::getInt32Ty(llvmContext));
 	std::vector<llvm::Constant*> indices = { index, index };
 
 	return llvm::ConstantExpr::getInBoundsGetElementPtr(constant->getType(), global, indices);
 }
 
-llvm::Value* EmitDefaultValue(ExpressionTypeAST type, CodegenUtils& utils)
+llvm::Value* EmitDefaultValue(ExpressionTypeAST type, llvm::LLVMContext& llvmContext)
 {
 	switch (type)
 	{
 	case ExpressionTypeAST::Int:
-		return llvm::ConstantInt::get(
-			llvm::Type::getInt32Ty(utils.context),
-			llvm::APInt(32, uint64_t(0), true));
+		return llvm::ConstantInt::get(llvm::Type::getInt32Ty(llvmContext), llvm::APInt(32, uint64_t(0), true));
 	case ExpressionTypeAST::Float:
-		return llvm::ConstantFP::get(llvm::Type::getDoubleTy(utils.context), 0.0);
+		return llvm::ConstantFP::get(llvm::Type::getDoubleTy(llvmContext), 0.0);
 	case ExpressionTypeAST::Bool:
 	case ExpressionTypeAST::String:
 		throw std::logic_error("code generation for bool and string is not implemented yet");
 	default:
+		assert(false);
 		throw std::logic_error("can't emit code for undefined ast expression type");
 	}
 }
@@ -160,8 +164,8 @@ bool Cast(GeneratedExpression& generated, ExpressionTypeAST to, CodegenUtils& ut
 	{
 		if (to == ExpressionTypeAST::Float)
 		{
-			generated.value = utils.builder.CreateSIToFP(
-				generated.value, llvm::Type::getDoubleTy(utils.context), "casttmp");
+			generated.value = utils.GetBuilder().CreateSIToFP(
+				generated.value, llvm::Type::getDoubleTy(utils.GetLLVMContext()), "casttmp");
 			generated.type = ExpressionTypeAST::Float;
 			return true;
 		}
@@ -170,8 +174,8 @@ bool Cast(GeneratedExpression& generated, ExpressionTypeAST to, CodegenUtils& ut
 	{
 		if (to == ExpressionTypeAST::Int)
 		{
-			generated.value = utils.builder.CreateFPToSI(
-				generated.value, llvm::Type::getInt32Ty(utils.context), "casttmp");
+			generated.value = utils.GetBuilder().CreateFPToSI(
+				generated.value, llvm::Type::getInt32Ty(utils.GetLLVMContext()), "casttmp");
 			generated.type = ExpressionTypeAST::Int;
 			return true;
 		}
@@ -247,6 +251,8 @@ GeneratedExpression ExpressionCodegen::Visit(const IExpressionAST& node)
 void ExpressionCodegen::Visit(const BinaryExpressionAST& node)
 {
 	CodegenUtils& utils = m_context.GetUtils();
+	llvm::IRBuilder<>& builder = utils.GetBuilder();
+
 	node.GetLeft().Accept(*this);
 	node.GetRight().Accept(*this);
 
@@ -284,27 +290,27 @@ void ExpressionCodegen::Visit(const BinaryExpressionAST& node)
 	{
 	case BinaryExpressionAST::Plus:
 		value = !isFloat ?
-			utils.builder.CreateAdd(left.value, right.value, "addtmp") :
-			utils.builder.CreateFAdd(left.value, right.value, "faddtmp");
+			builder.CreateAdd(left.value, right.value, "addtmp") :
+			builder.CreateFAdd(left.value, right.value, "faddtmp");
 		break;
 	case BinaryExpressionAST::Minus:
 		value = !isFloat ?
-			utils.builder.CreateSub(left.value, right.value, "subtmp") :
-			utils.builder.CreateFSub(left.value, right.value, "fsubtmp");
+			builder.CreateSub(left.value, right.value, "subtmp") :
+			builder.CreateFSub(left.value, right.value, "fsubtmp");
 		break;
 	case BinaryExpressionAST::Mul:
 		value = !isFloat ?
-			utils.builder.CreateMul(left.value, right.value, "multmp") :
-			utils.builder.CreateFMul(left.value, right.value, "fmultmp");
+			builder.CreateMul(left.value, right.value, "multmp") :
+			builder.CreateFMul(left.value, right.value, "fmultmp");
 		break;
 	case BinaryExpressionAST::Div:
 		value = !isFloat ?
-			utils.builder.CreateSDiv(left.value, right.value, "fdivtmp") :
-			utils.builder.CreateFDiv(left.value, right.value, "divtmp");
+			builder.CreateSDiv(left.value, right.value, "fdivtmp") :
+			builder.CreateFDiv(left.value, right.value, "divtmp");
 		break;
 	case BinaryExpressionAST::Mod:
 		assert(!isFloat);
-		value = utils.builder.CreateSRem(left.value, right.value, "modtmp");
+		value = builder.CreateSRem(left.value, right.value, "modtmp");
 		break;
 	default:
 		throw std::logic_error("can't generate code for undefined binary operator");
@@ -316,30 +322,33 @@ void ExpressionCodegen::Visit(const BinaryExpressionAST& node)
 void ExpressionCodegen::Visit(const LiteralConstantAST& node)
 {
 	CodegenUtils& utils = m_context.GetUtils();
-	const LiteralConstantAST::Value& literal = node.GetValue();
+	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
+	const LiteralConstantAST::Value& constant = node.GetValue();
 
-	if (literal.type() == typeid(int))
+	if (constant.type() == typeid(int))
 	{
-		const int number = boost::get<int>(literal);
-		llvm::Value* value = llvm::ConstantInt::get(llvm::Type::getInt32Ty(utils.context), number);
+		const int number = boost::get<int>(constant);
+		llvm::Value* value = llvm::ConstantInt::get(llvm::Type::getInt32Ty(llvmContext), number);
 		m_stack.push_back({ value, ExpressionTypeAST::Int });
 	}
-	else if (literal.type() == typeid(double))
+	else if (constant.type() == typeid(double))
 	{
-		const double number = boost::get<double>(literal);
-		llvm::Value* value = llvm::ConstantFP::get(llvm::Type::getDoubleTy(utils.context), number);
+		const double number = boost::get<double>(constant);
+		llvm::Value* value = llvm::ConstantFP::get(llvm::Type::getDoubleTy(llvmContext), number);
 		m_stack.push_back({ value, ExpressionTypeAST::Float });
 	}
 	else
 	{
 		assert(false);
-		throw std::logic_error("code generation error: can't codegen for undefined literal type");
+		throw std::logic_error("Visit(LiteralConstantAST) - can't codegen for undefined literal constant type");
 	}
 }
 
 void ExpressionCodegen::Visit(const UnaryAST& node)
 {
 	CodegenUtils& utils = m_context.GetUtils();
+	llvm::IRBuilder<>& builder = utils.GetBuilder();
+
 	node.GetExpr().Accept(*this);
 
 	GeneratedExpression generated = m_stack.back();
@@ -347,21 +356,24 @@ void ExpressionCodegen::Visit(const UnaryAST& node)
 
 	if (generated.type == ExpressionTypeAST::Int)
 	{
-		m_stack.push_back({ utils.builder.CreateNeg(generated.value, "negtmp"), ExpressionTypeAST::Int });
+		m_stack.push_back({ builder.CreateNeg(generated.value, "negtmp"), ExpressionTypeAST::Int });
 	}
 	else if (generated.type == ExpressionTypeAST::Float)
 	{
-		m_stack.push_back({ utils.builder.CreateFNeg(generated.value, "fnegtmp"), ExpressionTypeAST::Float });
+		m_stack.push_back({ builder.CreateFNeg(generated.value, "fnegtmp"), ExpressionTypeAST::Float });
 	}
 	else
 	{
 		assert(false);
-		throw std::logic_error("can't codegen for unary operator on undefined literal type");
+		throw std::logic_error("Visit(UnaryAST) - can't codegen for unary on undefined literal constant type");
 	}
 }
 
 void ExpressionCodegen::Visit(const IdentifierAST& node)
 {
+	CodegenUtils& utils = m_context.GetUtils();
+	llvm::IRBuilder<>& builder = utils.GetBuilder();
+
 	const std::string& name = node.GetName();
 	llvm::AllocaInst* variable = m_context.GetVariable(name);
 
@@ -370,7 +382,7 @@ void ExpressionCodegen::Visit(const IdentifierAST& node)
 		throw std::runtime_error("variable '" + name + "' is not defined");
 	}
 
-	llvm::Value* value = m_context.GetUtils().builder.CreateLoad(variable, name + "Value");
+	llvm::Value* value = builder.CreateLoad(variable, name + "Value");
 	m_stack.push_back({ value, ConvertToExpressionTypeAST(value->getType()) });
 }
 
@@ -416,7 +428,7 @@ void ExpressionCodegen::Visit(const FunctionCallExprAST& node)
 		++index;
 	}
 
-	llvm::Value* value = utils.builder.CreateCall(func, args, "calltmp");
+	llvm::Value* value = m_context.GetUtils().GetBuilder().CreateCall(func, args, "calltmp");
 	m_stack.push_back({ value, ConvertToExpressionTypeAST(func->getReturnType()) });
 }
 
@@ -436,24 +448,28 @@ void StatementCodegen::Visit(const IStatementAST& node)
 void StatementCodegen::Visit(const VariableDeclarationAST& node)
 {
 	CodegenUtils& utils = m_context.GetUtils();
-	const std::string& name = node.GetIdentifier().GetName();
+	llvm::IRBuilder<>& builder = utils.GetBuilder();
+	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
 
+	const std::string& name = node.GetIdentifier().GetName();
 	if (m_context.GetVariable(name))
 	{
 		throw std::runtime_error("variable '" + name + "' is already defined");
 	}
 
 	// Создаем переменную
-	llvm::Type* type = ConvertToTypeLLVM(node.GetType(), utils.context);
-	llvm::AllocaInst* variable = CreateLocalVariable(utils.builder.GetInsertBlock()->getParent(), type, name + "Ptr");
+	llvm::Type* type = ConvertToTypeLLVM(node.GetType(), llvmContext);
+	llvm::Function* func = builder.GetInsertBlock()->getParent();
+	llvm::AllocaInst* variable = CreateLocalVariable(func, type, name + "Ptr");
 
 	// Устанавливаем переменной значение по умолчанию
-	llvm::Value* defaultValue = EmitDefaultValue(node.GetType(), utils);
-	utils.builder.CreateStore(defaultValue, variable);
+	llvm::Value* defaultValue = EmitDefaultValue(node.GetType(), llvmContext);
+	builder.CreateStore(defaultValue, variable);
 
 	// Сохраняем переменную в контекст
 	m_context.Define(name, variable);
 
+	// Обработка опционального блока присваивания
 	const IExpressionAST* expression = node.GetExpression();
 	if (!expression)
 	{
@@ -475,12 +491,14 @@ void StatementCodegen::Visit(const VariableDeclarationAST& node)
 	}
 
 	assert(generated.value->getType()->getTypeID() == variable->getType()->getPointerElementType()->getTypeID());
-	utils.builder.CreateStore(generated.value, variable);
+	builder.CreateStore(generated.value, variable);
 }
 
 void StatementCodegen::Visit(const AssignStatementAST& node)
 {
 	CodegenUtils& utils = m_context.GetUtils();
+	llvm::IRBuilder<>& builder = utils.GetBuilder();
+
 	const std::string& name = node.GetIdentifier().GetName();
 	llvm::AllocaInst* variable = m_context.GetVariable(name);
 	ExpressionTypeAST variableTypeAST = ConvertToExpressionTypeAST(variable->getType());
@@ -505,13 +523,15 @@ void StatementCodegen::Visit(const AssignStatementAST& node)
 	}
 
 	assert(generated.value->getType()->getTypeID() == variable->getType()->getPointerElementType()->getTypeID());
-	utils.builder.CreateStore(generated.value, variable);
+	builder.CreateStore(generated.value, variable);
 }
 
 void StatementCodegen::Visit(const ReturnStatementAST& node)
 {
 	CodegenUtils& utils = m_context.GetUtils();
-	llvm::Function* func = utils.builder.GetInsertBlock()->getParent();
+	llvm::IRBuilder<>& builder = utils.GetBuilder();
+
+	llvm::Function* func = builder.GetInsertBlock()->getParent();
 	ExpressionTypeAST funcReturnType = ConvertToExpressionTypeAST(func->getReturnType());
 
 	GeneratedExpression generated = m_expressionCodegen.Visit(node.GetExpr());
@@ -523,24 +543,25 @@ void StatementCodegen::Visit(const ReturnStatementAST& node)
 			throw std::runtime_error("returning expression must be at least convertible to function return type");
 		}
 	}
+
 	assert(generated.type == funcReturnType);
-	utils.builder.CreateRet(generated.value);
+	builder.CreateRet(generated.value);
 }
 
 void StatementCodegen::Visit(const IfStatementAST& node)
 {
 	CodegenUtils& utils = m_context.GetUtils();
-	llvm::IRBuilder<>& builder = utils.builder;
-	llvm::LLVMContext& context = utils.context;
+	llvm::IRBuilder<>& builder = utils.GetBuilder();
+	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
 
 	llvm::Function* func = builder.GetInsertBlock()->getParent();
 
-	llvm::BasicBlock* thenBlock = llvm::BasicBlock::Create(context, "then", func);
-	llvm::BasicBlock* elseBlock = llvm::BasicBlock::Create(context, "else", func);
-	llvm::BasicBlock* continueBlock = llvm::BasicBlock::Create(context, "continue", func);
+	llvm::BasicBlock* thenBlock = llvm::BasicBlock::Create(llvmContext, "then", func);
+	llvm::BasicBlock* elseBlock = llvm::BasicBlock::Create(llvmContext, "else", func);
+	llvm::BasicBlock* continueBlock = llvm::BasicBlock::Create(llvmContext, "continue", func);
 
 	GeneratedExpression generated = m_expressionCodegen.Visit(node.GetExpr());
-	generated.value = ConvertToBooleanValue(generated.value, utils);
+	generated.value = ConvertToBooleanValue(generated.value, llvmContext, builder);
 	builder.CreateCondBr(generated.value, thenBlock, elseBlock);
 
 	builder.SetInsertPoint(thenBlock);
@@ -573,10 +594,12 @@ void StatementCodegen::Visit(const WhileStatementAST& node)
 void StatementCodegen::Visit(const CompositeStatementAST& node)
 {
 	ContextScopeHelper scopedContext(m_context);
+	llvm::IRBuilder<>& builder = m_context.GetUtils().GetBuilder();
+
 	for (size_t i = 0; i < node.GetCount(); ++i)
 	{
 		node.GetStatement(i).Accept(*this);
-		if (m_context.GetUtils().builder.GetInsertBlock()->getTerminator())
+		if (builder.GetInsertBlock()->getTerminator())
 		{
 			break;
 		}
@@ -587,6 +610,9 @@ void StatementCodegen::Visit(const CompositeStatementAST& node)
 void StatementCodegen::Visit(const PrintAST& node)
 {
 	CodegenUtils& utils = m_context.GetUtils();
+	llvm::Module& llvmModule = utils.GetModule();
+	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
+	llvm::IRBuilder<>& builder = utils.GetBuilder();
 
 	GeneratedExpression generated = m_expressionCodegen.Visit(node.GetExpression());
 	if (generated.type != ExpressionTypeAST::Int &&
@@ -598,9 +624,9 @@ void StatementCodegen::Visit(const PrintAST& node)
 	llvm::Function* printf = m_context.GetPrintf();
 
 	const std::string& fmt = generated.value->getType()->isDoubleTy() ? "%f\n" : "%d\n";
-	std::vector<llvm::Value*> args = { EmitStringLiteral(utils.context, utils.module, fmt), generated.value };
+	std::vector<llvm::Value*> args = { CreateGlobalStringLiteral(llvmContext, llvmModule, fmt), generated.value };
 
-	utils.builder.CreateCall(printf, args);
+	builder.CreateCall(printf, args);
 }
 
 void StatementCodegen::Visit(const FunctionCallStatementAST& node)
@@ -625,23 +651,27 @@ void Codegen::Generate(const ProgramAST& program)
 void Codegen::GenerateFunc(const FunctionAST& func)
 {
 	CodegenUtils& utils = m_context.GetUtils();
+	llvm::Module& llvmModule = utils.GetModule();
+	llvm::IRBuilder<>& builder = utils.GetBuilder();
+	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
+
 	const std::string& name = func.GetIdentifier().GetName();
 
 	// Задаем возвращаемый тип и типы аргументов функции
-	llvm::Type* returnType = ConvertToTypeLLVM(func.GetReturnType(), utils.context);
-	std::vector<llvm::Type*> argumentTypes = CreateFunctionArgumentTypes(func.GetParams(), utils.context);
+	llvm::Type* returnType = ConvertToTypeLLVM(func.GetReturnType(), llvmContext);
+	std::vector<llvm::Type*> argumentTypes = CreateFunctionArgumentTypes(func.GetParams(), llvmContext);
 
 	// Создаем прототип и саму функцию
 	llvm::FunctionType* funcType = llvm::FunctionType::get(returnType, argumentTypes, false);
 	llvm::Function* llvmFunc = llvm::Function::Create(
-		funcType, llvm::Function::ExternalLinkage, func.GetIdentifier().GetName(), &utils.module);
+		funcType, llvm::Function::ExternalLinkage, name, &llvmModule);
 
 	// Задаем имена аргументов функции, добавляем переменные в контекст
 	ContextScopeHelper scopedContext(m_context);
 
 	// Создаем базовый блок для вставки инструкции функции
-	llvm::BasicBlock* bb = llvm::BasicBlock::Create(utils.context, name + "_entry", llvmFunc);
-	utils.builder.SetInsertPoint(bb);
+	llvm::BasicBlock* bb = llvm::BasicBlock::Create(llvmContext, name + "_entry", llvmFunc);
+	builder.SetInsertPoint(bb);
 
 	size_t index = 0;
 	for (llvm::Argument& argument : llvmFunc->args())
@@ -650,9 +680,10 @@ void Codegen::GenerateFunc(const FunctionAST& func)
 		const FunctionAST::Param& param = func.GetParams()[index];
 		argument.setName(func.GetParams()[index].first);
 
-		llvm::AllocaInst* variable = CreateLocalVariable(llvmFunc, ConvertToTypeLLVM(param.second, utils.context), param.first + "Ptr");
+		llvm::AllocaInst* variable = CreateLocalVariable(
+			llvmFunc, ConvertToTypeLLVM(param.second, llvmContext), param.first + "Ptr");
 		m_context.Define(param.first, variable);
-		utils.builder.CreateStore(&argument, variable);
+		builder.CreateStore(&argument, variable);
 
 		++index;
 	}
@@ -669,8 +700,8 @@ void Codegen::GenerateFunc(const FunctionAST& func)
 		if (!block->getTerminator() && std::next(it) != continueBlocks.end())
 		{
 			llvm::BasicBlock* next = *std::next(it);
-			utils.builder.SetInsertPoint(block);
-			utils.builder.CreateBr(next);
+			builder.SetInsertPoint(block);
+			builder.CreateBr(next);
 		};
 	}
 

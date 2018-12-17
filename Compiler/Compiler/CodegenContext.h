@@ -13,18 +13,25 @@
 #include <llvm/IR/Verifier.h>
 #pragma warning(pop)
 
-struct CodegenUtils
+class CodegenUtils
 {
-	explicit CodegenUtils();
-	llvm::LLVMContext context;
-	llvm::IRBuilder<> builder;
-	llvm::Module module;
+public:
+	CodegenUtils();
+
+	llvm::LLVMContext& GetLLVMContext();
+	llvm::IRBuilder<>& GetBuilder();
+	llvm::Module& GetModule();
+
+private:
+	llvm::LLVMContext m_context;
+	llvm::IRBuilder<> m_builder;
+	llvm::Module m_module;
 };
 
 class CodegenContext
 {
 public:
-	explicit CodegenContext();
+	CodegenContext();
 
 	void PushScope();
 	void PopScope();
@@ -41,8 +48,6 @@ public:
 	void AddFunction(const std::string& name, llvm::Function* func);
 	// Возвращает nullptr, если функция не найдена в текущем состоянии контекста
 	llvm::Function* GetFunction(const std::string& name);
-
-	//std::vector<llvm::BasicBlock*> &GetRemoveCandidates();
 
 	void Dump(std::ostream& out);
 

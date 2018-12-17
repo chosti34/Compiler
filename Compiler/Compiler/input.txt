@@ -9,12 +9,13 @@ func main(argc: Int) -> Int:
 	{
 		if (a)
 		{
-
+			print b;
 		}
 		else
 		{
-
+			print a;
 		}
+		print a + b;
 	}
 	return 0;
 }
