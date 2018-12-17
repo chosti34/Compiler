@@ -88,14 +88,15 @@ llvm::Value* ConvertToBooleanValue(llvm::Value* value, CodegenUtils& utils)
 	case ExpressionTypeAST::Float:
 		return utils.builder.CreateNot(
 			utils.builder.CreateFCmpOEQ(
-				value, llvm::ConstantFP::get(
-					llvm::Type::getDoubleTy(utils.context), 0.0), "fboolcast"),
+				value, llvm::ConstantFP::get(llvm::Type::getDoubleTy(utils.context), 0.0), "fboolcast"),
 			"nottmp");
 	case ExpressionTypeAST::Bool:
 		return value;
 	case ExpressionTypeAST::String:
-	default:
 		throw std::runtime_error("can't cast string to bool");
+	default:
+		assert(false);
+		throw std::logic_error("ConvertToBooleanValue() - undefined ast expression type");
 	}
 }
 

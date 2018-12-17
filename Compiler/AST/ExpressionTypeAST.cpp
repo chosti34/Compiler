@@ -1,21 +1,30 @@
 #include "stdafx.h"
 #include "ExpressionTypeAST.h"
 
+namespace
+{
+const std::unordered_map<ExpressionTypeAST, std::unordered_set<ExpressionTypeAST>> gcCasts = {
+	{ ExpressionTypeAST::Int, { ExpressionTypeAST::Float, ExpressionTypeAST::Bool } },
+	{ ExpressionTypeAST::Float, { ExpressionTypeAST::Int, ExpressionTypeAST::Bool } },
+	{ ExpressionTypeAST::Bool, { ExpressionTypeAST::Int, ExpressionTypeAST::Float } }
+};
+}
+
 bool Convertible(ExpressionTypeAST from, ExpressionTypeAST to)
 {
-	static std::unordered_map<ExpressionTypeAST, std::unordered_set<ExpressionTypeAST>> table = {
-		{ ExpressionTypeAST::Int, { ExpressionTypeAST::Float, ExpressionTypeAST::Bool } },
-		{ ExpressionTypeAST::Float, { ExpressionTypeAST::Int, ExpressionTypeAST::Bool } }
-	};
+	if (from == to)
+	{
+		throw std::runtime_error("trying to convert from '" + ToString(from) +  "' to itself");
+	}
 
-	auto found = table.find(from);
-	if (found == table.end())
+	auto found = gcCasts.find(from);
+	if (found == gcCasts.end())
 	{
 		return false;
 	}
 
-	const auto& casts = found->second;
-	return casts.find(to) != casts.end();
+	const std::unordered_set<ExpressionTypeAST> & availableCasts = found->second;
+	return availableCasts.find(to) != availableCasts.end();
 }
 
 bool ConvertibleToBool(ExpressionTypeAST type)
