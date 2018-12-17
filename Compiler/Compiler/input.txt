@@ -3,19 +3,8 @@ func foo(a: Int, b: Int) -> Int:
 
 func main(argc: Int) -> Int:
 {
-	var a: Float = 1;
-	var b: Float = -0.2;
-	if (a + b)
-	{
-		if (a)
-		{
-			print b;
-		}
-		else
-		{
-			print a;
-		}
-		print a + b;
-	}
+	var a: Float = 10.2;
+	var b: Float = 9.1;
+	print foo(a, b);
 	return 0;
 }

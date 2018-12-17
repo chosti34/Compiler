@@ -23,41 +23,21 @@ std::string ToString(BinaryExpressionAST::Operator operation)
 
 ExpressionTypeAST ConvertToExpressionTypeAST(llvm::Type* type)
 {
-	if (type->isPointerTy())
+	assert(!type->isPointerTy());
+	if (type->isIntegerTy())
 	{
-		if (type->getPointerElementType()->isIntegerTy())
+		if (type->getIntegerBitWidth() == 32)
 		{
-			if (type->getPointerElementType()->getIntegerBitWidth() == 32)
-			{
-				return ExpressionTypeAST::Int;
-			}
-			else if (type->getPointerElementType()->getIntegerBitWidth() == 1)
-			{
-				return ExpressionTypeAST::Bool;
-			}
+			return ExpressionTypeAST::Int;
 		}
-		if (type->getPointerElementType()->isDoubleTy())
+		else if (type->getIntegerBitWidth() == 1)
 		{
-			return ExpressionTypeAST::Float;
+			return ExpressionTypeAST::Bool;
 		}
 	}
-	else
+	if (type->isDoubleTy())
 	{
-		if (type->isIntegerTy())
-		{
-			if (type->getIntegerBitWidth() == 32)
-			{
-				return ExpressionTypeAST::Int;
-			}
-			else if (type->getIntegerBitWidth() == 1)
-			{
-				return ExpressionTypeAST::Bool;
-			}
-		}
-		if (type->isDoubleTy())
-		{
-			return ExpressionTypeAST::Float;
-		}
+		return ExpressionTypeAST::Float;
 	}
 	throw std::invalid_argument("can't convert passed llvm type to expression type ast");
 }
@@ -152,31 +132,27 @@ llvm::Value* EmitDefaultValue(ExpressionTypeAST type, llvm::LLVMContext& llvmCon
 	}
 }
 
-bool Cast(GeneratedExpression& generated, ExpressionTypeAST to, CodegenUtils& utils)
+bool CastValue(llvm::Value*& value, ExpressionTypeAST castToThatType, CodegenUtils& utils)
 {
-	assert(generated.type != to);
-	if (!Convertible(generated.type, to))
+	const ExpressionTypeAST currentType = ConvertToExpressionTypeAST(value->getType());
+	if (!Convertible(currentType, castToThatType))
 	{
 		return false;
 	}
 
-	if (generated.type == ExpressionTypeAST::Int)
+	if (currentType == ExpressionTypeAST::Int)
 	{
-		if (to == ExpressionTypeAST::Float)
+		if (castToThatType == ExpressionTypeAST::Float)
 		{
-			generated.value = utils.GetBuilder().CreateSIToFP(
-				generated.value, llvm::Type::getDoubleTy(utils.GetLLVMContext()), "casttmp");
-			generated.type = ExpressionTypeAST::Float;
+			value = utils.GetBuilder().CreateSIToFP(value, llvm::Type::getDoubleTy(utils.GetLLVMContext()), "casttmp");
 			return true;
 		}
 	}
-	if (generated.type == ExpressionTypeAST::Float)
+	if (currentType == ExpressionTypeAST::Float)
 	{
-		if (to == ExpressionTypeAST::Int)
+		if (castToThatType == ExpressionTypeAST::Int)
 		{
-			generated.value = utils.GetBuilder().CreateFPToSI(
-				generated.value, llvm::Type::getInt32Ty(utils.GetLLVMContext()), "casttmp");
-			generated.type = ExpressionTypeAST::Int;
+			value = utils.GetBuilder().CreateFPToSI(value, llvm::Type::getInt32Ty(utils.GetLLVMContext()), "casttmp");
 			return true;
 		}
 	}
@@ -184,21 +160,21 @@ bool Cast(GeneratedExpression& generated, ExpressionTypeAST to, CodegenUtils& ut
 }
 
 bool CastToMatchBinaryExpression(
-	GeneratedExpression& left,
-	GeneratedExpression& right,
+	llvm::Value* left,
+	llvm::Value* right,
 	BinaryExpressionAST::Operator op,
 	CodegenUtils& utils)
 {
-	assert(left.type != right.type);
-	(void)op;
+	const ExpressionTypeAST leftType = ConvertToExpressionTypeAST(left->getType());
+	const ExpressionTypeAST rightType = ConvertToExpressionTypeAST(right->getType());
 
-	if (left.type == ExpressionTypeAST::Float && right.type == ExpressionTypeAST::Int)
+	if (leftType == ExpressionTypeAST::Float && rightType == ExpressionTypeAST::Int)
 	{
-		return Cast(right, ExpressionTypeAST::Float, utils);
+		return CastValue(right, ExpressionTypeAST::Float, utils);
 	}
-	if (left.type == ExpressionTypeAST::Int && right.type == ExpressionTypeAST::Float)
+	if (leftType == ExpressionTypeAST::Int && rightType == ExpressionTypeAST::Float)
 	{
-		return Cast(left, ExpressionTypeAST::Float, utils);
+		return CastValue(left, ExpressionTypeAST::Float, utils);
 	}
 	return false;
 }
@@ -236,12 +212,12 @@ ExpressionCodegen::ExpressionCodegen(CodegenContext& context)
 {
 }
 
-GeneratedExpression ExpressionCodegen::Visit(const IExpressionAST& node)
+llvm::Value* ExpressionCodegen::Visit(const IExpressionAST& node)
 {
 	node.Accept(*this);
 	if (!m_stack.empty())
 	{
-		GeneratedExpression value = m_stack.back();
+		llvm::Value* value = m_stack.back();
 		m_stack.pop_back();
 		return value;
 	}
@@ -253,36 +229,27 @@ void ExpressionCodegen::Visit(const BinaryExpressionAST& node)
 	CodegenUtils& utils = m_context.GetUtils();
 	llvm::IRBuilder<>& builder = utils.GetBuilder();
 
-	node.GetLeft().Accept(*this);
-	node.GetRight().Accept(*this);
+	llvm::Value* left = Visit(node.GetLeft());
+	llvm::Value* right = Visit(node.GetRight());
 
-	GeneratedExpression right = m_stack.back();
-	m_stack.pop_back();
+	const ExpressionTypeAST leftType = ConvertToExpressionTypeAST(left->getType());
+	const ExpressionTypeAST rightType = ConvertToExpressionTypeAST(right->getType());
 
-	GeneratedExpression left = m_stack.back();
-	m_stack.pop_back();
-
-	if (node.GetOperator() == BinaryExpressionAST::Mod &&
-		(left.type != ExpressionTypeAST::Int || right.type != ExpressionTypeAST::Int))
-	{
-		throw std::runtime_error("modulo operator expects integers on both sides of an expression");
-	}
-
-	if (right.type != left.type)
+	if (leftType != rightType)
 	{
 		if (!CastToMatchBinaryExpression(left, right, node.GetOperator(), utils))
 		{
 			auto fmt = boost::format("can't perform operator '%1%' on operands with types '%2%' and '%3%'")
 				% ToString(node.GetOperator())
-				% ToString(left.type)
-				% ToString(right.type);
+				% ToString(leftType)
+				% ToString(rightType);
 			throw std::runtime_error(fmt.str());
 		}
 		// TODO: produce warning here
 	}
 
-	assert(left.type == right.type);
-	const bool isFloat = left.type == ExpressionTypeAST::Float;
+	assert(ConvertToExpressionTypeAST(left->getType()) == ConvertToExpressionTypeAST(right->getType()));
+	const bool isFloat = leftType == ExpressionTypeAST::Float;
 
 	llvm::Value *value = nullptr;
 
@@ -290,33 +257,33 @@ void ExpressionCodegen::Visit(const BinaryExpressionAST& node)
 	{
 	case BinaryExpressionAST::Plus:
 		value = !isFloat ?
-			builder.CreateAdd(left.value, right.value, "addtmp") :
-			builder.CreateFAdd(left.value, right.value, "faddtmp");
+			builder.CreateAdd(left, right, "addtmp") :
+			builder.CreateFAdd(left, right, "faddtmp");
 		break;
 	case BinaryExpressionAST::Minus:
 		value = !isFloat ?
-			builder.CreateSub(left.value, right.value, "subtmp") :
-			builder.CreateFSub(left.value, right.value, "fsubtmp");
+			builder.CreateSub(left, right, "subtmp") :
+			builder.CreateFSub(left, right, "fsubtmp");
 		break;
 	case BinaryExpressionAST::Mul:
 		value = !isFloat ?
-			builder.CreateMul(left.value, right.value, "multmp") :
-			builder.CreateFMul(left.value, right.value, "fmultmp");
+			builder.CreateMul(left, right, "multmp") :
+			builder.CreateFMul(left, right, "fmultmp");
 		break;
 	case BinaryExpressionAST::Div:
 		value = !isFloat ?
-			builder.CreateSDiv(left.value, right.value, "fdivtmp") :
-			builder.CreateFDiv(left.value, right.value, "divtmp");
+			builder.CreateSDiv(left, right, "fdivtmp") :
+			builder.CreateFDiv(left, right, "divtmp");
 		break;
 	case BinaryExpressionAST::Mod:
 		assert(!isFloat);
-		value = builder.CreateSRem(left.value, right.value, "modtmp");
+		value = builder.CreateSRem(left, right, "modtmp");
 		break;
 	default:
 		throw std::logic_error("can't generate code for undefined binary operator");
 	}
 
-	m_stack.push_back({ value, (isFloat ? ExpressionTypeAST::Float : ExpressionTypeAST::Int) });
+	m_stack.push_back(value);
 }
 
 void ExpressionCodegen::Visit(const LiteralConstantAST& node)
@@ -329,13 +296,13 @@ void ExpressionCodegen::Visit(const LiteralConstantAST& node)
 	{
 		const int number = boost::get<int>(constant);
 		llvm::Value* value = llvm::ConstantInt::get(llvm::Type::getInt32Ty(llvmContext), number);
-		m_stack.push_back({ value, ExpressionTypeAST::Int });
+		m_stack.push_back(value);
 	}
 	else if (constant.type() == typeid(double))
 	{
 		const double number = boost::get<double>(constant);
 		llvm::Value* value = llvm::ConstantFP::get(llvm::Type::getDoubleTy(llvmContext), number);
-		m_stack.push_back({ value, ExpressionTypeAST::Float });
+		m_stack.push_back(value);
 	}
 	else
 	{
@@ -349,18 +316,16 @@ void ExpressionCodegen::Visit(const UnaryAST& node)
 	CodegenUtils& utils = m_context.GetUtils();
 	llvm::IRBuilder<>& builder = utils.GetBuilder();
 
-	node.GetExpr().Accept(*this);
+	llvm::Value* value = Visit(node.GetExpr());
+	const ExpressionTypeAST type = ConvertToExpressionTypeAST(value->getType());
 
-	GeneratedExpression generated = m_stack.back();
-	m_stack.pop_back();
-
-	if (generated.type == ExpressionTypeAST::Int)
+	if (type == ExpressionTypeAST::Int)
 	{
-		m_stack.push_back({ builder.CreateNeg(generated.value, "negtmp"), ExpressionTypeAST::Int });
+		m_stack.push_back(builder.CreateNeg(value, "negtmp"));
 	}
-	else if (generated.type == ExpressionTypeAST::Float)
+	else if (type == ExpressionTypeAST::Float)
 	{
-		m_stack.push_back({ builder.CreateFNeg(generated.value, "fnegtmp"), ExpressionTypeAST::Float });
+		m_stack.push_back(builder.CreateFNeg(value, "fnegtmp"));
 	}
 	else
 	{
@@ -383,17 +348,18 @@ void ExpressionCodegen::Visit(const IdentifierAST& node)
 	}
 
 	llvm::Value* value = builder.CreateLoad(variable, name + "Value");
-	m_stack.push_back({ value, ConvertToExpressionTypeAST(value->getType()) });
+	m_stack.push_back(value);
 }
 
 void ExpressionCodegen::Visit(const FunctionCallExprAST& node)
 {
 	CodegenUtils& utils = m_context.GetUtils();
+	llvm::IRBuilder<>& builder = utils.GetBuilder();
 
 	llvm::Function* func = m_context.GetFunction(node.GetName());
 	if (!func)
 	{
-		throw std::runtime_error("function '" + node.GetName() + "' is undefined");
+		throw std::runtime_error("calling function '" + node.GetName() + "' that isn't defined");
 	}
 
 	if (func->arg_size() != node.GetParamsCount())
@@ -407,29 +373,30 @@ void ExpressionCodegen::Visit(const FunctionCallExprAST& node)
 
 	for (llvm::Argument& arg : func->args())
 	{
-		GeneratedExpression generatedParam = Visit(node.GetParam(index));
-		ExpressionTypeAST formalParamType = ConvertToExpressionTypeAST(arg.getType());
+		llvm::Value* value = Visit(node.GetParam(index));
+		const ExpressionTypeAST valueType = ConvertToExpressionTypeAST(value->getType());
+		const ExpressionTypeAST argumentType = ConvertToExpressionTypeAST(arg.getType());
 
-		if (generatedParam.type != formalParamType)
+		if (valueType != argumentType)
 		{
-			bool casted = Cast(generatedParam, formalParamType, utils);
+			bool casted = CastValue(value, argumentType, utils);
 			if (!casted)
 			{
 				auto fmt = boost::format("function '%1%' expects '%2%' as parameter, '%3%' given (can't cast)")
 					% func->getName().str()
-					% ToString(formalParamType)
-					% ToString(generatedParam.type);
+					% ToString(argumentType)
+					% ToString(valueType);
 				throw std::runtime_error(fmt.str());
 			}
 		}
 
-		assert(generatedParam.type == formalParamType);
-		args.push_back(generatedParam.value);
+		assert(ConvertToExpressionTypeAST(value->getType()) == ConvertToExpressionTypeAST(arg.getType()));
+		args.push_back(value);
 		++index;
 	}
 
-	llvm::Value* value = m_context.GetUtils().GetBuilder().CreateCall(func, args, "calltmp");
-	m_stack.push_back({ value, ConvertToExpressionTypeAST(func->getReturnType()) });
+	llvm::Value* value = builder.CreateCall(func, args, "calltmp");
+	m_stack.push_back(value);
 }
 
 // Statement codegen visitor
@@ -476,13 +443,13 @@ void StatementCodegen::Visit(const VariableDeclarationAST& node)
 		return;
 	}
 
-	GeneratedExpression generated = m_expressionCodegen.Visit(*expression);
-	if (generated.type != node.GetType())
+	llvm::Value* value = m_expressionCodegen.Visit(*expression);
+	if (ConvertToExpressionTypeAST(value->getType()) != node.GetType())
 	{
-		if (!Cast(generated, node.GetType(), m_context.GetUtils()))
+		if (!CastValue(value, node.GetType(), m_context.GetUtils()))
 		{
 			auto fmt = boost::format("can't set expression of type '%1%' to variable '%2%' of type '%3%'")
-				% ToString(generated.type)
+				% ToString(ConvertToExpressionTypeAST(value->getType()))
 				% name
 				% ToString(node.GetType());
 			throw std::runtime_error(fmt.str());
@@ -490,8 +457,8 @@ void StatementCodegen::Visit(const VariableDeclarationAST& node)
 		// TODO: produce warning here
 	}
 
-	assert(generated.value->getType()->getTypeID() == variable->getType()->getPointerElementType()->getTypeID());
-	builder.CreateStore(generated.value, variable);
+	assert(value->getType()->getTypeID() == variable->getType()->getPointerElementType()->getTypeID());
+	builder.CreateStore(value, variable);
 }
 
 void StatementCodegen::Visit(const AssignStatementAST& node)
@@ -501,29 +468,27 @@ void StatementCodegen::Visit(const AssignStatementAST& node)
 
 	const std::string& name = node.GetIdentifier().GetName();
 	llvm::AllocaInst* variable = m_context.GetVariable(name);
-	ExpressionTypeAST variableTypeAST = ConvertToExpressionTypeAST(variable->getType());
-
 	if (!variable)
 	{
 		throw std::runtime_error("can't assign because variable '" + name + "' is not defined");
 	}
 
-	GeneratedExpression generated = m_expressionCodegen.Visit(node.GetExpr());
-	if (generated.type != variableTypeAST)
+	llvm::Value* value = m_expressionCodegen.Visit(node.GetExpr());
+	if (ConvertToExpressionTypeAST(value->getType()) != ConvertToExpressionTypeAST(variable->getType()->getPointerElementType()))
 	{
-		if (!Cast(generated, variableTypeAST, m_context.GetUtils()))
+		if (!CastValue(value, ConvertToExpressionTypeAST(variable->getType()->getPointerElementType()), m_context.GetUtils()))
 		{
 			auto fmt = boost::format("can't set expression of type '%1%' to variable '%2%' of type '%3%'")
-				% ToString(generated.type)
+				% ToString(ConvertToExpressionTypeAST(value->getType()))
 				% name
-				% ToString(variableTypeAST);
+				% ToString(ConvertToExpressionTypeAST(variable->getType()->getPointerElementType()));
 			throw std::runtime_error(fmt.str());
 		}
 		// TODO: produce warning here
 	}
 
-	assert(generated.value->getType()->getTypeID() == variable->getType()->getPointerElementType()->getTypeID());
-	builder.CreateStore(generated.value, variable);
+	assert(value->getType()->getTypeID() == variable->getType()->getPointerElementType()->getTypeID());
+	builder.CreateStore(value, variable);
 }
 
 void StatementCodegen::Visit(const ReturnStatementAST& node)
@@ -534,18 +499,18 @@ void StatementCodegen::Visit(const ReturnStatementAST& node)
 	llvm::Function* func = builder.GetInsertBlock()->getParent();
 	ExpressionTypeAST funcReturnType = ConvertToExpressionTypeAST(func->getReturnType());
 
-	GeneratedExpression generated = m_expressionCodegen.Visit(node.GetExpr());
-	if (generated.type != funcReturnType)
+	llvm::Value* value = m_expressionCodegen.Visit(node.GetExpr());
+	if (ConvertToExpressionTypeAST(value->getType()) != funcReturnType)
 	{
-		bool casted = Cast(generated, funcReturnType, utils);
+		bool casted = CastValue(value, funcReturnType, utils);
 		if (!casted)
 		{
 			throw std::runtime_error("returning expression must be at least convertible to function return type");
 		}
 	}
 
-	assert(generated.type == funcReturnType);
-	builder.CreateRet(generated.value);
+	assert(ConvertToExpressionTypeAST(value->getType()) == funcReturnType);
+	builder.CreateRet(value);
 }
 
 void StatementCodegen::Visit(const IfStatementAST& node)
@@ -560,9 +525,9 @@ void StatementCodegen::Visit(const IfStatementAST& node)
 	llvm::BasicBlock* elseBlock = llvm::BasicBlock::Create(llvmContext, "else", func);
 	llvm::BasicBlock* continueBlock = llvm::BasicBlock::Create(llvmContext, "continue", func);
 
-	GeneratedExpression generated = m_expressionCodegen.Visit(node.GetExpr());
-	generated.value = ConvertToBooleanValue(generated.value, llvmContext, builder);
-	builder.CreateCondBr(generated.value, thenBlock, elseBlock);
+	llvm::Value* value = m_expressionCodegen.Visit(node.GetExpr());
+	value = ConvertToBooleanValue(value, llvmContext, builder);
+	builder.CreateCondBr(value, thenBlock, elseBlock);
 
 	builder.SetInsertPoint(thenBlock);
 	Visit(node.GetThenStmt());
@@ -614,17 +579,16 @@ void StatementCodegen::Visit(const PrintAST& node)
 	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
 	llvm::IRBuilder<>& builder = utils.GetBuilder();
 
-	GeneratedExpression generated = m_expressionCodegen.Visit(node.GetExpression());
-	if (generated.type != ExpressionTypeAST::Int &&
-		generated.type != ExpressionTypeAST::Float)
+	llvm::Value* value = m_expressionCodegen.Visit(node.GetExpression());
+	if (!value->getType()->isIntegerTy() && !value->getType()->isDoubleTy())
 	{
 		throw std::runtime_error("strings and booleans can't be printed out yet");
 	}
 
 	llvm::Function* printf = m_context.GetPrintf();
 
-	const std::string& fmt = generated.value->getType()->isDoubleTy() ? "%f\n" : "%d\n";
-	std::vector<llvm::Value*> args = { CreateGlobalStringLiteral(llvmContext, llvmModule, fmt), generated.value };
+	const std::string& fmt = value->getType()->isDoubleTy() ? "%f\n" : "%d\n";
+	std::vector<llvm::Value*> args = { CreateGlobalStringLiteral(llvmContext, llvmModule, fmt), value };
 
 	builder.CreateCall(printf, args);
 }
