@@ -1,5 +1,7 @@
 #include "stdafx.h"
 #include "CodegenVisitor.h"
+#include <utility>
+#include <unordered_map>
 
 namespace
 {
@@ -57,12 +59,58 @@ llvm::Type* ConvertToTypeLLVM(ExpressionTypeAST type, llvm::LLVMContext& context
 	}
 }
 
+llvm::Value* ConvertToIntValue(
+	llvm::Value* value,
+	llvm::LLVMContext& llvmContext,
+	llvm::IRBuilder<>& builder)
+{
+	const ExpressionTypeAST type = ConvertToExpressionTypeAST(value->getType());
+
+	switch (type)
+	{
+	case ExpressionTypeAST::Int:
+		return value;
+	case ExpressionTypeAST::Float:
+		return builder.CreateFPToSI(value, llvm::Type::getDoubleTy(llvmContext), "icasttmp");
+	case ExpressionTypeAST::Bool:
+		return builder.CreateBitCast(value, llvm::Type::getInt32Ty(llvmContext));
+	case ExpressionTypeAST::String:
+		throw std::runtime_error("can't cast string to integer");
+	}
+
+	assert(false);
+	throw std::logic_error("ConvertToIntValue() - value type is unknown");
+}
+
+llvm::Value* ConvertToFloatValue(
+	llvm::Value* value,
+	llvm::LLVMContext& llvmContext,
+	llvm::IRBuilder<>& builder)
+{
+	const ExpressionTypeAST type = ConvertToExpressionTypeAST(value->getType());
+
+	switch (type)
+	{
+	case ExpressionTypeAST::Int:
+	case ExpressionTypeAST::Bool:
+		return builder.CreateSIToFP(value, llvm::Type::getDoubleTy(llvmContext));
+	case ExpressionTypeAST::Float:
+		return value;
+	case ExpressionTypeAST::String:
+		throw std::runtime_error("can't cast string to float");
+	}
+
+	assert(false);
+	throw std::logic_error("ConvertToIntValue() - value type is unknown");
+}
+
 llvm::Value* ConvertToBooleanValue(
 	llvm::Value* value,
 	llvm::LLVMContext& llvmContext,
 	llvm::IRBuilder<>& builder)
 {
-	ExpressionTypeAST typeAST = ConvertToExpressionTypeAST(value->getType());
+	const ExpressionTypeAST typeAST = ConvertToExpressionTypeAST(value->getType());
+
 	switch (typeAST)
 	{
 	case ExpressionTypeAST::Int:
@@ -75,10 +123,10 @@ llvm::Value* ConvertToBooleanValue(
 		return value;
 	case ExpressionTypeAST::String:
 		throw std::runtime_error("can't cast string to bool");
-	default:
-		assert(false);
-		throw std::logic_error("ConvertToBooleanValue() - undefined ast expression type");
 	}
+
+	assert(false);
+	throw std::logic_error("ConvertToBooleanValue() - undefined ast expression type");
 }
 
 std::vector<llvm::Type*> CreateFunctionArgumentTypes(
@@ -235,9 +283,16 @@ void ExpressionCodegen::Visit(const BinaryExpressionAST& node)
 	const ExpressionTypeAST leftType = ConvertToExpressionTypeAST(left->getType());
 	const ExpressionTypeAST rightType = ConvertToExpressionTypeAST(right->getType());
 
+	// Есть два варианта действий при посещении узла бинарного оператора:
+	//  1. Посмотреть тип левого операнда, и привести правый операнд к этому же типу,
+	//     далее смотреть на оператор и генерироровать код в зависимости от оператора и от типа обеих частей выражения
+	//  2. Посмотреть на тип правого и левого операнда. По определенному приоритету, выполнить преобразование
+	//     обеих частей выражения в один тип. Далее генерировать код, в зависимости от оператора и от типа
+
 	if (leftType != rightType)
 	{
-		if (!CastToMatchBinaryExpression(left, right, node.GetOperator(), utils))
+		const auto castType = GetPreferredTypeFromBinaryExpression(leftType, rightType);
+		if (!castType)
 		{
 			auto fmt = boost::format("can't perform operator '%1%' on operands with types '%2%' and '%3%'")
 				% ToString(node.GetOperator())
@@ -245,6 +300,8 @@ void ExpressionCodegen::Visit(const BinaryExpressionAST& node)
 				% ToString(rightType);
 			throw std::runtime_error(fmt.str());
 		}
+
+		// Create Cast
 		// TODO: produce warning here
 	}
 
@@ -256,7 +313,8 @@ void ExpressionCodegen::Visit(const BinaryExpressionAST& node)
 	switch (node.GetOperator())
 	{
 	case BinaryExpressionAST::Plus:
-		value = !isFloat ?
+		value =
+			!isFloat ?
 			builder.CreateAdd(left, right, "addtmp") :
 			builder.CreateFAdd(left, right, "faddtmp");
 		break;

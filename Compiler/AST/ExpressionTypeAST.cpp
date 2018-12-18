@@ -3,10 +3,15 @@
 
 namespace
 {
-const std::unordered_map<ExpressionTypeAST, std::unordered_set<ExpressionTypeAST>> gcCasts = {
+const std::unordered_map<ExpressionTypeAST, std::unordered_set<ExpressionTypeAST>> gcAvailableCasts = {
 	{ ExpressionTypeAST::Int, { ExpressionTypeAST::Float, ExpressionTypeAST::Bool } },
 	{ ExpressionTypeAST::Float, { ExpressionTypeAST::Int, ExpressionTypeAST::Bool } },
 	{ ExpressionTypeAST::Bool, { ExpressionTypeAST::Int, ExpressionTypeAST::Float } }
+};
+
+const std::map<std::pair<ExpressionTypeAST, ExpressionTypeAST>, ExpressionTypeAST> gcBinaryCasts = {
+	{ { ExpressionTypeAST::Int, ExpressionTypeAST::Float }, ExpressionTypeAST::Float },
+	{ { ExpressionTypeAST::Float, ExpressionTypeAST::Int }, ExpressionTypeAST::Float }
 };
 }
 
@@ -17,8 +22,8 @@ bool Convertible(ExpressionTypeAST from, ExpressionTypeAST to)
 		throw std::runtime_error("trying to convert from '" + ToString(from) +  "' to itself");
 	}
 
-	auto found = gcCasts.find(from);
-	if (found == gcCasts.end())
+	auto found = gcAvailableCasts.find(from);
+	if (found == gcAvailableCasts.end())
 	{
 		return false;
 	}
@@ -30,6 +35,22 @@ bool Convertible(ExpressionTypeAST from, ExpressionTypeAST to)
 bool ConvertibleToBool(ExpressionTypeAST type)
 {
 	return Convertible(type, ExpressionTypeAST::Bool);
+}
+
+boost::optional<ExpressionTypeAST> GetPreferredTypeFromBinaryExpression(
+	ExpressionTypeAST left, ExpressionTypeAST right)
+{
+	if (left == right)
+	{
+		return left;
+	}
+
+	auto found = gcBinaryCasts.find(std::make_pair(left, right));
+	if (found == gcBinaryCasts.end())
+	{
+		return boost::none;
+	}
+	return found->second;
 }
 
 std::string ToString(ExpressionTypeAST type)
