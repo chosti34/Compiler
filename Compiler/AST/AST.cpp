@@ -119,7 +119,7 @@ void FunctionCallExprAST::Accept(IExpressionVisitor& visitor)const
 }
 
 // Variable declaration node
-VariableDeclarationAST::VariableDeclarationAST(std::unique_ptr<IdentifierAST> && identifier, ExpressionTypeAST type)
+VariableDeclarationAST::VariableDeclarationAST(std::unique_ptr<IdentifierAST> && identifier, ExpressionType type)
 	: m_identifier(std::move(identifier))
 	, m_type(type)
 	, m_expr(nullptr)
@@ -141,7 +141,7 @@ const IdentifierAST& VariableDeclarationAST::GetIdentifier()const
 	return *m_identifier;
 }
 
-ExpressionTypeAST VariableDeclarationAST::GetType()const
+ExpressionType VariableDeclarationAST::GetType()const
 {
 	return m_type;
 }
@@ -278,7 +278,7 @@ void CompositeStatementAST::Accept(IStatementVisitor& visitor)const
 
 // Function node
 FunctionAST::FunctionAST(
-	ExpressionTypeAST returnType,
+	ExpressionType returnType,
 	std::unique_ptr<IdentifierAST> && identifier,
 	std::vector<Param> && params,
 	std::unique_ptr<IStatementAST> && statement)
@@ -289,7 +289,7 @@ FunctionAST::FunctionAST(
 {
 }
 
-ExpressionTypeAST FunctionAST::GetReturnType()const
+ExpressionType FunctionAST::GetReturnType()const
 {
 	return m_returnType;
 }
@@ -357,4 +357,34 @@ const IExpressionAST& FunctionCallStatementAST::GetCall()const
 void FunctionCallStatementAST::Accept(IStatementVisitor& visitor) const
 {
 	visitor.Visit(*this);
+}
+
+std::string ToString(BinaryExpressionAST::Operator operation)
+{
+	switch (operation)
+	{
+	case BinaryExpressionAST::Plus:
+		return "+";
+	case BinaryExpressionAST::Minus:
+		return "-";
+	case BinaryExpressionAST::Mul:
+		return "*";
+	case BinaryExpressionAST::Div:
+		return "/";
+	case BinaryExpressionAST::Mod:
+		return "%";
+	}
+	throw std::logic_error("ToString: can't cast undefined binary operator to string");
+}
+
+std::string ToString(UnaryAST::Operator operation)
+{
+	switch (operation)
+	{
+	case UnaryAST::Plus:
+		return "+";
+	case UnaryAST::Minus:
+		return "-";
+	}
+	throw std::logic_error("ToString: can't cast undefined unary operator to string");
 }

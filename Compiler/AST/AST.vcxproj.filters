@@ -24,10 +24,10 @@
     <ClInclude Include="AST.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ExpressionTypeAST.h">
+    <ClInclude Include="Visitor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="VisitorAST.h">
+    <ClInclude Include="ExpressionType.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -38,7 +38,7 @@
     <ClCompile Include="AST.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ExpressionTypeAST.cpp">
+    <ClCompile Include="ExpressionType.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
