@@ -95,13 +95,13 @@ llvm::Value* ConvertToBooleanValue(
 	llvm::LLVMContext& llvmContext,
 	llvm::IRBuilder<>& builder)
 {
-	const ExpressionType typeAST = ToExpressionType(value->getType());
+	const ExpressionType expressionType = ToExpressionType(value->getType());
 
-	switch (typeAST)
+	switch (expressionType)
 	{
 	case ExpressionType::Int:
-		return builder.CreateICmpEQ(value, llvm::ConstantInt::get(
-			llvm::Type::getInt1Ty(llvmContext), uint64_t(1)), "bcasttmp");
+		return builder.CreateNot(builder.CreateICmpEQ(
+			value, llvm::ConstantInt::get(llvm::Type::getInt32Ty(llvmContext), uint64_t(0)), "bcasttmp"));
 	case ExpressionType::Float:
 		return builder.CreateNot(builder.CreateFCmpOEQ(
 			value, llvm::ConstantFP::get(llvm::Type::getDoubleTy(llvmContext), 0.0), "fcmptmp"), "nottmp");
@@ -487,10 +487,9 @@ void ExpressionCodegen::Visit(const FunctionCallExprAST& node)
 }
 
 // Statement codegen visitor
-StatementCodegen::StatementCodegen(CodegenContext& context, std::vector<llvm::BasicBlock*> & continueBlocks)
+StatementCodegen::StatementCodegen(CodegenContext& context)
 	: m_context(context)
 	, m_expressionCodegen(context)
-	, m_continueBlocks(continueBlocks)
 {
 }
 
@@ -616,7 +615,8 @@ void StatementCodegen::Visit(const ReturnStatementAST& node)
 void StatementCodegen::Visit(const IfStatementAST& node)
 {
 	CodegenUtils& utils = m_context.GetUtils();
-	llvm::IRBuilder<>& builder = utils.GetBuilder();
+
+	llvm::IRBuilder<> & builder = utils.GetBuilder();
 	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
 
 	llvm::Function* func = builder.GetInsertBlock()->getParent();
@@ -629,31 +629,64 @@ void StatementCodegen::Visit(const IfStatementAST& node)
 	value = ConvertToBooleanValue(value, llvmContext, builder);
 	builder.CreateCondBr(value, thenBlock, elseBlock);
 
+	auto putBrAfterBranchInsertionIfNecessary = [&](llvm::BasicBlock* branch) {
+		// Если блок не имеет выхода, добавляем безусловный переход
+		if (!branch->getTerminator())
+		{
+			builder.CreateBr(continueBlock);
+			return;
+		}
+		// Если блок имеет вложенные if инструкции, и при этом блок continue не имеет выхода,
+		//  добавляем безусловный переход
+		if (!m_branchContinueStack.empty())
+		{
+			const bool hasTerminated = m_branchContinueStack.back()->getTerminator();
+			m_branchContinueStack.pop_back();
+			if (!hasTerminated)
+			{
+				builder.CreateBr(continueBlock);
+			}
+		}
+	};
+
 	builder.SetInsertPoint(thenBlock);
 	Visit(node.GetThenStmt());
-	if (!thenBlock->getTerminator())
-	{
-		builder.CreateBr(continueBlock);
-	}
+	putBrAfterBranchInsertionIfNecessary(thenBlock);
 
 	builder.SetInsertPoint(elseBlock);
 	if (node.GetElseStmt())
 	{
 		Visit(*node.GetElseStmt());
 	}
-	if (!elseBlock->getTerminator())
-	{
-		builder.CreateBr(continueBlock);
-	}
+	putBrAfterBranchInsertionIfNecessary(elseBlock);
 
 	builder.SetInsertPoint(continueBlock);
-	m_continueBlocks.push_back(continueBlock);
+	m_branchContinueStack.push_back(continueBlock);
 }
 
 void StatementCodegen::Visit(const WhileStatementAST& node)
 {
-	(void)node;
-	throw std::logic_error("code generation for while statement is not implemented");
+	CodegenUtils& utils = m_context.GetUtils();
+
+	llvm::IRBuilder<> & builder = utils.GetBuilder();
+	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
+
+	llvm::Function* func = builder.GetInsertBlock()->getParent();
+
+	llvm::BasicBlock* body = llvm::BasicBlock::Create(llvmContext, "loop", func);
+	llvm::BasicBlock* afterLoop = llvm::BasicBlock::Create(llvmContext, "afterloop", func);
+
+	llvm::Value* value = ConvertToBooleanValue(
+		m_expressionCodegen.Visit(node.GetExpr()), llvmContext, builder);
+	builder.CreateCondBr(value, body, afterLoop);
+
+	builder.SetInsertPoint(body);
+	Visit(node.GetStatement());
+	value = ConvertToBooleanValue(
+		m_expressionCodegen.Visit(node.GetExpr()), llvmContext, builder);
+	builder.CreateCondBr(value, body, afterLoop);
+
+	builder.SetInsertPoint(afterLoop);
 }
 
 void StatementCodegen::Visit(const CompositeStatementAST& node)
@@ -762,21 +795,8 @@ void Codegen::GenerateFunc(const FunctionAST& func)
 	}
 
 	// Генерируем код инструкции функции (может быть композитной)
-	std::vector<llvm::BasicBlock*> continueBlocks;
-	StatementCodegen statementCodegen(m_context, continueBlocks);
+	StatementCodegen statementCodegen(m_context);
 	statementCodegen.Visit(func.GetStatement());
-
-	// Связываем блоки continue условных инструкции
-	for (auto it = continueBlocks.begin(); it != continueBlocks.end(); ++it)
-	{
-		llvm::BasicBlock* block = *it;
-		if (!block->getTerminator() && std::next(it) != continueBlocks.end())
-		{
-			llvm::BasicBlock* next = *std::next(it);
-			builder.SetInsertPoint(block);
-			builder.CreateBr(next);
-		};
-	}
 
 	for (llvm::BasicBlock& basicBlock : llvmFunc->getBasicBlockList())
 	{

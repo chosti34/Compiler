@@ -1,14 +1,18 @@
+func sqr(n: Float) -> Float: return n * n;
+
 func main() -> Int:
 {
-	var a: Float = 1;
-	var b: Int;
-	if (a)
+	var a: Int = 10;
+	while (sqr(a))
 	{
-		print a + b + 10.2;
+		if (1)
+		{
+			print sqr(a);
+			a = a - 1;
+		}
+		else
+		{
+		}
 	}
-	else
-	{
-		print b + 1;
-	}
-	return a % b;
+	return 0;
 }
