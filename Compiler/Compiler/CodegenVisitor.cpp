@@ -57,9 +57,9 @@ llvm::Value* ConvertToIntegerValue(
 	case ExpressionType::Int:
 		return value;
 	case ExpressionType::Float:
-		return builder.CreateFPToSI(value, llvm::Type::getInt32Ty(llvmContext), "icasttmp");
+		return builder.CreateFPToUI(value, llvm::Type::getInt32Ty(llvmContext), "icasttmp");
 	case ExpressionType::Bool:
-		return builder.CreateBitCast(value, llvm::Type::getInt32Ty(llvmContext), "icasttmp");
+		return builder.CreateIntCast(value, llvm::Type::getInt32Ty(llvmContext), false, "icasttmp");
 	case ExpressionType::String:
 		throw std::runtime_error("can't cast string to integer");
 	}
@@ -79,7 +79,7 @@ llvm::Value* ConvertToFloatValue(
 	{
 	case ExpressionType::Int:
 	case ExpressionType::Bool:
-		return builder.CreateSIToFP(value, llvm::Type::getDoubleTy(llvmContext), "fcasttmp");
+		return builder.CreateUIToFP(value, llvm::Type::getDoubleTy(llvmContext), "fcasttmp");
 	case ExpressionType::Float:
 		return value;
 	case ExpressionType::String:
@@ -153,9 +153,9 @@ llvm::Value* CreateIntegerBinaryExpression(
 	case BinaryExpressionAST::Mul:
 		return builder.CreateMul(left, right, "multmp");
 	case BinaryExpressionAST::Div:
-		return builder.CreateSDiv(left, right, "divtmp");
+		return builder.CreateUDiv(left, right, "divtmp");
 	case BinaryExpressionAST::Mod:
-		return builder.CreateSRem(left, right, "modtmp");
+		return builder.CreateURem(left, right, "modtmp");
 	}
 
 	assert(false);
@@ -201,19 +201,37 @@ llvm::Value* CreateBooleanBinaryExpression(
 	switch (operation)
 	{
 	case BinaryExpressionAST::Plus:
-		return builder.CreateAdd(left, right, "addtmp");
 	case BinaryExpressionAST::Minus:
-		return builder.CreateSub(left, right, "subtmp");
 	case BinaryExpressionAST::Mul:
-		return builder.CreateMul(left, right, "multmp");
 	case BinaryExpressionAST::Div:
-		return builder.CreateSDiv(left, right, "divtmp");
 	case BinaryExpressionAST::Mod:
-		return builder.CreateSRem(left, right, "modtmp");
+		throw std::runtime_error("can't perform codegen for operator '" + ToString(operation) + "' on booleans");
 	}
 
 	assert(false);
 	throw std::logic_error("CreateBooleanBinaryExpression() - undefined binary expression ast operator");
+}
+
+llvm::Value* CreateNegativeValue(llvm::Value* value, llvm::IRBuilder<> & builder)
+{
+	const ExpressionType type = ToExpressionType(value->getType());
+	switch (ToExpressionType(value->getType()))
+	{
+	case ExpressionType::Int:
+		builder.CreateNeg(value, "negtmp");
+	case ExpressionType::Float:
+		builder.CreateFNeg(value, "fnegtmp");
+	case ExpressionType::Bool:
+		builder.CreateNeg(value, "bnegtmp");
+	case ExpressionType::String:
+	default:
+		throw std::runtime_error("can't create negative value of " + ToString(type));
+	}
+}
+
+llvm::Value* CreateValueNegation(llvm::Value* value, llvm::LLVMContext& llvmContext, llvm::IRBuilder<> & builder)
+{
+	return builder.CreateNot(ConvertToBooleanValue(value, llvmContext, builder));
 }
 
 llvm::Constant* CreateGlobalStringLiteral(
@@ -250,6 +268,7 @@ llvm::Value* CreateDefaultValue(ExpressionType type, llvm::LLVMContext& llvmCont
 	case ExpressionType::Float:
 		return llvm::ConstantFP::get(llvm::Type::getDoubleTy(llvmContext), 0.0);
 	case ExpressionType::Bool:
+		return llvm::ConstantInt::get(llvm::Type::getInt1Ty(llvmContext), uint64_t(0));
 	case ExpressionType::String:
 		throw std::logic_error("code generation for bool and string is not implemented yet");
 	default:
@@ -375,6 +394,7 @@ void ExpressionCodegen::Visit(const LiteralConstantAST& node)
 	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
 	const LiteralConstantAST::Value& constant = node.GetValue();
 
+	// TODO: use boost::static_visitor
 	if (constant.type() == typeid(int))
 	{
 		const int number = boost::get<int>(constant);
@@ -387,6 +407,12 @@ void ExpressionCodegen::Visit(const LiteralConstantAST& node)
 		llvm::Value* value = llvm::ConstantFP::get(llvm::Type::getDoubleTy(llvmContext), number);
 		m_stack.push_back(value);
 	}
+	else if (constant.type() == typeid(bool))
+	{
+		const bool boolean = boost::get<bool>(constant);
+		llvm::Value* value = llvm::ConstantInt::get(llvm::Type::getInt1Ty(llvmContext), uint64_t(boolean));
+		m_stack.push_back(value);
+	}
 	else
 	{
 		assert(false);
@@ -397,23 +423,26 @@ void ExpressionCodegen::Visit(const LiteralConstantAST& node)
 void ExpressionCodegen::Visit(const UnaryAST& node)
 {
 	CodegenUtils& utils = m_context.GetUtils();
-	llvm::IRBuilder<>& builder = utils.GetBuilder();
+	llvm::IRBuilder<> & builder = utils.GetBuilder();
+	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
 
 	llvm::Value* value = Visit(node.GetExpr());
 	const ExpressionType type = ToExpressionType(value->getType());
 
-	if (type == ExpressionType::Int)
+	switch (node.GetOperator())
 	{
-		m_stack.push_back(builder.CreateNeg(value, "negtmp"));
-	}
-	else if (type == ExpressionType::Float)
-	{
-		m_stack.push_back(builder.CreateFNeg(value, "fnegtmp"));
-	}
-	else
-	{
+	case UnaryAST::Plus:
+		m_stack.push_back(value);
+		break;
+	case UnaryAST::Minus:
+		m_stack.push_back(CreateNegativeValue(value, builder));
+		break;
+	case UnaryAST::Negation:
+		m_stack.push_back(CreateValueNegation(value, llvmContext, builder));
+		break;
+	default:
 		assert(false);
-		throw std::logic_error("Visit(UnaryAST) - can't codegen for unary on undefined literal constant type");
+		throw std::logic_error("Visit(UnaryAST): undefined unary operator");
 	}
 }
 

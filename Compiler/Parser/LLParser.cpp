@@ -260,10 +260,42 @@ public:
 		m_expressions.push_back(std::make_unique<LiteralConstantAST>(std::stod(*m_token.value)));
 	}
 
+	void OnTrueConstantParsed()
+	{
+		assert(m_token.type == Token::True);
+		auto trueConstantLiteral = std::make_unique<LiteralConstantAST>(true);
+		m_expressions.push_back(std::move(trueConstantLiteral));
+	}
+
+	void OnFalseConstantParsed()
+	{
+		assert(m_token.type == Token::False);
+		auto falseConstantLiteral = std::make_unique<LiteralConstantAST>(false);
+		m_expressions.push_back(std::move(falseConstantLiteral));
+	}
+
 	void OnUnaryMinusParsed()
 	{
-		auto node = std::move(m_expressions.back()); m_expressions.pop_back();
+		assert(!m_expressions.empty());
+		auto node = std::move(m_expressions.back());
+		m_expressions.pop_back();
 		m_expressions.push_back(std::make_unique<UnaryAST>(std::move(node), UnaryAST::Minus));
+	}
+
+	void OnUnaryPlusParsed()
+	{
+		assert(!m_expressions.empty());
+		auto node = std::move(m_expressions.back());
+		m_expressions.pop_back();
+		m_expressions.push_back(std::make_unique<UnaryAST>(std::move(node), UnaryAST::Plus));
+	}
+
+	void OnUnaryNegationParsed()
+	{
+		assert(!m_expressions.empty());
+		auto node = std::move(m_expressions.back());
+		m_expressions.pop_back();
+		m_expressions.push_back(std::make_unique<UnaryAST>(std::move(node), UnaryAST::Negation));
 	}
 
 	void OnFunctionCallExprParsed()
@@ -371,7 +403,11 @@ std::unique_ptr<ProgramAST> LLParser::Parse(const std::string& text)
 		{ "OnIdentifierParsed", std::bind(&ASTBuilder::OnIdentifierParsed, &astBuilder) },
 		{ "OnIntegerConstantParsed", std::bind(&ASTBuilder::OnIntegerConstantParsed, &astBuilder) },
 		{ "OnFloatConstantParsed", std::bind(&ASTBuilder::OnFloatConstantParsed, &astBuilder) },
+		{ "OnTrueConstantParsed", std::bind(&ASTBuilder::OnTrueConstantParsed, &astBuilder) },
+		{ "OnFalseConstantParsed", std::bind(&ASTBuilder::OnFalseConstantParsed, &astBuilder) },
 		{ "OnUnaryMinusParsed", std::bind(&ASTBuilder::OnUnaryMinusParsed, &astBuilder) },
+		{ "OnUnaryPlusParsed", std::bind(&ASTBuilder::OnUnaryPlusParsed, &astBuilder) },
+		{ "OnUnaryNegationParsed", std::bind(&ASTBuilder::OnUnaryNegationParsed, &astBuilder) },
 		{ "OnFunctionCallExprParsed", std::bind(&ASTBuilder::OnFunctionCallExprParsed, &astBuilder) }
 	};
 

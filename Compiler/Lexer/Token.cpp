@@ -45,7 +45,8 @@ const std::unordered_map<Token::Type, std::string> gcTokenTypeToStringMap = {
 	{ Token::Plus, "Plus" },
 	{ Token::Div, "Div" },
 	{ Token::Mul, "Mul" },
-	{ Token::Mod, "Mod" }
+	{ Token::Mod, "Mod" },
+	{ Token::Negation, "Negation" }
 };
 
 const std::unordered_map<std::string, Token::Type> gcStringToTokenTypeMap = {
@@ -90,7 +91,8 @@ const std::unordered_map<std::string, Token::Type> gcStringToTokenTypeMap = {
 	{ "Plus", Token::Plus },
 	{ "Div", Token::Div },
 	{ "Mul", Token::Mul },
-	{ "Mod", Token::Mod }
+	{ "Mod", Token::Mod },
+	{ "Negation", Token::Negation }
 };
 }
 

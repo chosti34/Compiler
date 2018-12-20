@@ -10,8 +10,15 @@ const std::unordered_map<ExpressionType, std::unordered_set<ExpressionType>> gcA
 };
 
 const std::map<std::pair<ExpressionType, ExpressionType>, ExpressionType> gcBinaryCasts = {
+	// Integer left
 	{ { ExpressionType::Int, ExpressionType::Float }, ExpressionType::Float },
-	{ { ExpressionType::Float, ExpressionType::Int }, ExpressionType::Float }
+	{ { ExpressionType::Int, ExpressionType::Bool }, ExpressionType::Int },
+	// Float left
+	{ { ExpressionType::Float, ExpressionType::Int }, ExpressionType::Float },
+	{ { ExpressionType::Float, ExpressionType::Bool }, ExpressionType::Float },
+	// Bool left
+	{ { ExpressionType::Bool, ExpressionType::Int }, ExpressionType::Int },
+	{ { ExpressionType::Bool, ExpressionType::Float }, ExpressionType::Float }
 };
 }
 

@@ -2,17 +2,19 @@ func sqr(n: Float) -> Float: return n * n;
 
 func main() -> Int:
 {
-	var a: Int = 10;
-	while (sqr(a))
+	var iNumber: Int = 10;
+	var fNumber: Float = 10.2;
+	var bFlag: Bool = True;
+
+	var a: Int = bFlag;
+	print a;
+
+	while (bFlag)
 	{
-		if (1)
-		{
-			print sqr(a);
-			a = a - 1;
-		}
-		else
-		{
-		}
+		print iNumber + fNumber + bFlag;
+		bFlag = fNumber - iNumber;
+		fNumber = fNumber - 0.1;
 	}
+
 	return 0;
 }

@@ -155,6 +155,11 @@ Token Lexer::GetNextToken()
 				++m_pos;
 				return Token{ Token::Mod };
 			}
+			if (ch == '!')
+			{
+				++m_pos;
+				return Token{ Token::Negation };
+			}
 		}
 		throw std::runtime_error("lexer can't parse character at pos " + std::to_string(m_pos) + ": '" + m_text[m_pos] + "'");
 	}

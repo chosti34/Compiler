@@ -48,7 +48,7 @@ class LiteralConstantAST : public IExpressionAST
 {
 public:
 	// TODO: add bool, string literal
-	using Value = boost::variant<int, double>;
+	using Value = boost::variant<int, double, bool>;
 
 	explicit LiteralConstantAST(const Value& value);
 	const Value& GetValue()const;
@@ -64,7 +64,8 @@ public:
 	enum Operator
 	{
 		Plus,
-		Minus
+		Minus,
+		Negation
 	};
 
 	explicit UnaryAST(std::unique_ptr<IExpressionAST> && expr, Operator op);

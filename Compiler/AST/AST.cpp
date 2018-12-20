@@ -385,6 +385,8 @@ std::string ToString(UnaryAST::Operator operation)
 		return "+";
 	case UnaryAST::Minus:
 		return "-";
+	case UnaryAST::Negation:
+		return "!";
 	}
 	throw std::logic_error("ToString: can't cast undefined unary operator to string");
 }
