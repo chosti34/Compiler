@@ -88,6 +88,11 @@ Token Lexer::GetNextToken()
 			if (ch == '=')
 			{
 				++m_pos;
+				if (m_pos < m_text.length() && m_text[m_pos] == '=')
+				{
+					++m_pos;
+					return Token{ Token::Equals };
+				}
 				return Token{ Token::Assign };
 			}
 			if (ch == ',')
@@ -159,6 +164,16 @@ Token Lexer::GetNextToken()
 			{
 				++m_pos;
 				return Token{ Token::Negation };
+			}
+			if (m_text.compare(m_pos, 2, "||") == 0)
+			{
+				m_pos += 2;
+				return { Token::Or };
+			}
+			if (m_text.compare(m_pos, 2, "&&") == 0)
+			{
+				m_pos += 2;
+				return { Token::And };
 			}
 		}
 		throw std::runtime_error("lexer can't parse character at pos " + std::to_string(m_pos) + ": '" + m_text[m_pos] + "'");

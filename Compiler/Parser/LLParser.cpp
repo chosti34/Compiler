@@ -217,29 +217,14 @@ public:
 		m_statements.push_back(std::make_unique<PrintAST>(Pop(m_expressions)));
 	}
 
-	void OnBinaryPlusParsed()
+	void OnBinaryOperatorParsed(BinaryExpressionAST::Operator op)
 	{
-		OnBinaryExprParsedHelper(BinaryExpressionAST::Plus);
-	}
+		assert(m_expressions.size() >= 2);
 
-	void OnBinaryMinusParsed()
-	{
-		OnBinaryExprParsedHelper(BinaryExpressionAST::Minus);
-	}
+		auto right = Pop(m_expressions);
+		auto left = Pop(m_expressions);
 
-	void OnBinaryMulParsed()
-	{
-		OnBinaryExprParsedHelper(BinaryExpressionAST::Mul);
-	}
-
-	void OnBinaryDivParsed()
-	{
-		OnBinaryExprParsedHelper(BinaryExpressionAST::Div);
-	}
-
-	void OnBinaryModuloParsed()
-	{
-		OnBinaryExprParsedHelper(BinaryExpressionAST::Mod);
+		m_expressions.push_back(std::make_unique<BinaryExpressionAST>(std::move(left), std::move(right), op));
 	}
 
 	void OnIdentifierParsed()
@@ -322,15 +307,6 @@ private:
 		return std::make_unique<FunctionCallExprAST>(identifier->GetName(), std::move(exprList));
 	}
 
-	void OnBinaryExprParsedHelper(BinaryExpressionAST::Operator op)
-	{
-		auto right = Pop(m_expressions);
-		auto left = Pop(m_expressions);
-
-		m_expressions.push_back(std::make_unique<BinaryExpressionAST>(
-			std::move(left), std::move(right), op));
-	}
-
 private:
 	// Текущий токен, который был считан лексером
 	const Token& m_token;
@@ -359,11 +335,20 @@ private:
 	// Стек для хранения AST функций
 	std::vector<std::unique_ptr<FunctionAST>> m_functions;
 };
+
+void LogSyntaxError(std::ostream& output, const Token& token)
+{
+	output << "Syntax error: unexpected token '" << TokenTypeToString(token.type) << "'" << std::endl;
+}
 }
 
-LLParser::LLParser(std::unique_ptr<ILexer> && lexer, std::unique_ptr<LLParserTable> && table)
+LLParser::LLParser(
+	std::unique_ptr<ILexer> && lexer,
+	std::unique_ptr<LLParserTable> && table,
+	std::ostream& output)
 	: m_lexer(std::move(lexer))
 	, m_table(std::move(table))
+	, m_output(output)
 {
 }
 
@@ -395,11 +380,15 @@ std::unique_ptr<ProgramAST> LLParser::Parse(const std::string& text)
 		{ "OnIntegerTypeParsed", std::bind(&ASTBuilder::OnIntegerTypeParsed, &astBuilder) },
 		{ "OnFloatTypeParsed", std::bind(&ASTBuilder::OnFloatTypeParsed, &astBuilder) },
 		{ "OnBoolTypeParsed", std::bind(&ASTBuilder::OnBoolTypeParsed, &astBuilder) },
-		{ "OnBinaryPlusParsed", std::bind(&ASTBuilder::OnBinaryPlusParsed, &astBuilder) },
-		{ "OnBinaryMinusParsed", std::bind(&ASTBuilder::OnBinaryMinusParsed, &astBuilder) },
-		{ "OnBinaryMulParsed", std::bind(&ASTBuilder::OnBinaryMulParsed, &astBuilder) },
-		{ "OnBinaryDivParsed", std::bind(&ASTBuilder::OnBinaryDivParsed, &astBuilder) },
-		{ "OnBinaryModuloParsed", std::bind(&ASTBuilder::OnBinaryModuloParsed, &astBuilder) },
+		{ "OnBinaryOrParsed", std::bind(&ASTBuilder::OnBinaryOperatorParsed, &astBuilder, BinaryExpressionAST::Or) },
+		{ "OnBinaryAndParsed", std::bind(&ASTBuilder::OnBinaryOperatorParsed, &astBuilder, BinaryExpressionAST::And) },
+		{ "OnBinaryEqualsParsed", std::bind(&ASTBuilder::OnBinaryOperatorParsed, &astBuilder, BinaryExpressionAST::Equals) },
+		{ "OnBinaryLessParsed", std::bind(&ASTBuilder::OnBinaryOperatorParsed, &astBuilder, BinaryExpressionAST::Less) },
+		{ "OnBinaryPlusParsed", std::bind(&ASTBuilder::OnBinaryOperatorParsed, &astBuilder, BinaryExpressionAST::Plus) },
+		{ "OnBinaryMinusParsed", std::bind(&ASTBuilder::OnBinaryOperatorParsed, &astBuilder, BinaryExpressionAST::Minus) },
+		{ "OnBinaryMulParsed", std::bind(&ASTBuilder::OnBinaryOperatorParsed, &astBuilder, BinaryExpressionAST::Mul) },
+		{ "OnBinaryDivParsed", std::bind(&ASTBuilder::OnBinaryOperatorParsed, &astBuilder, BinaryExpressionAST::Div) },
+		{ "OnBinaryModuloParsed", std::bind(&ASTBuilder::OnBinaryOperatorParsed, &astBuilder, BinaryExpressionAST::Mod) },
 		{ "OnIdentifierParsed", std::bind(&ASTBuilder::OnIdentifierParsed, &astBuilder) },
 		{ "OnIntegerConstantParsed", std::bind(&ASTBuilder::OnIntegerConstantParsed, &astBuilder) },
 		{ "OnFloatConstantParsed", std::bind(&ASTBuilder::OnFloatConstantParsed, &astBuilder) },
@@ -436,6 +425,7 @@ std::unique_ptr<ProgramAST> LLParser::Parse(const std::string& text)
 			}
 			else
 			{
+				LogSyntaxError(m_output, token);
 				return nullptr;
 			}
 		}

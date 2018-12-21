@@ -139,6 +139,7 @@ llvm::Value* CreateIntegerBinaryExpression(
 	llvm::Value* left,
 	llvm::Value* right,
 	BinaryExpressionAST::Operator operation,
+	llvm::LLVMContext& llvmContext,
 	llvm::IRBuilder<> & builder)
 {
 	assert(ToExpressionType(left->getType()) == ToExpressionType(right->getType()));
@@ -146,6 +147,18 @@ llvm::Value* CreateIntegerBinaryExpression(
 
 	switch (operation)
 	{
+	case BinaryExpressionAST::Or:
+		return builder.CreateOr(
+			ConvertToBooleanValue(left, llvmContext, builder), 
+			ConvertToBooleanValue(right, llvmContext, builder), "ortmp");
+	case BinaryExpressionAST::And:
+		return builder.CreateAnd(
+			ConvertToBooleanValue(left, llvmContext, builder),
+			ConvertToBooleanValue(right, llvmContext, builder), "andtmp");
+	case BinaryExpressionAST::Equals:
+		return builder.CreateICmpEQ(left, right, "eqtmp");
+	case BinaryExpressionAST::Less:
+		return builder.CreateICmpSLT(left, right, "lttmp");
 	case BinaryExpressionAST::Plus:
 		return builder.CreateAdd(left, right, "addtmp");
 	case BinaryExpressionAST::Minus:
@@ -153,9 +166,9 @@ llvm::Value* CreateIntegerBinaryExpression(
 	case BinaryExpressionAST::Mul:
 		return builder.CreateMul(left, right, "multmp");
 	case BinaryExpressionAST::Div:
-		return builder.CreateUDiv(left, right, "divtmp");
+		return builder.CreateSDiv(left, right, "divtmp");
 	case BinaryExpressionAST::Mod:
-		return builder.CreateURem(left, right, "modtmp");
+		return builder.CreateSRem(left, right, "modtmp");
 	}
 
 	assert(false);
@@ -166,6 +179,7 @@ llvm::Value* CreateFloatBinaryExpression(
 	llvm::Value* left,
 	llvm::Value* right,
 	BinaryExpressionAST::Operator operation,
+	llvm::LLVMContext& llvmContext,
 	llvm::IRBuilder<> & builder)
 {
 	assert(ToExpressionType(left->getType()) == ToExpressionType(right->getType()));
@@ -173,6 +187,18 @@ llvm::Value* CreateFloatBinaryExpression(
 
 	switch (operation)
 	{
+	case BinaryExpressionAST::Or:
+		return builder.CreateOr(
+			ConvertToBooleanValue(left, llvmContext, builder),
+			ConvertToBooleanValue(right, llvmContext, builder), "ortmp");
+	case BinaryExpressionAST::And:
+		return builder.CreateAnd(
+			ConvertToBooleanValue(left, llvmContext, builder),
+			ConvertToBooleanValue(right, llvmContext, builder), "andtmp");
+	case BinaryExpressionAST::Equals:
+		return builder.CreateFCmpOEQ(left, right, "eqtmp");
+	case BinaryExpressionAST::Less:
+		return builder.CreateFCmpOLT(left, right, "lttmp");
 	case BinaryExpressionAST::Plus:
 		return builder.CreateFAdd(left, right, "addtmp");
 	case BinaryExpressionAST::Minus:
@@ -193,13 +219,23 @@ llvm::Value* CreateBooleanBinaryExpression(
 	llvm::Value* left,
 	llvm::Value* right,
 	BinaryExpressionAST::Operator operation,
+	llvm::LLVMContext& llvmContext,
 	llvm::IRBuilder<> & builder)
 {
 	assert(ToExpressionType(left->getType()) == ToExpressionType(right->getType()));
 	assert(ToExpressionType(left->getType()) == ExpressionType::Bool);
+	(void)llvmContext;
 
 	switch (operation)
 	{
+	case BinaryExpressionAST::Or:
+		return builder.CreateOr(left, right, "bortmp");
+	case BinaryExpressionAST::And:
+		return builder.CreateAnd(left, right, "bandtmp");
+	case BinaryExpressionAST::Equals:
+		return builder.CreateICmpEQ(left, right, "beqtmp");
+	case BinaryExpressionAST::Less:
+		return builder.CreateICmpSLT(left, right, "blttmp");
 	case BinaryExpressionAST::Plus:
 	case BinaryExpressionAST::Minus:
 	case BinaryExpressionAST::Mul:
@@ -218,11 +254,11 @@ llvm::Value* CreateNegativeValue(llvm::Value* value, llvm::IRBuilder<> & builder
 	switch (ToExpressionType(value->getType()))
 	{
 	case ExpressionType::Int:
-		builder.CreateNeg(value, "negtmp");
+		return builder.CreateNeg(value, "negtmp");
 	case ExpressionType::Float:
-		builder.CreateFNeg(value, "fnegtmp");
+		return builder.CreateFNeg(value, "fnegtmp");
 	case ExpressionType::Bool:
-		builder.CreateNeg(value, "bnegtmp");
+		return builder.CreateNeg(value, "bnegtmp");
 	case ExpressionType::String:
 	default:
 		throw std::runtime_error("can't create negative value of " + ToString(type));
@@ -374,13 +410,13 @@ void ExpressionCodegen::Visit(const BinaryExpressionAST& node)
 	switch (ToExpressionType(left->getType()))
 	{
 	case ExpressionType::Int:
-		m_stack.push_back(CreateIntegerBinaryExpression(left, right, node.GetOperator(), builder));
+		m_stack.push_back(CreateIntegerBinaryExpression(left, right, node.GetOperator(), llvmContext, builder));
 		break;
 	case ExpressionType::Float:
-		m_stack.push_back(CreateFloatBinaryExpression(left, right, node.GetOperator(), builder));
+		m_stack.push_back(CreateFloatBinaryExpression(left, right, node.GetOperator(), llvmContext, builder));
 		break;
 	case ExpressionType::Bool:
-		m_stack.push_back(CreateBooleanBinaryExpression(left, right, node.GetOperator(), builder));
+		m_stack.push_back(CreateBooleanBinaryExpression(left, right, node.GetOperator(), llvmContext, builder));
 		break;
 	default:
 		throw std::runtime_error("can't codegen binary operator '" +
@@ -743,9 +779,16 @@ void StatementCodegen::Visit(const PrintAST& node)
 	llvm::Module& llvmModule = utils.GetModule();
 
 	llvm::Value* value = m_expressionCodegen.Visit(node.GetExpression());
-	if (!value->getType()->isIntegerTy() && !value->getType()->isDoubleTy())
+	switch (ToExpressionType(value->getType()))
 	{
-		throw std::runtime_error("strings and booleans can't be printed out yet");
+	case ExpressionType::Int:
+	case ExpressionType::Float:
+		break;
+	case ExpressionType::Bool:
+		value = ConvertToIntegerValue(value, llvmContext, builder);
+		break;
+	default:
+		throw std::runtime_error("strings can't be printed out yet");
 	}
 
 	llvm::Function* printf = m_context.GetPrintf();
@@ -831,7 +874,7 @@ void Codegen::GenerateFunc(const FunctionAST& func)
 	{
 		if (!basicBlock.getTerminator())
 		{
-			throw std::runtime_error("every path must have return statement in function '" + name + "'");
+			throw std::runtime_error("every path must have return statement");
 		}
 	}
 

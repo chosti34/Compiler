@@ -16,13 +16,14 @@ struct Token
 		// Mutable
 		Identifier, IntegerConstant, FloatConstant,
 
-		// Operator
-		Assign, Plus, Minus, Mul, Div, Mod, Negation,
-
 		// Separator
-		LeftParenthesis, RightParenthesis, LeftBracket,
+		Assign, LeftParenthesis, RightParenthesis, LeftBracket,
 		RightBracket, LeftCurly, RightCurly, Arrow,
-		Colon, Comma, Semicolon
+		Colon, Comma, Semicolon,
+
+		// Operator
+		Plus, Minus, Mul, Div, Mod,
+		Or, And, Equals, Negation
 	};
 
 	Type type = EndOfFile;

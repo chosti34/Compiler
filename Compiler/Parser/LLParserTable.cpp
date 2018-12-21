@@ -31,7 +31,7 @@ size_t GetProductionIndex(const Grammar& grammar, const std::string& nonterminal
 			return i;
 		}
 	}
-	throw std::invalid_argument("grammar doesn't have such nonterminal");
+	throw std::invalid_argument("grammar doesn't have such nonterminal: " + nonterminal);
 }
 
 // Получить направляющее множество для нетерминала, и, если он может быть пустым, добавить к направляющему множеству символы следователи

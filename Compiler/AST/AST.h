@@ -20,6 +20,10 @@ class BinaryExpressionAST : public IExpressionAST
 public:
 	enum Operator
 	{
+		Or,
+		And,
+		Equals,
+		Less,
 		Plus,
 		Minus,
 		Mul,
