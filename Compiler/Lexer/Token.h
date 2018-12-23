@@ -19,7 +19,7 @@ struct Token
 		// Separator
 		Assign, LeftParenthesis, RightParenthesis, LeftBracket,
 		RightBracket, LeftCurly, RightCurly, Arrow,
-		Colon, Comma, Semicolon,
+		Colon, Comma, Semicolon, LeftSquareBracket, RightSquareBracket,
 
 		// Operator
 		Plus, Minus, Mul, Div, Mod,

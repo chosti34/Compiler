@@ -170,6 +170,27 @@ const IExpressionAST& AssignStatementAST::GetExpr()const
 	return *m_expr;
 }
 
+ArrayElementAccessAST::ArrayElementAccessAST(const std::string& name, std::unique_ptr<IExpressionAST> && index)
+	: m_name(name)
+	, m_index(std::move(index))
+{
+}
+
+const std::string& ArrayElementAccessAST::GetName()const
+{
+	return m_name;
+}
+
+const IExpressionAST& ArrayElementAccessAST::GetIndex()const
+{
+	return *m_index;
+}
+
+void ArrayElementAccessAST::Accept(IExpressionVisitor& visitor)const
+{
+	visitor.Visit(*this);
+}
+
 void AssignStatementAST::Accept(IStatementVisitor& visitor)const
 {
 	visitor.Visit(*this);

@@ -114,6 +114,21 @@ private:
 	std::vector<std::unique_ptr<IExpressionAST>> m_params;
 };
 
+class ArrayElementAccessAST : public IExpressionAST
+{
+public:
+	explicit ArrayElementAccessAST(const std::string& name, std::unique_ptr<IExpressionAST> && index);
+
+	const std::string& GetName()const;
+	const IExpressionAST& GetIndex()const;
+
+	void Accept(IExpressionVisitor & visitor)const override;
+
+private:
+	std::string m_name;
+	std::unique_ptr<IExpressionAST> m_index;
+};
+
 class IStatementAST
 {
 public:

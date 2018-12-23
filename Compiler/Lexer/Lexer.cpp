@@ -133,6 +133,16 @@ Token Lexer::GetNextToken()
 				++m_pos;
 				return Token{ Token::RightBracket };
 			}
+			if (ch == '[')
+			{
+				++m_pos;
+				return { Token::LeftSquareBracket };
+			}
+			if (ch == ']')
+			{
+				++m_pos;
+				return { Token::RightSquareBracket };
+			}
 			if (ch == '-')
 			{
 				++m_pos;

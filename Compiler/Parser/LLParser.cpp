@@ -265,6 +265,17 @@ public:
 		m_expressions.push_back(std::move(stringConstantLiteral));
 	}
 
+	void ArrayElementAccess()
+	{
+		assert(m_expressions.size() >= 2);
+
+		auto index = Pop(m_expressions);
+		auto identifier = DowncastUniquePtr<IdentifierAST>(Pop(m_expressions));
+
+		assert(identifier);
+		m_expressions.push_back(std::make_unique<ArrayElementAccessAST>(identifier->GetName(), std::move(index)));
+	}
+
 	void OnUnaryMinusParsed()
 	{
 		assert(!m_expressions.empty());
@@ -404,6 +415,7 @@ std::unique_ptr<ProgramAST> LLParser::Parse(const std::string& text)
 		{ "OnTrueConstantParsed", std::bind(&ASTBuilder::OnTrueConstantParsed, &astBuilder) },
 		{ "OnFalseConstantParsed", std::bind(&ASTBuilder::OnFalseConstantParsed, &astBuilder) },
 		{ "OnStringConstantParsed", std::bind(&ASTBuilder::OnStringConstantParsed, &astBuilder) },
+		{ "ArrayElementAccess", std::bind(&ASTBuilder::ArrayElementAccess, &astBuilder) },
 		{ "OnUnaryMinusParsed", std::bind(&ASTBuilder::OnUnaryMinusParsed, &astBuilder) },
 		{ "OnUnaryPlusParsed", std::bind(&ASTBuilder::OnUnaryPlusParsed, &astBuilder) },
 		{ "OnUnaryNegationParsed", std::bind(&ASTBuilder::OnUnaryNegationParsed, &astBuilder) },

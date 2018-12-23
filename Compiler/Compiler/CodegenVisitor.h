@@ -15,6 +15,7 @@ private:
 	void Visit(const UnaryAST& node) override;
 	void Visit(const IdentifierAST& node) override;
 	void Visit(const FunctionCallExprAST& node) override;
+	void Visit(const ArrayElementAccessAST& node) override;
 
 private:
 	CodegenContext& m_context;

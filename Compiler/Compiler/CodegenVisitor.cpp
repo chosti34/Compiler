@@ -592,6 +592,27 @@ void ExpressionCodegen::Visit(const FunctionCallExprAST& node)
 	m_stack.push_back(value);
 }
 
+void ExpressionCodegen::Visit(const ArrayElementAccessAST& node)
+{
+	CodegenUtils& utils = m_context.GetUtils();
+	llvm::IRBuilder<>& builder = utils.GetBuilder();
+	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
+
+	llvm::AllocaInst* variable = m_context.GetVariable(node.GetName());
+	if (!variable)
+	{
+		throw std::runtime_error("variable '" + node.GetName() + "' is not defined");
+	}
+
+	if (!variable->getType()->isPointerTy())
+	{
+		throw std::runtime_error("variable '" + node.GetName() + "' can't be accessed via index");
+	}
+
+	// TODO: implement this
+	throw std::logic_error("not implemented!");
+}
+
 // Statement codegen visitor
 StatementCodegen::StatementCodegen(CodegenContext& context)
 	: m_context(context)
