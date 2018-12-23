@@ -1,34 +1,60 @@
-func abs(x: Float) -> Float:
+func sqr(a: Float, b: Float) -> Float:
+	return a * b;
+
+func myPrint(s: String) -> Int:
 {
-	if (x < 0)
-	{
-		return -x;
-	}
-	return x;
+	print(s);
+	return 0;
 }
 
-func areFuzzyEqual(a: Float, b: Float) -> Bool:
-	return abs(a - b) < 0.011;
+func abs(a: Float) -> Float:
+{
+	if (a < 0)
+	{
+		return -a;
+	}
+	return a;
+}
+
+func fEq(a: Float, b: Float) -> Bool:
+	return abs(a - b) < 0.1 || abs(a - b) == 0.1;
 
 func main() -> Int:
 {
-	var a: Int = 9;
-	var b: Int = 10;
+	var iNum: Int = 123;
+	var fNum: Float = 123.0;
 
-	while (!(a == b))
+	if (!fEq(5.9, 6.0))
 	{
-		a = a - 6;
-		b = b - 6;
-
-		print a == b;
-		if (!(a == b))
+		print("%f\n", sqr(sqr(1, 2), 3));
+		var a: Int = 5;
+		while (!(a == 0))
 		{
-			print a;
-			print b;
-			return 1;
+			print("%f\n", sqr(iNum, fNum));
+			a = a - 1;
 		}
-
+	}
+	else
+	{
+		var a: Int = -5;
+		while ((a < 0))
+		{
+			print("Hello\n");
+			a = a  +1;
+			while (a == 4)
+			{
+				a = 1;
+				print("True");
+			}
+			print("Man");
+		}
 	}
 
+
+	print("bye");
+	return 2;
+	print("uncreachable");
+
+	return 1;
 	return 0;
 }

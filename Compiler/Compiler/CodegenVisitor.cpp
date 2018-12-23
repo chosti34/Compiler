@@ -27,6 +27,15 @@ ExpressionType ToExpressionType(llvm::Type* type)
 	{
 		return ExpressionType::Float;
 	}
+	// String
+	if (type->isPointerTy())
+	{
+		llvm::Type* ptrElementType = type->getPointerElementType();
+		if (ptrElementType->getTypeID() == llvm::Type::IntegerTyID && ptrElementType->getIntegerBitWidth() == 8)
+		{
+			return ExpressionType::String;
+		}
+	}
 	throw std::invalid_argument("unsupported llvm type");
 }
 
@@ -40,6 +49,8 @@ llvm::Type* ToLLVMType(ExpressionType type, llvm::LLVMContext& context)
 		return llvm::Type::getDoubleTy(context);
 	case ExpressionType::Bool:
 		return llvm::Type::getInt1Ty(context);
+	case ExpressionType::String:
+		return llvm::Type::getInt8PtrTy(context);
 	default:
 		throw std::logic_error("can't convert string ast literal to llvm type");
 	}
@@ -295,7 +306,7 @@ llvm::AllocaInst* CreateLocalVariable(llvm::Function* func, llvm::Type* type, co
 	return builder.CreateAlloca(type, nullptr, name);
 }
 
-llvm::Value* CreateDefaultValue(ExpressionType type, llvm::LLVMContext& llvmContext)
+llvm::Value* CreateDefaultValue(ExpressionType type, llvm::LLVMContext& llvmContext, llvm::IRBuilder<> & builder)
 {
 	switch (type)
 	{
@@ -306,7 +317,20 @@ llvm::Value* CreateDefaultValue(ExpressionType type, llvm::LLVMContext& llvmCont
 	case ExpressionType::Bool:
 		return llvm::ConstantInt::get(llvm::Type::getInt1Ty(llvmContext), uint64_t(0));
 	case ExpressionType::String:
-		throw std::logic_error("code generation for bool and string is not implemented yet");
+	{
+		llvm::Type* i8 = llvm::Type::getInt8Ty(llvmContext);
+		llvm::ArrayType* arrayType = llvm::ArrayType::get(i8, 1);
+		llvm::AllocaInst* allocaInst = builder.CreateAlloca(arrayType, nullptr, "str_alloc");
+
+		// Создаем константый массив на стеке
+		std::vector<llvm::Constant*> constants = { llvm::ConstantInt::get(llvm::Type::getInt8Ty(llvmContext), uint64_t(0)) };
+		llvm::Constant* arr = llvm::ConstantArray::get(arrayType, constants);
+
+		llvm::StoreInst* storeInst = builder.CreateStore(arr, allocaInst);
+		(void)storeInst;
+
+		return builder.CreateBitCast(allocaInst, llvm::Type::getInt8PtrTy(llvmContext), "str_to_i8_ptr");
+	}
 	default:
 		assert(false);
 		throw std::logic_error("can't emit code for undefined ast expression type");
@@ -365,7 +389,7 @@ void ExpressionCodegen::Visit(const BinaryExpressionAST& node)
 	//  1. Посмотреть тип левого операнда, и привести правый операнд к этому же типу,
 	//     далее смотреть на оператор и генерироровать код в зависимости от оператора и от типа обеих частей выражения
 	//  2. Посмотреть на тип правого и левого операнда. По определенному приоритету, выполнить преобразование
-	//     обеих частей выражения в один тип. Далее генерировать код, в зависимости от оператора и от типа
+	//     обеих частей выражения в один тип. Далее генерировать код, в зависимости от оператора и от типа (используется этот вариант)
 
 	if (ToExpressionType(left->getType()) != ToExpressionType(right->getType()))
 	{
@@ -427,7 +451,9 @@ void ExpressionCodegen::Visit(const BinaryExpressionAST& node)
 void ExpressionCodegen::Visit(const LiteralConstantAST& node)
 {
 	CodegenUtils& utils = m_context.GetUtils();
+
 	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
+	llvm::IRBuilder<>& builder = utils.GetBuilder();
 	const LiteralConstantAST::Value& constant = node.GetValue();
 
 	// TODO: use boost::static_visitor
@@ -449,10 +475,24 @@ void ExpressionCodegen::Visit(const LiteralConstantAST& node)
 		llvm::Value* value = llvm::ConstantInt::get(llvm::Type::getInt1Ty(llvmContext), uint64_t(boolean));
 		m_stack.push_back(value);
 	}
+	else if (constant.type() == typeid(std::string))
+	{
+		const std::string str = boost::get<std::string>(constant);
+		llvm::Type* i8 = llvm::Type::getInt8Ty(llvmContext);
+		llvm::Constant* constantString = llvm::ConstantDataArray::getString(llvmContext, str, true);
+		llvm::ArrayType* arrayType = llvm::ArrayType::get(i8, str.length() + 1);
+
+		llvm::AllocaInst* allocaInst = builder.CreateAlloca(arrayType,
+			llvm::ConstantInt::get(llvm::Type::getInt32Ty(llvmContext), uint64_t(str.length() + 1)), "str_alloc");
+		llvm::StoreInst* storeInst = builder.CreateStore(constantString, allocaInst);
+		(void)storeInst;
+
+		m_stack.push_back(builder.CreateBitCast(allocaInst, llvm::Type::getInt8PtrTy(llvmContext), "str_to_i8_ptr"));
+	}
 	else
 	{
 		assert(false);
-		throw std::logic_error("Visit(LiteralConstantAST) - can't codegen for undefined literal constant type");
+		throw std::logic_error("Visiting LiteralConstantAST - can't codegen for undefined literal constant type");
 	}
 }
 
@@ -539,6 +579,7 @@ void ExpressionCodegen::Visit(const FunctionCallExprAST& node)
 
 			assert(ToExpressionType(casted->getType()) == ToExpressionType(arg.getType()));
 			params.push_back(casted);
+			++index;
 			continue;
 		}
 
@@ -581,7 +622,7 @@ void StatementCodegen::Visit(const VariableDeclarationAST& node)
 	llvm::AllocaInst* variable = CreateLocalVariable(func, type, name + "Ptr");
 
 	// Устанавливаем переменной значение по умолчанию
-	llvm::Value* defaultValue = CreateDefaultValue(node.GetType(), llvmContext);
+	llvm::Value* defaultValue = CreateDefaultValue(node.GetType(), llvmContext, builder);
 	builder.CreateStore(defaultValue, variable);
 
 	// Сохраняем переменную в контекст
@@ -747,11 +788,14 @@ void StatementCodegen::Visit(const WhileStatementAST& node)
 
 	builder.SetInsertPoint(body);
 	Visit(node.GetStatement());
-	value = ConvertToBooleanValue(
-		m_expressionCodegen.Visit(node.GetExpr()), llvmContext, builder);
-	builder.CreateCondBr(value, body, afterLoop);
+	if (!body->getTerminator())
+	{
+		value = ConvertToBooleanValue(m_expressionCodegen.Visit(node.GetExpr()), llvmContext, builder);
+		builder.CreateCondBr(value, body, afterLoop);
+	}
 
 	builder.SetInsertPoint(afterLoop);
+	m_branchContinueStack.push_back(afterLoop);
 }
 
 void StatementCodegen::Visit(const CompositeStatementAST& node)
@@ -776,27 +820,23 @@ void StatementCodegen::Visit(const PrintAST& node)
 
 	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
 	llvm::IRBuilder<> & builder = utils.GetBuilder();
-	llvm::Module& llvmModule = utils.GetModule();
 
-	llvm::Value* value = m_expressionCodegen.Visit(node.GetExpression());
-	switch (ToExpressionType(value->getType()))
+	std::vector<llvm::Value*> expressions(node.GetParamsCount());
+	for (size_t i = 0; i < expressions.size(); ++i)
 	{
-	case ExpressionType::Int:
-	case ExpressionType::Float:
-		break;
-	case ExpressionType::Bool:
-		value = ConvertToIntegerValue(value, llvmContext, builder);
-		break;
-	default:
-		throw std::runtime_error("strings can't be printed out yet");
+		expressions[i] = m_expressionCodegen.Visit(node.GetExpression(i));
+		if (ToExpressionType(expressions[i]->getType()) == ExpressionType::Bool)
+		{
+			expressions[i] = ConvertToIntegerValue(expressions[i], llvmContext, builder);
+		}
 	}
 
-	llvm::Function* printf = m_context.GetPrintf();
+	if (expressions.empty() || ToExpressionType(expressions.front()->getType()) != ExpressionType::String)
+	{
+		throw std::runtime_error("print statement requires string as first argument");
+	}
 
-	const std::string& fmt = value->getType()->isDoubleTy() ? "%f\n" : "%d\n";
-	std::vector<llvm::Value*> args = { CreateGlobalStringLiteral(llvmContext, llvmModule, fmt), value };
-
-	builder.CreateCall(printf, args, "printtmp");
+	builder.CreateCall(m_context.GetPrintf(), expressions, "printtmp");
 }
 
 void StatementCodegen::Visit(const FunctionCallStatementAST& node)
@@ -883,6 +923,7 @@ void Codegen::GenerateFunc(const FunctionAST& func)
 
 	if (llvm::verifyFunction(*llvmFunc, &out))
 	{
+		utils.GetModule().dump();
 		llvmFunc->eraseFromParent();
 		throw std::runtime_error(out.str());
 	}

@@ -21,11 +21,13 @@ const std::unordered_map<Token::Type, std::string> gcTokenTypeToStringMap = {
 	{ Token::Return, "Return" },
 	{ Token::True,   "True" },
 	{ Token::False,  "False" },
+	{ Token::String, "String" },
 
 	// Mutable
 	{ Token::Identifier,      "Identifier" },
 	{ Token::IntegerConstant, "IntegerConstant" },
 	{ Token::FloatConstant,   "FloatConstant" },
+	{ Token::StringConstant,  "StringConstant" },
 
 	// Separators
 	{ Token::Assign,           "Assign" },
@@ -70,11 +72,13 @@ const std::unordered_map<std::string, Token::Type> gcStringToTokenTypeMap = {
 	{ "Return", Token::Return },
 	{ "True",   Token::True },
 	{ "False",  Token::False },
+	{ "String", Token::String },
 
 	// Mutable
 	{ "Identifier",      Token::Identifier },
 	{ "IntegerConstant", Token::IntegerConstant },
 	{ "FloatConstant",   Token::FloatConstant },
+	{ "StringConstant",  Token::StringConstant },
 
 	// Separators
 	{ "Assign",           Token::Assign },

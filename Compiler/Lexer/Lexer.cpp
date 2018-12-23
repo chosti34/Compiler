@@ -1,22 +1,25 @@
 #include "stdafx.h"
 #include "Lexer.h"
 
+using namespace std::string_literals;
+
 namespace
 {
 const std::unordered_map<std::string, Token::Type> gcKeywords = {
-	{ "func", Token::Func },
-	{ "Int", Token::Int },
-	{ "Float", Token::Float },
-	{ "Bool", Token::Bool },
-	{ "Array", Token::Array },
-	{ "if", Token::If },
-	{ "print", Token::Print },
-	{ "else", Token::Else },
-	{ "while", Token::While },
-	{ "var", Token::Var },
+	{ "func",   Token::Func },
+	{ "Int",    Token::Int },
+	{ "Float",  Token::Float },
+	{ "Bool",   Token::Bool },
+	{ "String", Token::String },
+	{ "Array",  Token::Array },
+	{ "if",     Token::If },
+	{ "print",  Token::Print },
+	{ "else",   Token::Else },
+	{ "while",  Token::While },
+	{ "var",    Token::Var },
 	{ "return", Token::Return },
-	{ "True", Token::True },
-	{ "False", Token::False },
+	{ "True",   Token::True },
+	{ "False",  Token::False }
 };
 }
 
@@ -175,8 +178,33 @@ Token Lexer::GetNextToken()
 				m_pos += 2;
 				return { Token::And };
 			}
+			if (ch == '"')
+			{
+				std::string str;
+				bool escaped = false;
+				size_t offsetCopy = m_pos + 1;
+
+				while (offsetCopy < m_text.length())
+				{
+					if (m_text[offsetCopy] == '"' && !escaped)
+					{
+						++offsetCopy;
+						break;
+					}
+					escaped = !escaped && m_text[offsetCopy] == '\\';
+					str += m_text[offsetCopy++];
+				}
+
+				if (offsetCopy < m_text.length())
+				{
+					m_pos = offsetCopy;
+					boost::replace_all(str, "\\n"s, "\n"s);
+					boost::replace_all(str, "\\t"s, "\t"s);
+					return { Token::StringConstant, str };
+				}
+			}
 		}
-		throw std::runtime_error("lexer can't parse character at pos " + std::to_string(m_pos) + ": '" + m_text[m_pos] + "'");
+		throw std::runtime_error("lexer can't parse token starting from character at pos " + std::to_string(m_pos) + ": '" + m_text[m_pos] + "'");
 	}
 	return Token{ Token::EndOfFile };
 }

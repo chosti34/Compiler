@@ -324,19 +324,28 @@ const FunctionAST& ProgramAST::GetFunction(size_t index)const
 {
 	if (index >= m_functions.size())
 	{
-		throw std::invalid_argument("index must be less than functions count");
+		throw std::out_of_range("index must be less than functions count");
 	}
 	return *m_functions[index];
 }
 
-PrintAST::PrintAST(std::unique_ptr<IExpressionAST>&& expression)
-	: m_expression(std::move(expression))
+size_t PrintAST::GetParamsCount()const
 {
+	return m_params.size();
 }
 
-const IExpressionAST& PrintAST::GetExpression()const
+const IExpressionAST& PrintAST::GetExpression(size_t index)const
 {
-	return *m_expression;
+	if (index >= m_params.size())
+	{
+		throw std::out_of_range("index must be less than expressions count");
+	}
+	return *m_params[index];
+}
+
+void PrintAST::AddExpression(std::unique_ptr<IExpressionAST> && expression)
+{
+	m_params.push_back(std::move(expression));
 }
 
 void PrintAST::Accept(IStatementVisitor& visitor)const

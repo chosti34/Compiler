@@ -11,10 +11,10 @@ struct Token
 
 		// Keyword
 		Func, Int, Float, Bool, Array, If, Print,
-		Else, While, Var, Return, True, False,
+		Else, While, Var, Return, True, False, String,
 
 		// Mutable
-		Identifier, IntegerConstant, FloatConstant,
+		Identifier, IntegerConstant, FloatConstant, StringConstant,
 
 		// Separator
 		Assign, LeftParenthesis, RightParenthesis, LeftBracket,

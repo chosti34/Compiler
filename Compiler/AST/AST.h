@@ -52,7 +52,7 @@ class LiteralConstantAST : public IExpressionAST
 {
 public:
 	// TODO: add bool, string literal
-	using Value = boost::variant<int, double, bool>;
+	using Value = boost::variant<int, double, bool, std::string>;
 
 	explicit LiteralConstantAST(const Value& value);
 	const Value& GetValue()const;
@@ -224,13 +224,14 @@ private:
 class PrintAST : public IStatementAST
 {
 public:
-	explicit PrintAST(std::unique_ptr<IExpressionAST> && expression);
-	const IExpressionAST& GetExpression()const;
+	size_t GetParamsCount()const;
+	const IExpressionAST& GetExpression(size_t index)const;
+	void AddExpression(std::unique_ptr<IExpressionAST> && expression);
 
 	void Accept(IStatementVisitor& visitor)const override;
 
 private:
-	std::unique_ptr<IExpressionAST> m_expression;
+	std::vector<std::unique_ptr<IExpressionAST>> m_params;
 };
 
 // Function call statement with ignoring returning value of a function
