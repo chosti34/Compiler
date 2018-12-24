@@ -609,8 +609,15 @@ void ExpressionCodegen::Visit(const ArrayElementAccessAST& node)
 		throw std::runtime_error("variable '" + node.GetName() + "' can't be accessed via index");
 	}
 
-	// TODO: implement this
-	throw std::logic_error("not implemented!");
+	llvm::Value* index = ConvertToIntegerValue(Visit(node.GetIndex()), llvmContext, builder);
+	llvm::Value* elementPtr = builder.CreateGEP(builder.CreateLoad(variable, "load_ptr"), index, "get_element_ptr"); elementPtr->dump();
+	llvm::Value* value = builder.CreateLoad(llvm::Type::getInt8Ty(llvmContext), elementPtr, "load_arr_element"); value->dump();
+
+	if (value->getType()->getTypeID() == llvm::Type::IntegerTyID && value->getType()->getIntegerBitWidth() == 8)
+	{
+		value = builder.CreateIntCast(value, llvm::Type::getInt32Ty(llvmContext), false, "icasttmp");
+	}
+	m_stack.push_back(value);
 }
 
 // Statement codegen visitor

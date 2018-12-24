@@ -1,6 +1,9 @@
+func index() -> Int:
+	return 123;
+
 func main() -> Int:
 {
-	var str: String = "abcd";
-	print("%d\n", str[1]);
+	var str: String = "superstring";
+	print("%c\n", str[index()]);
 	return 0;
 }
