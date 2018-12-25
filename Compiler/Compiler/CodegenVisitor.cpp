@@ -281,24 +281,6 @@ llvm::Value* CreateValueNegation(llvm::Value* value, llvm::LLVMContext& llvmCont
 	return builder.CreateNot(ConvertToBooleanValue(value, llvmContext, builder));
 }
 
-llvm::Constant* CreateGlobalStringLiteral(
-	llvm::LLVMContext& llvmContext,
-	llvm::Module& llvmModule,
-	const std::string& value)
-{
-	llvm::Constant* constant = llvm::ConstantDataArray::getString(llvmContext, value, true);
-
-	// ???
-	llvm::GlobalVariable* global = new llvm::GlobalVariable(
-		llvmModule, constant->getType(), true,
-		llvm::GlobalVariable::InternalLinkage, constant, "str");
-
-	llvm::Constant* index = llvm::Constant::getNullValue(llvm::IntegerType::getInt32Ty(llvmContext));
-	std::vector<llvm::Constant*> indices = { index, index };
-
-	return llvm::ConstantExpr::getInBoundsGetElementPtr(constant->getType(), global, indices);
-}
-
 llvm::AllocaInst* CreateLocalVariable(llvm::Function* func, llvm::Type* type, const std::string& name)
 {
 	llvm::BasicBlock& block = func->getEntryBlock();
@@ -588,6 +570,10 @@ void ExpressionCodegen::Visit(const FunctionCallExprAST& node)
 		++index;
 	}
 
+	if (func->getReturnType()->getTypeID() == llvm::Type::VoidTyID)
+	{
+		throw std::runtime_error("function '" + func->getName().str() + "' returns void - you can't store the result");
+	}
 	llvm::Value* value = builder.CreateCall(func, params, "calltmp");
 	m_stack.push_back(value);
 }
@@ -610,8 +596,8 @@ void ExpressionCodegen::Visit(const ArrayElementAccessAST& node)
 	}
 
 	llvm::Value* index = ConvertToIntegerValue(Visit(node.GetIndex()), llvmContext, builder);
-	llvm::Value* elementPtr = builder.CreateGEP(builder.CreateLoad(variable, "load_ptr"), index, "get_element_ptr"); elementPtr->dump();
-	llvm::Value* value = builder.CreateLoad(llvm::Type::getInt8Ty(llvmContext), elementPtr, "load_arr_element"); value->dump();
+	llvm::Value* elementPtr = builder.CreateGEP(builder.CreateLoad(variable, "load_ptr"), index, "get_element_ptr");
+	llvm::Value* value = builder.CreateLoad(llvm::Type::getInt8Ty(llvmContext), elementPtr, "load_arr_element");
 
 	if (value->getType()->getTypeID() == llvm::Type::IntegerTyID && value->getType()->getIntegerBitWidth() == 8)
 	{
@@ -632,6 +618,11 @@ void StatementCodegen::Visit(const IStatementAST& node)
 	node.Accept(*this);
 }
 
+llvm::BasicBlock* StatementCodegen::GetLastBasicBlockBranch()
+{
+	return m_branchContinueStack.empty() ? nullptr : m_branchContinueStack.back();
+}
+
 void StatementCodegen::Visit(const VariableDeclarationAST& node)
 {
 	CodegenUtils& utils = m_context.GetUtils();
@@ -646,8 +637,7 @@ void StatementCodegen::Visit(const VariableDeclarationAST& node)
 
 	// Создаем переменную
 	llvm::Type* type = ToLLVMType(node.GetType(), llvmContext);
-	llvm::Function* func = builder.GetInsertBlock()->getParent();
-	llvm::AllocaInst* variable = CreateLocalVariable(func, type, name + "Ptr");
+	llvm::AllocaInst* variable = builder.CreateAlloca(type, nullptr, name + "Ptr");
 
 	// Устанавливаем переменной значение по умолчанию
 	llvm::Value* defaultValue = CreateDefaultValue(node.GetType(), llvmContext, builder);
@@ -722,6 +712,41 @@ void StatementCodegen::Visit(const AssignStatementAST& node)
 	builder.CreateStore(value, variable);
 }
 
+void StatementCodegen::Visit(const ArrayElementAssignAST& node)
+{
+	CodegenUtils& utils = m_context.GetUtils();
+	llvm::IRBuilder<>& builder = utils.GetBuilder();
+	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
+
+	llvm::AllocaInst* variable = m_context.GetVariable(node.GetName());
+	if (!variable)
+	{
+		throw std::runtime_error("variable '" + node.GetName() + "' is not defined");
+	}
+
+	if (!variable->getType()->isPointerTy())
+	{
+		throw std::runtime_error("variable '" + node.GetName() + "' can't be accessed via index");
+	}
+
+	// Генерируем индекс массива
+	llvm::Value* index = ConvertToIntegerValue(m_expressionCodegen.Visit(node.GetIndex()), llvmContext, builder);
+
+	// Генерируем выражение для присвоения
+	llvm::Value* value = ConvertToIntegerValue(m_expressionCodegen.Visit(node.GetExpression()), llvmContext, builder);
+	if (value->getType()->getTypeID() == llvm::Type::IntegerTyID && value->getType()->getIntegerBitWidth() != 8)
+	{
+		value = builder.CreateIntCast(value, llvm::Type::getInt8Ty(llvmContext), false, "icasttmp");
+	}
+
+	// Получаем указатель на элемент, значение которого будем менять
+	llvm::Value* elementPtr = builder.CreateGEP(builder.CreateLoad(variable, "load_ptr"), index, "get_element_ptr");
+
+	assert(value->getType()->getTypeID() == llvm::Type::IntegerTyID && value->getType()->getIntegerBitWidth() == 8);
+	llvm::StoreInst* storeInst = builder.CreateStore(value, elementPtr);
+	(void)storeInst;
+}
+
 void StatementCodegen::Visit(const ReturnStatementAST& node)
 {
 	CodegenUtils& utils = m_context.GetUtils();
@@ -730,15 +755,34 @@ void StatementCodegen::Visit(const ReturnStatementAST& node)
 	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
 
 	llvm::Function* func = builder.GetInsertBlock()->getParent();
-	const ExpressionType funcReturnType = ToExpressionType(func->getReturnType());
-	llvm::Value* value = m_expressionCodegen.Visit(node.GetExpr());
+	if (func->getReturnType()->getTypeID() == llvm::Type::VoidTyID)
+	{
+		if (node.GetExpression())
+		{
+			llvm::Value* value = m_expressionCodegen.Visit(*node.GetExpression());
+			const ExpressionType type = ToExpressionType(value->getType());
+			throw std::runtime_error("function '" + func->getName().str() + "' can't return value of type " + ToString(type));
+		}
+		builder.CreateRet(nullptr);
+		return;
+	}
 
+	const ExpressionType funcReturnType = ToExpressionType(func->getReturnType());
+	if (!node.GetExpression())
+	{
+		throw std::runtime_error("return statement must have expression of type" + ToString(funcReturnType));
+	}
+
+	llvm::Value* value = m_expressionCodegen.Visit(*node.GetExpression());
 	if (ToExpressionType(value->getType()) != funcReturnType)
 	{
 		value = CastValue(value, funcReturnType, llvmContext, builder);
 		if (!value)
 		{
-			throw std::runtime_error("returning expression must be at least convertible to function return type");
+			auto fmt = boost::format("returning expression of type %1% must be at least convertible to function return type (%2%)")
+				% ToString(ToExpressionType(value->getType()))
+				% ToString(funcReturnType);
+			throw std::runtime_error(fmt.str());
 		}
 	}
 
@@ -814,13 +858,27 @@ void StatementCodegen::Visit(const WhileStatementAST& node)
 		m_expressionCodegen.Visit(node.GetExpr()), llvmContext, builder);
 	builder.CreateCondBr(value, body, afterLoop);
 
+	auto putBrAfterBranchInsertionIfNecessary = [&](llvm::BasicBlock* branch) {
+		if (!branch->getTerminator())
+		{
+			value = ConvertToBooleanValue(m_expressionCodegen.Visit(node.GetExpr()), llvmContext, builder);
+			builder.CreateCondBr(value, body, afterLoop);
+		}
+		if (!m_branchContinueStack.empty() && !m_branchContinueStack.back()->getTerminator())
+		{
+			builder.SetInsertPoint(m_branchContinueStack.back());
+			value = ConvertToBooleanValue(m_expressionCodegen.Visit(node.GetExpr()), llvmContext, builder);
+			builder.CreateCondBr(value, body, afterLoop);
+		}
+		if (!m_branchContinueStack.empty())
+		{
+			m_branchContinueStack.pop_back();
+		}
+	};
+
 	builder.SetInsertPoint(body);
 	Visit(node.GetStatement());
-	if (!body->getTerminator())
-	{
-		value = ConvertToBooleanValue(m_expressionCodegen.Visit(node.GetExpr()), llvmContext, builder);
-		builder.CreateCondBr(value, body, afterLoop);
-	}
+	putBrAfterBranchInsertionIfNecessary(body);
 
 	builder.SetInsertPoint(afterLoop);
 	m_branchContinueStack.push_back(afterLoop);
@@ -869,8 +927,62 @@ void StatementCodegen::Visit(const PrintAST& node)
 
 void StatementCodegen::Visit(const FunctionCallStatementAST& node)
 {
-	m_expressionCodegen.Visit(node.GetCall());
-	// TODO: produce warning about unused function result
+	CodegenUtils& utils = m_context.GetUtils();
+	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
+	llvm::IRBuilder<>& builder = utils.GetBuilder();
+
+	const FunctionCallExprAST& call = node.GetCallAsDerived();
+	llvm::Function* func = m_context.GetFunction(call.GetName());
+	if (!func)
+	{
+		throw std::runtime_error("calling function '" + call.GetName() + "' that isn't defined");
+	}
+
+	if (func->getReturnType()->getTypeID() != llvm::Type::VoidTyID)
+	{
+		llvm::Value* value = m_expressionCodegen.Visit(node.GetCall());
+		(void)value;
+		// TODO: produce warning about unused function result
+		return;
+	}
+
+	if (func->arg_size() != call.GetParamsCount())
+	{
+		boost::format fmt("function '%1%' expects %2% params, %3% given");
+		throw std::runtime_error((fmt % call.GetName() % func->arg_size() % call.GetParamsCount()).str());
+	}
+
+	size_t index = 0;
+	std::vector<llvm::Value*> params;
+
+	for (llvm::Argument& arg : func->args())
+	{
+		llvm::Value* value = m_expressionCodegen.Visit(call.GetParam(index));
+
+		if (ToExpressionType(value->getType()) != ToExpressionType(arg.getType()))
+		{
+			llvm::Value* casted = CastValue(value, ToExpressionType(arg.getType()), llvmContext, builder);
+			if (!casted)
+			{
+				auto fmt = boost::format("function '%1%' expects '%2%' as parameter, '%3%' given (can't cast)")
+					% func->getName().str()
+					% ToString(ToExpressionType(arg.getType()))
+					% ToString(ToExpressionType(value->getType()));
+				throw std::runtime_error(fmt.str());
+			}
+
+			assert(ToExpressionType(casted->getType()) == ToExpressionType(arg.getType()));
+			params.push_back(casted);
+			++index;
+			continue;
+		}
+
+		assert(ToExpressionType(value->getType()) == ToExpressionType(arg.getType()));
+		params.push_back(value);
+		++index;
+	}
+
+	builder.CreateCall(func, params);
 }
 
 Codegen::Codegen(CodegenContext& context)
@@ -897,7 +1009,9 @@ void Codegen::GenerateFunc(const FunctionAST& func)
 	const std::string& name = func.GetIdentifier().GetName();
 
 	// Задаем возвращаемый тип
-	llvm::Type* returnType = ToLLVMType(func.GetReturnType(), llvmContext);
+	llvm::Type* returnType = func.GetReturnType() ?
+		ToLLVMType(*func.GetReturnType(), llvmContext) :
+		llvm::Type::getVoidTy(llvmContext);
 
 	// Задаем типы аргументов функции
 	std::vector<llvm::Type*> argumentTypes;
@@ -926,8 +1040,7 @@ void Codegen::GenerateFunc(const FunctionAST& func)
 		const FunctionAST::Param& param = func.GetParams()[index];
 		argument.setName(func.GetParams()[index].first);
 
-		llvm::AllocaInst* variable = CreateLocalVariable(
-			llvmFunc, ToLLVMType(param.second, llvmContext), param.first + "Ptr");
+		llvm::AllocaInst* variable = builder.CreateAlloca(ToLLVMType(param.second, llvmContext), nullptr, param.first + "Ptr");
 		m_context.Define(param.first, variable);
 		builder.CreateStore(&argument, variable);
 
@@ -938,10 +1051,21 @@ void Codegen::GenerateFunc(const FunctionAST& func)
 	StatementCodegen statementCodegen(m_context);
 	statementCodegen.Visit(func.GetStatement());
 
+	// Добавляем return void
+	if (llvm::BasicBlock* lastContinueBranch = statementCodegen.GetLastBasicBlockBranch())
+	{
+		if (llvmFunc->getReturnType()->getTypeID() == llvm::Type::VoidTyID && !lastContinueBranch->getTerminator())
+		{
+			builder.SetInsertPoint(lastContinueBranch);
+			builder.CreateRet(nullptr);
+		}
+	}
+
 	for (llvm::BasicBlock& basicBlock : llvmFunc->getBasicBlockList())
 	{
 		if (!basicBlock.getTerminator())
 		{
+			llvmFunc->dump();
 			throw std::runtime_error("every path must have return statement");
 		}
 	}

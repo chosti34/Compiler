@@ -21,6 +21,7 @@ public:
 
 class VariableDeclarationAST;
 class AssignStatementAST;
+class ArrayElementAssignAST;
 class ReturnStatementAST;
 class IfStatementAST;
 class WhileStatementAST;
@@ -34,6 +35,7 @@ public:
 	virtual ~IStatementVisitor() = default;
 	virtual void Visit(const VariableDeclarationAST& node) = 0;
 	virtual void Visit(const AssignStatementAST& node) = 0;
+	virtual void Visit(const ArrayElementAssignAST& node) = 0;
 	virtual void Visit(const ReturnStatementAST& node) = 0;
 	virtual void Visit(const IfStatementAST& node) = 0;
 	virtual void Visit(const WhileStatementAST& node) = 0;

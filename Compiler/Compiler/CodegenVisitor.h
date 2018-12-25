@@ -27,11 +27,13 @@ class StatementCodegen : public IStatementVisitor
 public:
 	explicit StatementCodegen(CodegenContext& context);
 	void Visit(const IStatementAST& node);
+	llvm::BasicBlock* GetLastBasicBlockBranch();
 
 private:
 	void Visit(const VariableDeclarationAST& node) override;
 	void Visit(const ReturnStatementAST& node) override;
 	void Visit(const AssignStatementAST& node) override;
+	void Visit(const ArrayElementAssignAST& node) override;
 	void Visit(const IfStatementAST& node) override;
 	void Visit(const WhileStatementAST& node) override;
 	void Visit(const CompositeStatementAST& node) override;

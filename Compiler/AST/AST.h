@@ -101,7 +101,8 @@ class FunctionCallExprAST : public IExpressionAST
 public:
 	explicit FunctionCallExprAST(
 		const std::string& name,
-		std::vector<std::unique_ptr<IExpressionAST>> && params);
+		std::vector<std::unique_ptr<IExpressionAST>> && params
+	);
 
 	const std::string& GetName()const;
 	size_t GetParamsCount()const;
@@ -173,16 +174,37 @@ private:
 	std::unique_ptr<IExpressionAST> m_expr;
 };
 
-class ReturnStatementAST : public IStatementAST
+class ArrayElementAssignAST : public IStatementAST
 {
 public:
-	explicit ReturnStatementAST(std::unique_ptr<IExpressionAST> && expr);
+	explicit ArrayElementAssignAST(
+		const std::string& arrayId,
+		std::unique_ptr<IExpressionAST>&& index,
+		std::unique_ptr<IExpressionAST>&& expression
+	);
 
-	const IExpressionAST& GetExpr()const;
+	const std::string& GetName()const;
+	const IExpressionAST& GetIndex()const;
+	const IExpressionAST& GetExpression()const;
+
 	void Accept(IStatementVisitor& visitor)const override;
 
 private:
-	std::unique_ptr<IExpressionAST> m_expr;
+	std::string m_arrayId;
+	std::unique_ptr<IExpressionAST> m_index;
+	std::unique_ptr<IExpressionAST> m_expression;
+};
+
+class ReturnStatementAST : public IStatementAST
+{
+public:
+	explicit ReturnStatementAST(std::unique_ptr<IExpressionAST> && expression);
+
+	const IExpressionAST* GetExpression()const;
+	void Accept(IStatementVisitor& visitor)const override;
+
+private:
+	std::unique_ptr<IExpressionAST> m_expression;
 };
 
 class IfStatementAST : public IStatementAST
@@ -255,6 +277,7 @@ class FunctionCallStatementAST : public IStatementAST
 public:
 	explicit FunctionCallStatementAST(std::unique_ptr<FunctionCallExprAST> && call);
 	const IExpressionAST& GetCall()const;
+	const FunctionCallExprAST& GetCallAsDerived()const;
 
 	void Accept(IStatementVisitor& visitor)const override;
 
@@ -268,18 +291,19 @@ public:
 	using Param = std::pair<std::string, ExpressionType>;
 
 	explicit FunctionAST(
-		ExpressionType returnType,
+		boost::optional<ExpressionType> returnType,
 		std::unique_ptr<IdentifierAST> && identifier,
 		std::vector<Param> && params,
-		std::unique_ptr<IStatementAST> && statement);
+		std::unique_ptr<IStatementAST> && statement
+	);
 
-	ExpressionType GetReturnType()const;
+	boost::optional<ExpressionType> GetReturnType()const;
 	const IdentifierAST& GetIdentifier()const;
 	const std::vector<Param>& GetParams()const;
 	const IStatementAST& GetStatement()const;
 
 private:
-	ExpressionType m_returnType;
+	boost::optional<ExpressionType> m_returnType;
 	std::vector<Param> m_params;
 	std::unique_ptr<IdentifierAST> m_identifier;
 	std::unique_ptr<IStatementAST> m_statement;

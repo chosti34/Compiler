@@ -1,9 +1,57 @@
-func index() -> Int:
-	return 123;
+func strlen(s: String) -> Int:
+{
+	var len: Int = 0;
+	while (!(s[len] == 0))
+	{
+		len = len + 1;
+	}
+	return len;
+}
+
+func print_string(str: String, newline: Bool) -> Int:
+{
+	var i: Int = 0;
+	while (i < strlen(str))
+	{
+		print("%c", str[i]);
+		i = i + 1;
+	}
+	if (newline)
+	{
+		print("\n");
+	}
+	return 0;
+}
+
+func foo():
+{
+	if (True)
+	{
+		return;
+		print("True");
+	}
+	else
+	{
+		print("False");
+	}
+}
 
 func main() -> Int:
 {
-	var str: String = "superstring";
-	print("%c\n", str[index()]);
+	foo();
+
+	var str: String = "Hello, world";
+	print("Printing unchanged string...\n");
+	print_string(str, True);
+
+	var i: Int = 0;
+	while (i < strlen(str))
+	{
+		str[print_string("", False)] = i + 32;
+		i = i + 1;
+	}
+
+	print("Printing changed string...\n");
+	print_string(str, True);
 	return 0;
 }

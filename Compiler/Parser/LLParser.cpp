@@ -52,13 +52,13 @@ public:
 	{
 		assert(!m_statements.empty());
 		assert(!m_expressions.empty());
-		assert(!m_types.empty());
 
 		auto statement = Pop(m_statements);
 		auto identifier = DowncastUniquePtr<IdentifierAST>(Pop(m_expressions));
 		assert(identifier);
 
-		auto type = Pop(m_types);
+		auto type = m_functionReturnType;
+		m_functionReturnType = boost::none;
 		auto params = std::move(m_funcParams);
 		m_funcParams.clear();
 
@@ -81,6 +81,12 @@ public:
 		param.second = Pop(m_types);
 
 		m_funcParams.push_back(param);
+	}
+
+	void FunctionReturnType()
+	{
+		assert(!m_types.empty());
+		m_functionReturnType = Pop(m_types);
 	}
 
 	void OnTypeParsed(ExpressionType type)
@@ -159,6 +165,23 @@ public:
 			std::move(identifier), std::move(expr)));
 	}
 
+	void OnArrayElementAssignStatement()
+	{
+		assert(m_expressions.size() >= 3);
+
+		auto expression = Pop(m_expressions);
+		auto index = Pop(m_expressions);
+		auto identifier = DowncastUniquePtr<IdentifierAST>(Pop(m_expressions));
+
+		m_statements.push_back(
+			std::make_unique<ArrayElementAssignAST>(
+				identifier->GetName(),
+				std::move(index),
+				std::move(expression)
+			)
+		);
+	}
+
 	void PrepareFnCallParamsParsing()
 	{
 		m_functionCallParams.emplace_back();
@@ -178,8 +201,22 @@ public:
 
 	void OnReturnStatementParsed()
 	{
+		if (m_optionalReturnExpression)
+		{
+			m_statements.push_back(std::make_unique<ReturnStatementAST>(std::move(m_optionalReturnExpression)));
+			m_optionalReturnExpression = nullptr;
+		}
+		else
+		{
+			m_statements.push_back(std::make_unique<ReturnStatementAST>(nullptr));
+		}
+	}
+
+	void OnReturnExpression()
+	{
 		assert(!m_expressions.empty());
-		m_statements.push_back(std::make_unique<ReturnStatementAST>(Pop(m_expressions)));
+		auto expression = Pop(m_expressions);
+		m_optionalReturnExpression = std::move(expression);
 	}
 
 	void PrepareCompositeStatementParsing()
@@ -342,8 +379,14 @@ private:
 	// Вспомогательный стек для хранения параметров вызова функции
 	std::vector<std::vector<std::unique_ptr<IExpressionAST>>> m_functionCallParams;
 
+	// Если был распарсен опциональный тип возвращаемого значения функции, эта переменная будет не пуста
+	boost::optional<ExpressionType> m_functionReturnType;
+
 	// Если был распарсен опциональный блок присваивания при объявлении, эта переменная будет не пуста
 	std::unique_ptr<IExpressionAST> m_optionalAssignExpression;
+
+	// Если было распарсено опциональное выражение возврата из функции, эта переменная будет не пуста
+	std::unique_ptr<IExpressionAST> m_optionalReturnExpression;
 
 	// Стек для постепенного создания AST инструкций
 	std::vector<std::unique_ptr<IStatementAST>> m_statements;
@@ -384,6 +427,7 @@ std::unique_ptr<ProgramAST> LLParser::Parse(const std::string& text)
 		{ "OnFunctionCallStatementParsed", std::bind(&ASTBuilder::OnFunctionCallStatementParsed, &astBuilder) },
 		{ "OnExprListMemberParsed", std::bind(&ASTBuilder::OnExprListMemberParsed, &astBuilder ) },
 		{ "OnFunctionParsed", std::bind(&ASTBuilder::OnFunctionParsed, &astBuilder) },
+		{ "FunctionReturnType", std::bind(&ASTBuilder::FunctionReturnType, &astBuilder) },
 		{ "OnFunctionParamParsed", std::bind(&ASTBuilder::OnFunctionParamParsed, &astBuilder) },
 		{ "OnIfStatementParsed", std::bind(&ASTBuilder::OnIfStatementParsed, &astBuilder) },
 		{ "OnOptionalElseClauseParsed", std::bind(&ASTBuilder::OnOptionalElseClauseParsed, &astBuilder) },
@@ -391,7 +435,9 @@ std::unique_ptr<ProgramAST> LLParser::Parse(const std::string& text)
 		{ "OnVariableDeclarationParsed", std::bind(&ASTBuilder::OnVariableDeclarationParsed, &astBuilder) },
 		{ "OnOptionalAssignParsed", std::bind(&ASTBuilder::OnOptionalAssignParsed, &astBuilder) },
 		{ "OnAssignStatementParsed", std::bind(&ASTBuilder::OnAssignStatementParsed, &astBuilder) },
+		{ "OnArrayElementAssignStatement", std::bind(&ASTBuilder::OnArrayElementAssignStatement, &astBuilder) },
 		{ "OnReturnStatementParsed", std::bind(&ASTBuilder::OnReturnStatementParsed, &astBuilder) },
+		{ "OnReturnExpression", std::bind(&ASTBuilder::OnReturnExpression, &astBuilder) },
 		{ "PrepareCompositeStatementParsing", std::bind(&ASTBuilder::PrepareCompositeStatementParsing, &astBuilder) },
 		{ "OnCompositeStatementParsed", std::bind(&ASTBuilder::OnCompositeStatementParsed, &astBuilder) },
 		{ "OnCompositeStatementPartParsed", std::bind(&ASTBuilder::OnCompositeStatementPartParsed, &astBuilder) },

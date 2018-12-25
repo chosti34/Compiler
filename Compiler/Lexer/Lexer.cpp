@@ -58,10 +58,10 @@ Token Lexer::GetNextToken()
 
 			return Token{ Token::IntegerConstant, value };
 		}
-		if (std::isalpha(ch))
+		if (std::isalpha(ch) || ch == '_')
 		{
 			std::string value(1, m_text[m_pos++]);
-			while (std::isalnum(m_text[m_pos]))
+			while (m_pos < m_text.length() && (std::isalnum(m_text[m_pos]) || m_text[m_pos] == '_'))
 			{
 				value += m_text[m_pos++];
 			}

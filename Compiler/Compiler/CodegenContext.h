@@ -11,6 +11,14 @@
 #include <llvm/CodeGen/Analysis.h>
 #include <llvm/Support/raw_os_ostream.h>
 #include <llvm/IR/Verifier.h>
+#include <llvm/Support/FileSystem.h>
+#include <llvm/Support/Host.h>
+#include <llvm/Support/TargetRegistry.h>
+#include <llvm/Support/TargetSelect.h>
+#include <llvm/Target/TargetMachine.h>
+#include <llvm/Target/TargetOptions.h>
+#include <llvm/Analysis/TargetLibraryInfo.h>
+#include <llvm/IR/LegacyPassManager.h>
 #pragma warning(pop)
 
 class CodegenUtils

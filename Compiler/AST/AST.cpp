@@ -48,6 +48,28 @@ void LiteralConstantAST::Accept(IExpressionVisitor& visitor)const
 	visitor.Visit(*this);
 }
 
+// Array element access
+ArrayElementAccessAST::ArrayElementAccessAST(const std::string& name, std::unique_ptr<IExpressionAST> && index)
+	: m_name(name)
+	, m_index(std::move(index))
+{
+}
+
+const std::string& ArrayElementAccessAST::GetName()const
+{
+	return m_name;
+}
+
+const IExpressionAST& ArrayElementAccessAST::GetIndex()const
+{
+	return *m_index;
+}
+
+void ArrayElementAccessAST::Accept(IExpressionVisitor& visitor)const
+{
+	visitor.Visit(*this);
+}
+
 // Unary operator
 UnaryAST::UnaryAST(std::unique_ptr<IExpressionAST> && expr, UnaryAST::Operator op)
 	: m_expr(std::move(expr))
@@ -88,7 +110,8 @@ void IdentifierAST::Accept(IExpressionVisitor& visitor)const
 
 FunctionCallExprAST::FunctionCallExprAST(
 	const std::string& name,
-	std::vector<std::unique_ptr<IExpressionAST>> && params)
+	std::vector<std::unique_ptr<IExpressionAST>>&& params
+)
 	: m_name(name)
 	, m_params(std::move(params))
 {
@@ -154,7 +177,8 @@ void VariableDeclarationAST::Accept(IStatementVisitor& visitor)const
 // Assign statement node
 AssignStatementAST::AssignStatementAST(
 	std::unique_ptr<IdentifierAST> && identifier,
-	std::unique_ptr<IExpressionAST> && expr)
+	std::unique_ptr<IExpressionAST> && expr
+)
 	: m_identifier(std::move(identifier))
 	, m_expr(std::move(expr))
 {
@@ -170,41 +194,51 @@ const IExpressionAST& AssignStatementAST::GetExpr()const
 	return *m_expr;
 }
 
-ArrayElementAccessAST::ArrayElementAccessAST(const std::string& name, std::unique_ptr<IExpressionAST> && index)
-	: m_name(name)
-	, m_index(std::move(index))
-{
-}
-
-const std::string& ArrayElementAccessAST::GetName()const
-{
-	return m_name;
-}
-
-const IExpressionAST& ArrayElementAccessAST::GetIndex()const
-{
-	return *m_index;
-}
-
-void ArrayElementAccessAST::Accept(IExpressionVisitor& visitor)const
-{
-	visitor.Visit(*this);
-}
-
 void AssignStatementAST::Accept(IStatementVisitor& visitor)const
 {
 	visitor.Visit(*this);
 }
 
-// Return statement node
-ReturnStatementAST::ReturnStatementAST(std::unique_ptr<IExpressionAST> && expr)
-	: m_expr(std::move(expr))
+ArrayElementAssignAST::ArrayElementAssignAST(
+	const std::string& arrayId,
+	std::unique_ptr<IExpressionAST>&& index,
+	std::unique_ptr<IExpressionAST>&& expression
+)
+	: m_arrayId(arrayId)
+	, m_index(std::move(index))
+	, m_expression(std::move(expression))
 {
 }
 
-const IExpressionAST& ReturnStatementAST::GetExpr()const
+const std::string& ArrayElementAssignAST::GetName()const
 {
-	return *m_expr;
+	return m_arrayId;
+}
+
+const IExpressionAST& ArrayElementAssignAST::GetIndex()const
+{
+	return *m_index;
+}
+
+const IExpressionAST& ArrayElementAssignAST::GetExpression()const
+{
+	return *m_expression;
+}
+
+void ArrayElementAssignAST::Accept(IStatementVisitor& visitor)const
+{
+	visitor.Visit(*this);
+}
+
+// Return statement node
+ReturnStatementAST::ReturnStatementAST(std::unique_ptr<IExpressionAST> && expression)
+	: m_expression(std::move(expression))
+{
+}
+
+const IExpressionAST* ReturnStatementAST::GetExpression()const
+{
+	return m_expression.get();
 }
 
 void ReturnStatementAST::Accept(IStatementVisitor& visitor)const
@@ -299,10 +333,11 @@ void CompositeStatementAST::Accept(IStatementVisitor& visitor)const
 
 // Function node
 FunctionAST::FunctionAST(
-	ExpressionType returnType,
+	boost::optional<ExpressionType> returnType,
 	std::unique_ptr<IdentifierAST> && identifier,
 	std::vector<Param> && params,
-	std::unique_ptr<IStatementAST> && statement)
+	std::unique_ptr<IStatementAST> && statement
+)
 	: m_returnType(returnType)
 	, m_identifier(std::move(identifier))
 	, m_params(std::move(params))
@@ -310,7 +345,7 @@ FunctionAST::FunctionAST(
 {
 }
 
-ExpressionType FunctionAST::GetReturnType()const
+boost::optional<ExpressionType> FunctionAST::GetReturnType()const
 {
 	return m_returnType;
 }
@@ -380,6 +415,11 @@ FunctionCallStatementAST::FunctionCallStatementAST(std::unique_ptr<FunctionCallE
 }
 
 const IExpressionAST& FunctionCallStatementAST::GetCall()const
+{
+	return *m_call;
+}
+
+const FunctionCallExprAST& FunctionCallStatementAST::GetCallAsDerived()const
 {
 	return *m_call;
 }
