@@ -64,7 +64,12 @@ public:
 
 		m_functions.push_back(
 			std::make_unique<FunctionAST>(
-				type, std::move(identifier), std::move(params), std::move(statement)));
+				type,
+				std::move(identifier),
+				std::move(params),
+				std::move(statement)
+			)
+		);
 	}
 
 	void OnFunctionParamParsed()

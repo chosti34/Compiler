@@ -281,13 +281,6 @@ llvm::Value* CreateValueNegation(llvm::Value* value, llvm::LLVMContext& llvmCont
 	return builder.CreateNot(ConvertToBooleanValue(value, llvmContext, builder));
 }
 
-llvm::AllocaInst* CreateLocalVariable(llvm::Function* func, llvm::Type* type, const std::string& name)
-{
-	llvm::BasicBlock& block = func->getEntryBlock();
-	llvm::IRBuilder<> builder(&block, block.begin());
-	return builder.CreateAlloca(type, nullptr, name);
-}
-
 llvm::Value* CreateDefaultValue(ExpressionType type, llvm::LLVMContext& llvmContext, llvm::IRBuilder<> & builder)
 {
 	switch (type)
@@ -1057,6 +1050,14 @@ void Codegen::GenerateFunc(const FunctionAST& func)
 		if (llvmFunc->getReturnType()->getTypeID() == llvm::Type::VoidTyID && !lastContinueBranch->getTerminator())
 		{
 			builder.SetInsertPoint(lastContinueBranch);
+			builder.CreateRet(nullptr);
+		}
+	}
+	else
+	{
+		if (llvmFunc->getReturnType()->getTypeID() == llvm::Type::VoidTyID && !llvmFunc->getBasicBlockList().back().getTerminator())
+		{
+			builder.SetInsertPoint(&llvmFunc->getBasicBlockList().back());
 			builder.CreateRet(nullptr);
 		}
 	}

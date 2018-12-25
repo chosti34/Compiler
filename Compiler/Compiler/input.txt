@@ -1,57 +1,30 @@
-func strlen(s: String) -> Int:
+func abs(x: Float) -> Float:
 {
-	var len: Int = 0;
-	while (!(s[len] == 0))
+	if (x < 0)
 	{
-		len = len + 1;
+		return -x;
 	}
-	return len;
+	return x;
 }
 
-func print_string(str: String, newline: Bool) -> Int:
+func GetSquareRootNewtonMethod(x: Float) -> Float:
 {
-	var i: Int = 0;
-	while (i < strlen(str))
+	var guess: Float = x / 2;
+	var next: Float = (guess + x / guess) / 2;
+	while (!(abs(next - guess) < 0.01))
 	{
-		print("%c", str[i]);
-		i = i + 1;
+		guess = next;
+		next = (guess + x / guess) / 2;
 	}
-	if (newline)
-	{
-		print("\n");
-	}
-	return 0;
-}
-
-func foo():
-{
-	if (True)
-	{
-		return;
-		print("True");
-	}
-	else
-	{
-		print("False");
-	}
+	return next;
 }
 
 func main() -> Int:
 {
-	foo();
-
-	var str: String = "Hello, world";
-	print("Printing unchanged string...\n");
-	print_string(str, True);
-
-	var i: Int = 0;
-	while (i < strlen(str))
-	{
-		str[print_string("", False)] = i + 32;
-		i = i + 1;
-	}
-
-	print("Printing changed string...\n");
-	print_string(str, True);
+	print("%f\n", GetSquareRootNewtonMethod(81.0));
 	return 0;
 }
+
+
+
+
