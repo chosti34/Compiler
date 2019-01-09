@@ -24,4 +24,6 @@ void PrintIterable(
 	}
 	output << suffix << (newline ? "\n" : "");
 }
+
+std::string GetStreamContent(std::istream& is);
 }

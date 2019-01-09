@@ -847,8 +847,7 @@ void StatementCodegen::Visit(const WhileStatementAST& node)
 	llvm::BasicBlock* body = llvm::BasicBlock::Create(llvmContext, "loop", func);
 	llvm::BasicBlock* afterLoop = llvm::BasicBlock::Create(llvmContext, "afterloop", func);
 
-	llvm::Value* value = ConvertToBooleanValue(
-		m_expressionCodegen.Visit(node.GetExpr()), llvmContext, builder);
+	llvm::Value* value = ConvertToBooleanValue(m_expressionCodegen.Visit(node.GetExpr()), llvmContext, builder);
 	builder.CreateCondBr(value, body, afterLoop);
 
 	auto putBrAfterBranchInsertionIfNecessary = [&](llvm::BasicBlock* branch) {

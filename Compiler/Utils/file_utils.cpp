@@ -1,5 +1,6 @@
 #include "stdafx.h"
-#include "FileUtils.h"
+#include "file_utils.h"
+#include "stream_utils.h"
 
 namespace file_utils
 {
@@ -21,5 +22,11 @@ std::unique_ptr<std::ofstream> OpenFileForWriting(const std::string& filepath, s
 		throw std::runtime_error("failed to open '" + filepath + "' for writing");
 	}
 	return file;
+}
+
+std::string GetFileContent(const std::string& filepath)
+{
+	auto file = file_utils::OpenFileForReading(filepath);
+	return stream_utils::GetStreamContent(*file);
 }
 }

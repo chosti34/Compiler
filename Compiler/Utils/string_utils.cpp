@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "StringUtils.h"
+#include "string_utils.h"
 
 bool string_utils::TrimString(std::string& str)
 {

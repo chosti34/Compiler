@@ -24,13 +24,16 @@
     <ClInclude Include="CodegenVisitor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="WriteHelpers.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="ScopeChain.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CodegenContext.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Misc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CompilerDriver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -44,10 +47,13 @@
     <ClCompile Include="CodegenVisitor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="WriteHelpers.cpp">
+    <ClCompile Include="CodegenContext.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CodegenContext.cpp">
+    <ClCompile Include="Misc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CompilerDriver.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

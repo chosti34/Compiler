@@ -1,13 +1,10 @@
 #include "stdafx.h"
-#include "WriteHelpers.h"
-
+#include "Misc.h"
 #include "../grammarlib/Grammar.h"
 #include "../grammarlib/GrammarUtils.h"
-
-#include "../Utils/StreamUtils.h"
-#include "../Utils/FormatUtils.h"
-#include "../Utils/StringUtils.h"
-
+#include "../Utils/stream_utils.h"
+#include "../Utils/format_utils.h"
+#include "../Utils/string_utils.h"
 #include "../Parser/LLParserTable.h"
 
 void WriteGrammar(const Grammar& grammar, std::ostream& out)

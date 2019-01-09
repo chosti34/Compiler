@@ -21,16 +21,16 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="FileUtils.h">
+    <ClInclude Include="stream_utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="FormatUtils.h">
+    <ClInclude Include="file_utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="StreamUtils.h">
+    <ClInclude Include="format_utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="StringUtils.h">
+    <ClInclude Include="string_utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -38,13 +38,16 @@
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="FileUtils.cpp">
+    <ClCompile Include="stream_utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="FormatUtils.cpp">
+    <ClCompile Include="file_utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="StringUtils.cpp">
+    <ClCompile Include="format_utils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="string_utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
