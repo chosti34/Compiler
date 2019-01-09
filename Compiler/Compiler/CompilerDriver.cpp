@@ -30,15 +30,15 @@ bool VerifyGrammarTerminalsMatchLexerTokens(const Grammar& grammar, std::string&
 	return true;
 }
 
-std::unique_ptr<LLParser> CreateYolangParser()
+std::unique_ptr<LLParser> CreateParser()
 {
 	auto grammar = GrammarBuilder(std::make_unique<GrammarProductionFactory>())
 		.AddProduction("<Program>          -> <FunctionList> EndOfFile")
 		// Функции
-		.AddProduction("<FunctionList>     -> <Function> <FunctionList>")
-		.AddProduction("<FunctionList>     -> #Eps#")
-		.AddProduction("<Function>         -> Func <Identifier> LeftParenthesis <ParamList> RightParenthesis <OptionalFunctionReturnType> Colon <Statement> {OnFunctionParsed}")
-		.AddProduction("<OptionalFunctionReturnType> -> Arrow <Type> {FunctionReturnType}")
+		.AddProduction("<FunctionList>               -> <Function> <FunctionList>")
+		.AddProduction("<FunctionList>               -> #Eps#")
+		.AddProduction("<Function>                   -> Func <Identifier> LeftParenthesis <ParamList> RightParenthesis <OptionalFunctionReturnType> Colon <Statement> {OnFunctionParsed}")
+		.AddProduction("<OptionalFunctionReturnType> -> Arrow <Type> {OnFunctionReturnTypeParsed}")
 		.AddProduction("<OptionalFunctionReturnType> -> #Eps#")
 		// Параметры функции
 		.AddProduction("<ParamList>        -> <Param> <ParamListTail>")
@@ -78,12 +78,12 @@ std::unique_ptr<LLParser> CreateYolangParser()
 		.AddProduction("<StatementList>    -> <Statement> {OnCompositeStatementPartParsed} <StatementList>")
 		.AddProduction("<StatementList>    -> #Eps#")
 		// Инструкция печати
-		.AddProduction("<Print>            -> Print LeftParenthesis {PrepareFnCallParamsParsing} <ExpressionList> RightParenthesis Semicolon {OnPrintStatementParsed}")
+		.AddProduction("<Print>            -> Print LeftParenthesis {PrepareFnCallParamsParsing} <FunctionCallParamList> RightParenthesis Semicolon {OnPrintStatementParsed}")
 		// Инструкция, начинающаяся с идентификатора (присваивание, либо вызов функции)
 		.AddProduction("<StmtStartsWithId> -> <Identifier> <AfterIdStmt>")
 		.AddProduction("<AfterIdStmt>      -> LeftSquareBracket <Expression> RightSquareBracket Assign <Expression> Semicolon {OnArrayElementAssignStatement}")
 		.AddProduction("<AfterIdStmt>      -> Assign <Expression> Semicolon {OnAssignStatementParsed}")
-		.AddProduction("<AfterIdStmt>      -> LeftParenthesis {PrepareFnCallParamsParsing} <ExpressionList> RightParenthesis Semicolon {OnFunctionCallStatementParsed}")
+		.AddProduction("<AfterIdStmt>      -> LeftParenthesis {PrepareFnCallParamsParsing} <FunctionCallParamList> RightParenthesis Semicolon {OnFunctionCallStatementParsed}")
 		// Выражения
 		.AddProduction("<Expression>       -> <OrExpr>")
 		// Логические выражения
@@ -119,16 +119,18 @@ std::unique_ptr<LLParser> CreateYolangParser()
 		.AddProduction("<AtomExpr>         -> True {OnTrueConstantParsed}")
 		.AddProduction("<AtomExpr>         -> False {OnFalseConstantParsed}")
 		.AddProduction("<AtomExpr>         -> StringConstant {OnStringConstantParsed}")
-		.AddProduction("<AfterIdExpr>      -> LeftParenthesis {PrepareFnCallParamsParsing} <ExpressionList> RightParenthesis {OnFunctionCallExprParsed}")
+		.AddProduction("<AfterIdExpr>      -> LeftParenthesis {PrepareFnCallParamsParsing} <FunctionCallParamList> RightParenthesis {OnFunctionCallExprParsed}")
 		.AddProduction("<AfterIdExpr>      -> LeftSquareBracket <Expression> RightSquareBracket {ArrayElementAccess}")
 		.AddProduction("<AfterIdExpr>      -> #Eps#")
 		// Вспомогательные правила
-		.AddProduction("<ExpressionList>   -> <ExprListMember> <ExprListTail>")
-		.AddProduction("<ExpressionList>   -> #Eps#")
-		.AddProduction("<ExprListTail>     -> Comma <ExprListMember> <ExprListTail>")
-		.AddProduction("<ExprListTail>     -> #Eps#")
-		.AddProduction("<ExprListMember>   -> <Expression> {OnExprListMemberParsed}")
-		.AddProduction("<Identifier>       -> Identifier {OnIdentifierParsed}")
+		//  Список параметров для вызова функций
+		.AddProduction("<FunctionCallParamList>       -> <FunctionCallParamListMember> <FunctionCallParamListTail>")
+		.AddProduction("<FunctionCallParamList>       -> #Eps#")
+		.AddProduction("<FunctionCallParamListTail>   -> Comma <FunctionCallParamListMember> <FunctionCallParamListTail>")
+		.AddProduction("<FunctionCallParamListTail>   -> #Eps#")
+		.AddProduction("<FunctionCallParamListMember> -> <Expression> {OnFunctionCallParamListMemberParsed}")
+		//  Идентификатор
+		.AddProduction("<Identifier>            -> Identifier {OnIdentifierParsed}")
 		.Build();
 
 	std::string unmatch;
@@ -147,7 +149,7 @@ CompilerDriver::CompilerDriver(std::ostream& log)
 
 void CompilerDriver::Compile(const std::string & text)
 {
-	auto parser = CreateYolangParser();
+	auto parser = CreateParser();
 	auto ast = parser->Parse(text);
 
 	if (!ast)

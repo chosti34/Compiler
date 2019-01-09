@@ -59,8 +59,8 @@ public:
 
 		auto type = m_functionReturnType;
 		m_functionReturnType = boost::none;
-		auto params = std::move(m_funcParams);
-		m_funcParams.clear();
+		auto params = std::move(m_funcProtoParamList);
+		m_funcProtoParamList.clear();
 
 		m_functions.push_back(
 			std::make_unique<FunctionAST>(
@@ -85,10 +85,10 @@ public:
 		param.first = identifier->GetName();
 		param.second = Pop(m_types);
 
-		m_funcParams.push_back(param);
+		m_funcProtoParamList.push_back(param);
 	}
 
-	void FunctionReturnType()
+	void OnFunctionReturnTypeParsed()
 	{
 		assert(!m_types.empty());
 		m_functionReturnType = Pop(m_types);
@@ -189,19 +189,22 @@ public:
 
 	void PrepareFnCallParamsParsing()
 	{
-		m_functionCallParams.emplace_back();
+		m_functionCallParamList.emplace_back();
 	}
 
-	void OnExprListMemberParsed()
+	void OnFunctionCallParamListMemberParsed()
 	{
 		assert(!m_expressions.empty());
-		m_functionCallParams.back().push_back(std::move(Pop(m_expressions)));
+		assert(!m_functionCallParamList.empty());
+
+		auto& params = m_functionCallParamList.back();
+		params.push_back(Pop(m_expressions));
 	}
 
 	void OnFunctionCallStatementParsed()
 	{
-		auto funcCall = CreateFunctionCallExprAST();
-		m_statements.push_back(std::make_unique<FunctionCallStatementAST>(std::move(funcCall)));
+		auto call = CreateFunctionCallExprAST();
+		m_statements.push_back(std::make_unique<FunctionCallStatementAST>(std::move(call)));
 	}
 
 	void OnReturnStatementParsed()
@@ -248,13 +251,15 @@ public:
 
 	void OnPrintStatementParsed()
 	{
-		assert(!m_functionCallParams.empty());
+		assert(!m_functionCallParamList.empty());
 		auto printStatement = std::make_unique<PrintAST>();
-		for (auto& expr : m_functionCallParams.back())
+
+		for (auto& expr : m_functionCallParamList.back())
 		{
 			printStatement->AddExpression(std::move(expr));
 		}
-		m_functionCallParams.pop_back();
+
+		m_functionCallParamList.pop_back();
 		m_statements.push_back(std::move(printStatement));
 	}
 
@@ -270,39 +275,39 @@ public:
 
 	void OnIdentifierParsed()
 	{
-		assert(m_token.type == Token::Identifier);
+		assert(m_token.type == TokenType::Identifier);
 		m_expressions.push_back(std::make_unique<IdentifierAST>(*m_token.value));
 	}
 
 	void OnIntegerConstantParsed()
 	{
-		assert(m_token.type == Token::IntegerConstant);
+		assert(m_token.type == TokenType::IntegerConstant);
 		m_expressions.push_back(std::make_unique<LiteralConstantAST>(std::stoi(*m_token.value)));
 	}
 
 	void OnFloatConstantParsed()
 	{
-		assert(m_token.type == Token::FloatConstant);
+		assert(m_token.type == TokenType::FloatConstant);
 		m_expressions.push_back(std::make_unique<LiteralConstantAST>(std::stod(*m_token.value)));
 	}
 
 	void OnTrueConstantParsed()
 	{
-		assert(m_token.type == Token::True);
+		assert(m_token.type == TokenType::True);
 		auto trueConstantLiteral = std::make_unique<LiteralConstantAST>(true);
 		m_expressions.push_back(std::move(trueConstantLiteral));
 	}
 
 	void OnFalseConstantParsed()
 	{
-		assert(m_token.type == Token::False);
+		assert(m_token.type == TokenType::False);
 		auto falseConstantLiteral = std::make_unique<LiteralConstantAST>(false);
 		m_expressions.push_back(std::move(falseConstantLiteral));
 	}
 
 	void OnStringConstantParsed()
 	{
-		assert(m_token.type == Token::StringConstant);
+		assert(m_token.type == TokenType::StringConstant);
 		auto stringConstantLiteral = std::make_unique<LiteralConstantAST>(*m_token.value);
 		m_expressions.push_back(std::move(stringConstantLiteral));
 	}
@@ -356,15 +361,15 @@ private:
 		auto identifier = DowncastUniquePtr<IdentifierAST>(Pop(m_expressions));
 		assert(identifier);
 
-		assert(!m_functionCallParams.empty());
-
+		assert(!m_functionCallParamList.empty());
 		std::vector<std::unique_ptr<IExpressionAST>> expressions;
-		for (auto& expr : m_functionCallParams.back())
+
+		for (auto& expr : m_functionCallParamList.back())
 		{
 			expressions.push_back(std::move(expr));
 		}
-		m_functionCallParams.pop_back();
 
+		m_functionCallParamList.pop_back();
 		return std::make_unique<FunctionCallExprAST>(identifier->GetName(), std::move(expressions));
 	}
 
@@ -375,14 +380,14 @@ private:
 	// Стек для временного хранения считанных типов
 	std::vector<ExpressionType> m_types;
 
-	// Стек для временного хранения считанных параметров функции
-	std::vector<FunctionAST::Param> m_funcParams;
+	// Стек для временного хранения считанных параметров узла объявления функции
+	std::vector<FunctionAST::Param> m_funcProtoParamList;
 
 	// Стек для постепенного создания AST выражений
 	std::vector<std::unique_ptr<IExpressionAST>> m_expressions;
 
 	// Вспомогательный стек для хранения параметров вызова функции
-	std::vector<std::vector<std::unique_ptr<IExpressionAST>>> m_functionCallParams;
+	std::vector<std::vector<std::unique_ptr<IExpressionAST>>> m_functionCallParamList;
 
 	// Если был распарсен опциональный тип возвращаемого значения функции, эта переменная будет не пуста
 	boost::optional<ExpressionType> m_functionReturnType;
@@ -430,9 +435,9 @@ std::unique_ptr<ProgramAST> LLParser::Parse(const std::string& text)
 	ASTBuilder astBuilder(token);
 	std::unordered_map<std::string, std::function<void()>> actions = {
 		{ "OnFunctionCallStatementParsed", std::bind(&ASTBuilder::OnFunctionCallStatementParsed, &astBuilder) },
-		{ "OnExprListMemberParsed", std::bind(&ASTBuilder::OnExprListMemberParsed, &astBuilder ) },
+		{ "OnFunctionCallParamListMemberParsed", std::bind(&ASTBuilder::OnFunctionCallParamListMemberParsed, &astBuilder ) },
 		{ "OnFunctionParsed", std::bind(&ASTBuilder::OnFunctionParsed, &astBuilder) },
-		{ "FunctionReturnType", std::bind(&ASTBuilder::FunctionReturnType, &astBuilder) },
+		{ "OnFunctionReturnTypeParsed", std::bind(&ASTBuilder::OnFunctionReturnTypeParsed, &astBuilder) },
 		{ "OnFunctionParamParsed", std::bind(&ASTBuilder::OnFunctionParamParsed, &astBuilder) },
 		{ "OnIfStatementParsed", std::bind(&ASTBuilder::OnIfStatementParsed, &astBuilder) },
 		{ "OnOptionalElseClauseParsed", std::bind(&ASTBuilder::OnOptionalElseClauseParsed, &astBuilder) },
