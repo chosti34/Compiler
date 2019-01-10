@@ -60,7 +60,7 @@ public:
 		double,
 		bool,
 		std::string,
-		std::vector<std::unique_ptr<IExpressionAST>>
+		std::vector<std::shared_ptr<IExpressionAST>>
 	>;
 
 	explicit LiteralConstantAST(const Value& value);

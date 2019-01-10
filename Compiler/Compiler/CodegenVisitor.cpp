@@ -563,7 +563,7 @@ void ExpressionCodegen::Visit(const LiteralConstantAST& node)
 	}
 	else if (constant.type() == typeid(std::string))
 	{
-		const std::string str = boost::get<std::string>(constant);
+		const std::string& str = boost::get<std::string>(constant);
 		llvm::Type* i8 = llvm::Type::getInt8Ty(llvmContext);
 		llvm::Constant* constantString = llvm::ConstantDataArray::getString(llvmContext, str, true);
 		llvm::ArrayType* arrayType = llvm::ArrayType::get(i8, str.length() + 1);
@@ -574,6 +574,11 @@ void ExpressionCodegen::Visit(const LiteralConstantAST& node)
 		(void)storeInst;
 
 		m_stack.push_back(builder.CreateBitCast(allocaInst, llvm::Type::getInt8PtrTy(llvmContext), "str_to_i8_ptr"));
+	}
+	else if (constant.type() == typeid(std::vector<std::shared_ptr<IExpressionAST>>))
+	{
+		const std::vector<std::shared_ptr<IExpressionAST>>& expressions = boost::get<std::vector<std::shared_ptr<IExpressionAST>>>(constant);
+		throw std::runtime_error("can't emit array literal");
 	}
 	else
 	{

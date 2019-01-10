@@ -201,6 +201,30 @@ public:
 		params.push_back(Pop(m_expressions));
 	}
 
+	void PrepareArrayLiteralElementsParsing()
+	{
+		m_arrayLiteralElementsList.emplace_back();
+	}
+
+	void OnArrayLiteralConstantParsed()
+	{
+		assert(!m_arrayLiteralElementsList.empty());
+		std::vector<std::shared_ptr<IExpressionAST>> expressions;
+		for (auto& expression : m_arrayLiteralElementsList.back())
+		{
+			expressions.push_back(std::move(expression));
+		}
+		m_arrayLiteralElementsList.pop_back();
+		m_expressions.push_back(std::make_unique<LiteralConstantAST>(std::move(expressions)));
+	}
+
+	void OnArrayExpressionListMemberParsed()
+	{
+		assert(!m_expressions.empty());
+		assert(!m_arrayLiteralElementsList.empty());
+		m_arrayLiteralElementsList.back().push_back(Pop(m_expressions));
+	}
+
 	void OnFunctionCallStatementParsed()
 	{
 		auto call = CreateFunctionCallExprAST();
@@ -403,6 +427,8 @@ private:
 	// Вспомогательный стек для хранения параметров вызова функции
 	std::vector<std::vector<std::unique_ptr<IExpressionAST>>> m_functionCallParamList;
 
+	std::vector<std::vector<std::unique_ptr<IExpressionAST>>> m_arrayLiteralElementsList;
+
 	// Если был распарсен опциональный тип возвращаемого значения функции, эта переменная будет не пуста
 	boost::optional<ExpressionType> m_functionReturnType;
 
@@ -499,7 +525,10 @@ std::unique_ptr<ProgramAST> LLParser::Parse(const std::string& text)
 		{ "OnUnaryPlusParsed", std::bind(&ASTBuilder::OnUnaryPlusParsed, &astBuilder) },
 		{ "OnUnaryNegationParsed", std::bind(&ASTBuilder::OnUnaryNegationParsed, &astBuilder) },
 		{ "OnFunctionCallExprParsed", std::bind(&ASTBuilder::OnFunctionCallExprParsed, &astBuilder) },
-		{ "PrepareFnCallParamsParsing", std::bind(&ASTBuilder::PrepareFnCallParamsParsing, &astBuilder) }
+		{ "PrepareFnCallParamsParsing", std::bind(&ASTBuilder::PrepareFnCallParamsParsing, &astBuilder) },
+		{ "PrepareArrayLiteralElementsParsing", std::bind(&ASTBuilder::PrepareArrayLiteralElementsParsing, &astBuilder) },
+		{ "OnArrayLiteralConstantParsed", std::bind(&ASTBuilder::OnArrayLiteralConstantParsed, &astBuilder) },
+		{ "OnArrayExpressionListMemberParsed", std::bind(&ASTBuilder::OnArrayExpressionListMemberParsed, &astBuilder) },
 	};
 
 	while (true)
