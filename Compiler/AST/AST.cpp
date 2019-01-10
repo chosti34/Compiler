@@ -108,7 +108,7 @@ void IdentifierAST::Accept(IExpressionVisitor& visitor)const
 	visitor.Visit(*this);
 }
 
-FunctionCallExprAST::FunctionCallExprAST(
+FunctionCallExpressionAST::FunctionCallExpressionAST(
 	const std::string& name,
 	std::vector<std::unique_ptr<IExpressionAST>>&& params
 )
@@ -117,17 +117,17 @@ FunctionCallExprAST::FunctionCallExprAST(
 {
 }
 
-const std::string& FunctionCallExprAST::GetName()const
+const std::string& FunctionCallExpressionAST::GetName()const
 {
 	return m_name;
 }
 
-size_t FunctionCallExprAST::GetParamsCount() const
+size_t FunctionCallExpressionAST::GetParamsCount() const
 {
 	return m_params.size();
 }
 
-const IExpressionAST& FunctionCallExprAST::GetParam(size_t index)const
+const IExpressionAST& FunctionCallExpressionAST::GetParam(size_t index)const
 {
 	if (index < m_params.size())
 	{
@@ -136,7 +136,7 @@ const IExpressionAST& FunctionCallExprAST::GetParam(size_t index)const
 	throw std::runtime_error("index must be less than function call's params count");
 }
 
-void FunctionCallExprAST::Accept(IExpressionVisitor& visitor)const
+void FunctionCallExpressionAST::Accept(IExpressionVisitor& visitor)const
 {
 	visitor.Visit(*this);
 }
@@ -409,7 +409,7 @@ void PrintAST::Accept(IStatementVisitor& visitor)const
 	visitor.Visit(*this);
 }
 
-FunctionCallStatementAST::FunctionCallStatementAST(std::unique_ptr<FunctionCallExprAST> && call)
+FunctionCallStatementAST::FunctionCallStatementAST(std::unique_ptr<FunctionCallExpressionAST> && call)
 	: m_call(std::move(call))
 {
 }
@@ -419,7 +419,7 @@ const IExpressionAST& FunctionCallStatementAST::GetCall()const
 	return *m_call;
 }
 
-const FunctionCallExprAST& FunctionCallStatementAST::GetCallAsDerived()const
+const FunctionCallExpressionAST& FunctionCallStatementAST::GetCallAsDerived()const
 {
 	return *m_call;
 }

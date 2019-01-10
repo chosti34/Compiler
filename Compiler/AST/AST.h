@@ -96,10 +96,10 @@ private:
 	std::string m_name;
 };
 
-class FunctionCallExprAST : public IExpressionAST
+class FunctionCallExpressionAST : public IExpressionAST
 {
 public:
-	explicit FunctionCallExprAST(
+	explicit FunctionCallExpressionAST(
 		const std::string& name,
 		std::vector<std::unique_ptr<IExpressionAST>> && params
 	);
@@ -275,14 +275,14 @@ private:
 class FunctionCallStatementAST : public IStatementAST
 {
 public:
-	explicit FunctionCallStatementAST(std::unique_ptr<FunctionCallExprAST> && call);
+	explicit FunctionCallStatementAST(std::unique_ptr<FunctionCallExpressionAST> && call);
 	const IExpressionAST& GetCall()const;
-	const FunctionCallExprAST& GetCallAsDerived()const;
+	const FunctionCallExpressionAST& GetCallAsDerived()const;
 
 	void Accept(IStatementVisitor& visitor)const override;
 
 private:
-	std::unique_ptr<FunctionCallExprAST> m_call;
+	std::unique_ptr<FunctionCallExpressionAST> m_call;
 };
 
 class FunctionAST

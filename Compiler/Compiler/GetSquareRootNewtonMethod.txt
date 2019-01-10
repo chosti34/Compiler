@@ -1,0 +1,30 @@
+func abs(x: Float) -> Float:
+{
+	if (x < 0)
+	{
+		return -x;
+	}
+	return x;
+}
+
+func GetSquareRootNewtonMethod(x: Float) -> Float:
+{
+	var guess: Float = x / 2;
+	var next: Float = (guess + x / guess) / 2;
+	while (!(abs(next - guess) < 0.01))
+	{
+		guess = next;
+		next = (guess + x / guess) / 2;
+	}
+	return next;
+}
+
+func main() -> Int:
+{
+	print("%f\n", GetSquareRootNewtonMethod(81.0));
+	return 0;
+}
+
+
+
+

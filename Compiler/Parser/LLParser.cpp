@@ -354,7 +354,7 @@ public:
 	}
 
 private:
-	std::unique_ptr<FunctionCallExprAST> CreateFunctionCallExprAST()
+	std::unique_ptr<FunctionCallExpressionAST> CreateFunctionCallExprAST()
 	{
 		assert(!m_expressions.empty());
 
@@ -370,7 +370,7 @@ private:
 		}
 
 		m_functionCallParamList.pop_back();
-		return std::make_unique<FunctionCallExprAST>(identifier->GetName(), std::move(expressions));
+		return std::make_unique<FunctionCallExpressionAST>(identifier->GetName(), std::move(expressions));
 	}
 
 private:

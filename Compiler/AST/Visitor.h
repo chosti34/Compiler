@@ -4,7 +4,7 @@ class LiteralConstantAST;
 class IdentifierAST;
 class BinaryExpressionAST;
 class UnaryAST;
-class FunctionCallExprAST;
+class FunctionCallExpressionAST;
 class ArrayElementAccessAST;
 
 class IExpressionVisitor
@@ -15,7 +15,7 @@ public:
 	virtual void Visit(const LiteralConstantAST& node) = 0;
 	virtual void Visit(const UnaryAST& node) = 0;
 	virtual void Visit(const IdentifierAST& node) = 0;
-	virtual void Visit(const FunctionCallExprAST& node) = 0;
+	virtual void Visit(const FunctionCallExpressionAST& node) = 0;
 	virtual void Visit(const ArrayElementAccessAST& node) = 0;
 };
 

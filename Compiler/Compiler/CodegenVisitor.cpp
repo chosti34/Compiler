@@ -350,6 +350,63 @@ llvm::Value* ExpressionCodegen::Visit(const IExpressionAST& node)
 	throw std::logic_error("internal error while generating code for expression");
 }
 
+llvm::Value* ExpressionCodegen::GenerateFunctionCall(const FunctionCallExpressionAST& node)
+{
+	CodegenUtils& utils = m_context.GetUtils();
+	llvm::IRBuilder<>& builder = utils.GetBuilder();
+	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
+
+	llvm::Function* func = m_context.GetFunction(node.GetName());
+	if (!func)
+	{
+		throw std::runtime_error("calling function '" + node.GetName() + "' that isn't defined");
+	}
+
+	if (func->arg_size() != node.GetParamsCount())
+	{
+		boost::format fmt("function '%1%' expects %2% params, %3% given");
+		throw std::runtime_error((fmt % node.GetName() % func->arg_size() % node.GetParamsCount()).str());
+	}
+
+	size_t index = 0;
+	std::vector<llvm::Value*> params;
+
+	for (llvm::Argument& arg : func->args())
+	{
+		llvm::Value* value = Visit(node.GetParam(index));
+
+		if (ToExpressionType(value->getType()) != ToExpressionType(arg.getType()))
+		{
+			llvm::Value* casted = CastValue(value, ToExpressionType(arg.getType()), llvmContext, builder);
+			if (!casted)
+			{
+				auto fmt = boost::format("function '%1%' expects '%2%' as parameter, '%3%' given (can't cast)")
+					% func->getName().str()
+					% ToString(ToExpressionType(arg.getType()))
+					% ToString(ToExpressionType(value->getType()));
+				throw std::runtime_error(fmt.str());
+			}
+
+			assert(ToExpressionType(casted->getType()) == ToExpressionType(arg.getType()));
+			params.push_back(casted);
+			++index;
+			continue;
+		}
+
+		assert(ToExpressionType(value->getType()) == ToExpressionType(arg.getType()));
+		params.push_back(value);
+		++index;
+	}
+
+	if (func->getReturnType()->getTypeID() == llvm::Type::VoidTyID)
+	{
+		builder.CreateCall(func, params);
+		return nullptr;
+	}
+
+	return builder.CreateCall(func, params, "calltmp");
+}
+
 void ExpressionCodegen::Visit(const BinaryExpressionAST& node)
 {
 	CodegenUtils& utils = m_context.GetUtils();
@@ -514,61 +571,14 @@ void ExpressionCodegen::Visit(const IdentifierAST& node)
 	m_stack.push_back(value);
 }
 
-void ExpressionCodegen::Visit(const FunctionCallExprAST& node)
+void ExpressionCodegen::Visit(const FunctionCallExpressionAST& node)
 {
-	CodegenUtils& utils = m_context.GetUtils();
-
-	llvm::IRBuilder<>& builder = utils.GetBuilder();
-	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
-
-	llvm::Function* func = m_context.GetFunction(node.GetName());
-	if (!func)
+	llvm::Value* returnValue = GenerateFunctionCall(node);
+	if (!returnValue)
 	{
-		throw std::runtime_error("calling function '" + node.GetName() + "' that isn't defined");
+		throw std::runtime_error("function '" + node.GetName() + "' returns void - you can't use it in expressions");
 	}
-
-	if (func->arg_size() != node.GetParamsCount())
-	{
-		boost::format fmt("function '%1%' expects %2% params, %3% given");
-		throw std::runtime_error((fmt % node.GetName() % func->arg_size() % node.GetParamsCount()).str());
-	}
-
-	size_t index = 0;
-	std::vector<llvm::Value*> params;
-
-	for (llvm::Argument& arg : func->args())
-	{
-		llvm::Value* value = Visit(node.GetParam(index));
-
-		if (ToExpressionType(value->getType()) != ToExpressionType(arg.getType()))
-		{
-			llvm::Value* casted = CastValue(value, ToExpressionType(arg.getType()), llvmContext, builder);
-			if (!casted)
-			{
-				auto fmt = boost::format("function '%1%' expects '%2%' as parameter, '%3%' given (can't cast)")
-					% func->getName().str()
-					% ToString(ToExpressionType(arg.getType()))
-					% ToString(ToExpressionType(value->getType()));
-				throw std::runtime_error(fmt.str());
-			}
-
-			assert(ToExpressionType(casted->getType()) == ToExpressionType(arg.getType()));
-			params.push_back(casted);
-			++index;
-			continue;
-		}
-
-		assert(ToExpressionType(value->getType()) == ToExpressionType(arg.getType()));
-		params.push_back(value);
-		++index;
-	}
-
-	if (func->getReturnType()->getTypeID() == llvm::Type::VoidTyID)
-	{
-		throw std::runtime_error("function '" + func->getName().str() + "' returns void - you can't store the result");
-	}
-	llvm::Value* value = builder.CreateCall(func, params, "calltmp");
-	m_stack.push_back(value);
+	m_stack.push_back(returnValue);
 }
 
 void ExpressionCodegen::Visit(const ArrayElementAccessAST& node)
@@ -919,62 +929,11 @@ void StatementCodegen::Visit(const PrintAST& node)
 
 void StatementCodegen::Visit(const FunctionCallStatementAST& node)
 {
-	CodegenUtils& utils = m_context.GetUtils();
-	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
-	llvm::IRBuilder<>& builder = utils.GetBuilder();
-
-	const FunctionCallExprAST& call = node.GetCallAsDerived();
-	llvm::Function* func = m_context.GetFunction(call.GetName());
-	if (!func)
+	llvm::Value* returnValue = m_expressionCodegen.GenerateFunctionCall(node.GetCallAsDerived());
+	if (returnValue)
 	{
-		throw std::runtime_error("calling function '" + call.GetName() + "' that isn't defined");
+		// TODO: produce warning about unused function return value
 	}
-
-	if (func->getReturnType()->getTypeID() != llvm::Type::VoidTyID)
-	{
-		llvm::Value* value = m_expressionCodegen.Visit(node.GetCall());
-		(void)value;
-		// TODO: produce warning about unused function result
-		return;
-	}
-
-	if (func->arg_size() != call.GetParamsCount())
-	{
-		boost::format fmt("function '%1%' expects %2% params, %3% given");
-		throw std::runtime_error((fmt % call.GetName() % func->arg_size() % call.GetParamsCount()).str());
-	}
-
-	size_t index = 0;
-	std::vector<llvm::Value*> params;
-
-	for (llvm::Argument& arg : func->args())
-	{
-		llvm::Value* value = m_expressionCodegen.Visit(call.GetParam(index));
-
-		if (ToExpressionType(value->getType()) != ToExpressionType(arg.getType()))
-		{
-			llvm::Value* casted = CastValue(value, ToExpressionType(arg.getType()), llvmContext, builder);
-			if (!casted)
-			{
-				auto fmt = boost::format("function '%1%' expects '%2%' as parameter, '%3%' given (can't cast)")
-					% func->getName().str()
-					% ToString(ToExpressionType(arg.getType()))
-					% ToString(ToExpressionType(value->getType()));
-				throw std::runtime_error(fmt.str());
-			}
-
-			assert(ToExpressionType(casted->getType()) == ToExpressionType(arg.getType()));
-			params.push_back(casted);
-			++index;
-			continue;
-		}
-
-		assert(ToExpressionType(value->getType()) == ToExpressionType(arg.getType()));
-		params.push_back(value);
-		++index;
-	}
-
-	builder.CreateCall(func, params);
 }
 
 Codegen::Codegen(CodegenContext& context)

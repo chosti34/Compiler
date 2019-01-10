@@ -8,13 +8,14 @@ class ExpressionCodegen : public IExpressionVisitor
 public:
 	explicit ExpressionCodegen(CodegenContext& context);
 	llvm::Value* Visit(const IExpressionAST& node);
+	llvm::Value* GenerateFunctionCall(const FunctionCallExpressionAST& node);
 
 private:
 	void Visit(const BinaryExpressionAST& node) override;
 	void Visit(const LiteralConstantAST& node) override;
 	void Visit(const UnaryAST& node) override;
 	void Visit(const IdentifierAST& node) override;
-	void Visit(const FunctionCallExprAST& node) override;
+	void Visit(const FunctionCallExpressionAST& node) override;
 	void Visit(const ArrayElementAccessAST& node) override;
 
 private:
