@@ -27,13 +27,29 @@ ExpressionType ToExpressionType(llvm::Type* type)
 	{
 		return ExpressionType::Float;
 	}
-	// String
 	if (type->isPointerTy())
 	{
 		llvm::Type* ptrElementType = type->getPointerElementType();
 		if (ptrElementType->getTypeID() == llvm::Type::IntegerTyID && ptrElementType->getIntegerBitWidth() == 8)
 		{
 			return ExpressionType::String;
+		}
+		if (ptrElementType->getTypeID() == llvm::Type::IntegerTyID && ptrElementType->getIntegerBitWidth() == 32)
+		{
+			return ExpressionType::ArrayInt;
+		}
+		if (ptrElementType->getTypeID() == llvm::Type::DoubleTyID)
+		{
+			return ExpressionType::ArrayFloat;
+		}
+		if (ptrElementType->getTypeID() == llvm::Type::IntegerTyID && ptrElementType->getIntegerBitWidth() == 1)
+		{
+			return ExpressionType::ArrayBool;
+		}
+		if (ptrElementType->isPointerTy() && ptrElementType->getPointerElementType()->getTypeID() == llvm::Type::IntegerTyID &&
+			ptrElementType->getPointerElementType()->getIntegerBitWidth() == 8)
+		{
+			return ExpressionType::ArrayString;
 		}
 	}
 	throw std::invalid_argument("unsupported llvm type");
@@ -51,8 +67,16 @@ llvm::Type* ToLLVMType(ExpressionType type, llvm::LLVMContext& context)
 		return llvm::Type::getInt1Ty(context);
 	case ExpressionType::String:
 		return llvm::Type::getInt8PtrTy(context);
+	case ExpressionType::ArrayInt:
+		return llvm::Type::getInt32PtrTy(context);
+	case ExpressionType::ArrayFloat:
+		return llvm::Type::getFloatPtrTy(context);
+	case ExpressionType::ArrayBool:
+		return llvm::Type::getInt1PtrTy(context);
+	case ExpressionType::ArrayString:
+		return llvm::Type::getInt8PtrTy(context)->getPointerTo();
 	default:
-		throw std::logic_error("can't convert string ast literal to llvm type");
+		throw std::logic_error("ToLLVMType(ExpressionType, LLVMContext&) - undefined expression type");
 	}
 }
 
@@ -61,9 +85,7 @@ llvm::Value* ConvertToIntegerValue(
 	llvm::LLVMContext& llvmContext,
 	llvm::IRBuilder<>& builder)
 {
-	const ExpressionType type = ToExpressionType(value->getType());
-
-	switch (type)
+	switch (ToExpressionType(value->getType()))
 	{
 	case ExpressionType::Int:
 		return value;
@@ -330,6 +352,14 @@ llvm::Value* CreateDefaultValue(ExpressionType type, llvm::LLVMContext& llvmCont
 
 		return builder.CreateBitCast(allocaInst, llvm::Type::getInt8PtrTy(llvmContext), "str_to_i8_ptr");
 	}
+	case ExpressionType::ArrayInt:
+		return llvm::Constant::getNullValue(llvm::Type::getInt32PtrTy(llvmContext));
+	case ExpressionType::ArrayFloat:
+		return llvm::Constant::getNullValue(llvm::Type::getFloatPtrTy(llvmContext));
+	case ExpressionType::ArrayBool:
+		return llvm::Constant::getNullValue(llvm::Type::getInt1PtrTy(llvmContext));
+	case ExpressionType::ArrayString:
+		return llvm::Constant::getNullValue(llvm::Type::getInt8PtrTy(llvmContext)->getPointerTo());
 	default:
 		assert(false);
 		throw std::logic_error("can't emit code for undefined ast expression type");
@@ -704,7 +734,6 @@ void StatementCodegen::Visit(const VariableDeclarationAST& node)
 void StatementCodegen::Visit(const AssignStatementAST& node)
 {
 	CodegenUtils& utils = m_context.GetUtils();
-
 	llvm::IRBuilder<>& builder = utils.GetBuilder();
 	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
 
@@ -872,8 +901,7 @@ void StatementCodegen::Visit(const IfStatementAST& node)
 void StatementCodegen::Visit(const WhileStatementAST& node)
 {
 	CodegenUtils& utils = m_context.GetUtils();
-
-	llvm::IRBuilder<> & builder = utils.GetBuilder();
+	llvm::IRBuilder<>& builder = utils.GetBuilder();
 	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
 
 	llvm::Function* func = builder.GetInsertBlock()->getParent();

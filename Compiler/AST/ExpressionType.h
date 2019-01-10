@@ -7,7 +7,11 @@ enum class ExpressionType
 	Int,
 	Float,
 	Bool,
-	String
+	String,
+	ArrayInt,
+	ArrayFloat,
+	ArrayBool,
+	ArrayString
 };
 
 bool Convertible(ExpressionType from, ExpressionType to);

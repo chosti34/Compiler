@@ -1,13 +1,9 @@
-func main():
+func main(argc: Int, argv: Array<String>):
 {
-	var a: Float = 1.0;
-	var b: Float = 2.0;
-	while (a >= b)
-	{
-		if (a <= 1.5)
-		{
-			print("1 of 5\n");
-		}
-		a = a + 0.1;
-	}
+	var array: Array<Int> = [
+		1, 0, 1,
+		0, 1, 0,
+		0, 0, 0
+	];
+	print("%d", array[0]);
 }

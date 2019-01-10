@@ -72,6 +72,14 @@ std::string ToString(ExpressionType type)
 		return "Bool";
 	case ExpressionType::String:
 		return "String";
+	case ExpressionType::ArrayInt:
+		return "Array<Int>";
+	case ExpressionType::ArrayFloat:
+		return "Array<Float>";
+	case ExpressionType::ArrayBool:
+		return "Array<Bool>";
+	case ExpressionType::ArrayString:
+		return "Array<String>";
 	default:
 		throw std::logic_error("can't get string representation of undefined expression type");
 	}

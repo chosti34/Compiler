@@ -55,8 +55,13 @@ private:
 class LiteralConstantAST : public IExpressionAST
 {
 public:
-	// TODO: add bool, string literal
-	using Value = boost::variant<int, double, bool, std::string>;
+	using Value = boost::variant<
+		int,
+		double,
+		bool,
+		std::string,
+		std::vector<std::unique_ptr<IExpressionAST>>
+	>;
 
 	explicit LiteralConstantAST(const Value& value);
 	const Value& GetValue()const;
