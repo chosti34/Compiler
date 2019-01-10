@@ -124,10 +124,20 @@ Token Lexer::GetNextToken()
 				++m_pos;
 				return Token{ TokenType::RightCurlyBrace };
 			}
+			if (m_text.compare(m_pos, 2, "<=") == 0)
+			{
+				m_pos += 2;
+				return Token{ TokenType::LessOrEquals };
+			}
 			if (ch == '<')
 			{
 				++m_pos;
 				return Token{ TokenType::LeftAngleBracket };
+			}
+			if (m_text.compare(m_pos, 2, ">=") == 0)
+			{
+				m_pos += 2;
+				return Token{ TokenType::MoreOrEquals };
 			}
 			if (ch == '>')
 			{
@@ -173,6 +183,11 @@ Token Lexer::GetNextToken()
 			{
 				++m_pos;
 				return Token{ TokenType::Mod };
+			}
+			if (m_text.compare(m_pos, 2, "!=") == 0)
+			{
+				m_pos += 2;
+				return Token{ TokenType::NotEquals };
 			}
 			if (ch == '!')
 			{

@@ -1,6 +1,13 @@
 func main():
 {
-	var s: String = "abcd";
-	scan("%s", s);
-	print("%s", s);
+	var a: Float = 1.0;
+	var b: Float = 2.0;
+	while (a >= b)
+	{
+		if (a <= 1.5)
+		{
+			print("1 of 5\n");
+		}
+		a = a + 0.1;
+	}
 }

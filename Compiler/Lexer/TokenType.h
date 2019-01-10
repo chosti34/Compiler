@@ -50,6 +50,9 @@ enum class TokenType
 	Or,
 	And,
 	Equals,
+	NotEquals,
+	LessOrEquals,
+	MoreOrEquals,
 	Negation
 };
 

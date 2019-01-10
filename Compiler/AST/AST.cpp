@@ -443,6 +443,22 @@ std::string ToString(BinaryExpressionAST::Operator operation)
 {
 	switch (operation)
 	{
+	case BinaryExpressionAST::Or:
+		return "||";
+	case BinaryExpressionAST::And:
+		return "&&";
+	case BinaryExpressionAST::Equals:
+		return "==";
+	case BinaryExpressionAST::NotEquals:
+		return "!=";
+	case BinaryExpressionAST::Less:
+		return "<";
+	case BinaryExpressionAST::LessOrEquals:
+		return "<=";
+	case BinaryExpressionAST::More:
+		return ">";
+	case BinaryExpressionAST::MoreOrEquals:
+		return ">=";
 	case BinaryExpressionAST::Plus:
 		return "+";
 	case BinaryExpressionAST::Minus:

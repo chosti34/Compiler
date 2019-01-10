@@ -56,6 +56,9 @@ const auto TOKEN_STRING_BIMAP = make_bimap<TokenType, std::string>({
 	{ TokenType::Or,       "Or" },
 	{ TokenType::And,      "And" },
 	{ TokenType::Equals,   "Equals" },
+	{ TokenType::NotEquals, "NotEquals" },
+	{ TokenType::LessOrEquals, "LessOrEquals" },
+	{ TokenType::MoreOrEquals, "MoreOrEquals" },
 	{ TokenType::Negation, "Negation" }
 });
 }

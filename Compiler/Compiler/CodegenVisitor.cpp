@@ -151,7 +151,7 @@ llvm::Value* CreateIntegerBinaryExpression(
 	llvm::Value* right,
 	BinaryExpressionAST::Operator operation,
 	llvm::LLVMContext& llvmContext,
-	llvm::IRBuilder<> & builder)
+	llvm::IRBuilder<>& builder)
 {
 	assert(ToExpressionType(left->getType()) == ToExpressionType(right->getType()));
 	assert(ToExpressionType(left->getType()) == ExpressionType::Int);
@@ -168,8 +168,16 @@ llvm::Value* CreateIntegerBinaryExpression(
 			ConvertToBooleanValue(right, llvmContext, builder), "andtmp");
 	case BinaryExpressionAST::Equals:
 		return builder.CreateICmpEQ(left, right, "eqtmp");
+	case BinaryExpressionAST::NotEquals:
+		return builder.CreateNot(builder.CreateICmpEQ(left, right, "eqtmp"), "nottmp");
 	case BinaryExpressionAST::Less:
 		return builder.CreateICmpSLT(left, right, "lttmp");
+	case BinaryExpressionAST::LessOrEquals:
+		return builder.CreateICmpSLE(left, right, "letmp");
+	case BinaryExpressionAST::More:
+		return builder.CreateICmpSGT(left, right, "gttmp");
+	case BinaryExpressionAST::MoreOrEquals:
+		return builder.CreateICmpSGE(left, right, "getmp");
 	case BinaryExpressionAST::Plus:
 		return builder.CreateAdd(left, right, "addtmp");
 	case BinaryExpressionAST::Minus:
@@ -208,8 +216,16 @@ llvm::Value* CreateFloatBinaryExpression(
 			ConvertToBooleanValue(right, llvmContext, builder), "andtmp");
 	case BinaryExpressionAST::Equals:
 		return builder.CreateFCmpOEQ(left, right, "eqtmp");
+	case BinaryExpressionAST::NotEquals:
+		return builder.CreateNot(builder.CreateFCmpOEQ(left, right, "eqtmp"), "nottmp");
 	case BinaryExpressionAST::Less:
 		return builder.CreateFCmpOLT(left, right, "lttmp");
+	case BinaryExpressionAST::LessOrEquals:
+		return builder.CreateFCmpOLE(left, right, "letmp");
+	case BinaryExpressionAST::More:
+		return builder.CreateFCmpOGT(left, right, "gttmp");
+	case BinaryExpressionAST::MoreOrEquals:
+		return builder.CreateFCmpOGE(left, right, "getmp");
 	case BinaryExpressionAST::Plus:
 		return builder.CreateFAdd(left, right, "addtmp");
 	case BinaryExpressionAST::Minus:
@@ -245,8 +261,16 @@ llvm::Value* CreateBooleanBinaryExpression(
 		return builder.CreateAnd(left, right, "bandtmp");
 	case BinaryExpressionAST::Equals:
 		return builder.CreateICmpEQ(left, right, "beqtmp");
+	case BinaryExpressionAST::NotEquals:
+		return builder.CreateICmpNE(left, right, "bneqtmp");
 	case BinaryExpressionAST::Less:
 		return builder.CreateICmpSLT(left, right, "blttmp");
+	case BinaryExpressionAST::LessOrEquals:
+		return builder.CreateICmpSLE(left, right, "bletmp");
+	case BinaryExpressionAST::More:
+		return builder.CreateICmpSGT(left, right, "bgttmp");
+	case BinaryExpressionAST::MoreOrEquals:
+		return builder.CreateICmpSGE(left, right, "bgetmp");
 	case BinaryExpressionAST::Plus:
 	case BinaryExpressionAST::Minus:
 	case BinaryExpressionAST::Mul:
@@ -945,7 +969,6 @@ void StatementCodegen::CodegenAsPrint(const BuiltinCallStatementAST& node)
 void StatementCodegen::CodegenAsScan(const BuiltinCallStatementAST& node)
 {
 	CodegenUtils& utils = m_context.GetUtils();
-	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
 	llvm::IRBuilder<>& builder = utils.GetBuilder();
 
 	if (node.GetParamsCount() < 2)
