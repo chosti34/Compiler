@@ -38,8 +38,11 @@ private:
 	void Visit(const IfStatementAST& node) override;
 	void Visit(const WhileStatementAST& node) override;
 	void Visit(const CompositeStatementAST& node) override;
-	void Visit(const PrintAST& node) override;
+	void Visit(const BuiltinCallStatementAST& node) override;
 	void Visit(const FunctionCallStatementAST& node) override;
+
+	void CodegenAsPrint(const BuiltinCallStatementAST& node);
+	void CodegenAsScan(const BuiltinCallStatementAST& node);
 
 private:
 	CodegenContext& m_context;

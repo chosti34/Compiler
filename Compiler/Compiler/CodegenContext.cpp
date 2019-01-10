@@ -11,12 +11,28 @@ llvm::Function* CreatePrintfBuiltinFunction(CodegenUtils& utils)
 	// Единственный обязательный аргумент функции printf - char*
 	std::vector<llvm::Type*> argTypes = { llvm::Type::getInt8PtrTy(llvmContext) };
 
-	// Говорим, что функция вернет int32, а также что она имеет переменное число аргументов
+	// Говорим, что функция вернет int32, указываем обязательные аргументы, и ставим флаг переменного числа аргументов
 	llvm::FunctionType* fnType = llvm::FunctionType::get(
 		llvm::Type::getInt32Ty(llvmContext), argTypes, true);
 
 	// Создаем функцию printf, которая будет "слинкована" с исполняемым файлом извне
 	return llvm::Function::Create(fnType, llvm::Function::ExternalLinkage, "printf", &llvmModule);
+}
+
+llvm::Function* CreateScanfBuiltinFunction(CodegenUtils& utils)
+{
+	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
+	llvm::Module& llvmModule = utils.GetModule();
+
+	// Единственный обязательный аргумент функции printf - char*
+	std::vector<llvm::Type*> argTypes = { llvm::Type::getInt8PtrTy(llvmContext) };
+
+	// Говорим, что функция вернет int32, указываем обязательные аргументы, и ставим флаг переменного числа аргументов
+	llvm::FunctionType* fnType = llvm::FunctionType::get(
+		llvm::Type::getInt32Ty(llvmContext), argTypes, true);
+
+	// Создаем функцию printf, которая будет "слинкована" с исполняемым файлом извне
+	return llvm::Function::Create(fnType, llvm::Function::ExternalLinkage, "scanf", &llvmModule);
 }
 }
 
@@ -46,6 +62,7 @@ CodegenContext::CodegenContext()
 	: m_utils()
 	, m_scopes()
 	, m_printf(CreatePrintfBuiltinFunction(m_utils))
+	, m_scanf(CreateScanfBuiltinFunction(m_utils))
 {
 }
 
@@ -78,6 +95,11 @@ llvm::AllocaInst* CodegenContext::GetVariable(const std::string& name)
 llvm::Function* CodegenContext::GetPrintf()
 {
 	return m_printf;
+}
+
+llvm::Function* CodegenContext::GetScanf()
+{
+	return m_scanf;
 }
 
 CodegenUtils& CodegenContext::GetUtils()

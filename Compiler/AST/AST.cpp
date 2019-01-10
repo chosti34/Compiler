@@ -385,12 +385,22 @@ const FunctionAST& ProgramAST::GetFunction(size_t index)const
 	return *m_functions[index];
 }
 
-size_t PrintAST::GetParamsCount()const
+BuiltinCallStatementAST::BuiltinCallStatementAST(Builtin builtin)
+	: m_builtin(builtin)
+{
+}
+
+BuiltinCallStatementAST::Builtin BuiltinCallStatementAST::GetBuiltin()const
+{
+	return m_builtin;
+}
+
+size_t BuiltinCallStatementAST::GetParamsCount()const
 {
 	return m_params.size();
 }
 
-const IExpressionAST& PrintAST::GetExpression(size_t index)const
+const IExpressionAST& BuiltinCallStatementAST::GetExpression(size_t index)const
 {
 	if (index >= m_params.size())
 	{
@@ -399,12 +409,12 @@ const IExpressionAST& PrintAST::GetExpression(size_t index)const
 	return *m_params[index];
 }
 
-void PrintAST::AddExpression(std::unique_ptr<IExpressionAST> && expression)
+void BuiltinCallStatementAST::AddExpression(std::unique_ptr<IExpressionAST> && expression)
 {
 	m_params.push_back(std::move(expression));
 }
 
-void PrintAST::Accept(IStatementVisitor& visitor)const
+void BuiltinCallStatementAST::Accept(IStatementVisitor& visitor)const
 {
 	visitor.Visit(*this);
 }

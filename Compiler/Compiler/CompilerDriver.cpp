@@ -58,6 +58,7 @@ std::unique_ptr<LLParser> CreateParser()
 		.AddProduction("<Statement>        -> <Return>")
 		.AddProduction("<Statement>        -> <Composite>")
 		.AddProduction("<Statement>        -> <Print>")
+		.AddProduction("<Statement>        -> <Scan>")
 		.AddProduction("<Statement>        -> <StmtStartsWithId>")
 		// Условная инструкция
 		.AddProduction("<Condition>        -> If LeftParenthesis <Expression> RightParenthesis <Statement> {OnIfStatementParsed} <OptionalElse>")
@@ -77,8 +78,9 @@ std::unique_ptr<LLParser> CreateParser()
 		.AddProduction("<Composite>        -> LeftCurly {PrepareCompositeStatementParsing} <StatementList> RightCurly {OnCompositeStatementParsed}")
 		.AddProduction("<StatementList>    -> <Statement> {OnCompositeStatementPartParsed} <StatementList>")
 		.AddProduction("<StatementList>    -> #Eps#")
-		// Инструкция печати
+		// Инструкция пе
 		.AddProduction("<Print>            -> Print LeftParenthesis {PrepareFnCallParamsParsing} <FunctionCallParamList> RightParenthesis Semicolon {OnPrintStatementParsed}")
+		.AddProduction("<Scan>             -> Scan LeftParenthesis {PrepareFnCallParamsParsing} <FunctionCallParamList> RightParenthesis Semicolon {OnScanStatementParsed}")
 		// Инструкция, начинающаяся с идентификатора (присваивание, либо вызов функции)
 		.AddProduction("<StmtStartsWithId> -> <Identifier> <AfterIdStmt>")
 		.AddProduction("<AfterIdStmt>      -> LeftSquareBracket <Expression> RightSquareBracket Assign <Expression> Semicolon {OnArrayElementAssignStatement}")

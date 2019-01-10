@@ -13,13 +13,14 @@ enum class TokenType
 	String,
 	Array,
 	If,
-	Print,
 	Else,
 	While,
 	Var,
 	Return,
 	True,
 	False,
+	Print,
+	Scan,
 
 	// Has mutable values
 	Identifier,

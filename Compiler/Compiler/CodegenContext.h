@@ -47,11 +47,13 @@ public:
 	void Define(const std::string& name, llvm::AllocaInst* value);
 	void Assign(const std::string& name, llvm::AllocaInst* value);
 
+	CodegenUtils& GetUtils();
+
 	// Возвращает nullptr, если переменная не найдена в текущем состоянии контекста
 	llvm::AllocaInst* GetVariable(const std::string& name);
 
 	llvm::Function* GetPrintf();
-	CodegenUtils& GetUtils();
+	llvm::Function* GetScanf();
 
 	void AddFunction(const std::string& name, llvm::Function* func);
 	// Возвращает nullptr, если функция не найдена в текущем состоянии контекста
@@ -63,6 +65,9 @@ private:
 	CodegenUtils m_utils;
 	ScopeChain<llvm::AllocaInst*> m_scopes;
 
-	llvm::Function* m_printf; // builtin function
+	// builtin functions
+	llvm::Function* m_printf;
+	llvm::Function* m_scanf;
+
 	std::unordered_map<std::string, llvm::Function*> m_functions; // user defined
 };

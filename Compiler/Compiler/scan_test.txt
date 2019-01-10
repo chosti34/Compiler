@@ -21,7 +21,10 @@ func GetSquareRootNewtonMethod(x: Float) -> Float:
 
 func main() -> Int:
 {
-	print("%f\n", GetSquareRootNewtonMethod(81.0));
+	var value: Float = 21.0;
+	print("Enter float value: ");
+	scan("%lf", value);
+	print("sqrt(%f) = %f", value, GetSquareRootNewtonMethod(value));
 	return 0;
 }
 

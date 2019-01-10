@@ -252,7 +252,21 @@ public:
 	void OnPrintStatementParsed()
 	{
 		assert(!m_functionCallParamList.empty());
-		auto printStatement = std::make_unique<PrintAST>();
+		auto printStatement = std::make_unique<BuiltinCallStatementAST>(BuiltinCallStatementAST::Print);
+
+		for (auto& expr : m_functionCallParamList.back())
+		{
+			printStatement->AddExpression(std::move(expr));
+		}
+
+		m_functionCallParamList.pop_back();
+		m_statements.push_back(std::move(printStatement));
+	}
+
+	void OnScanStatementParsed()
+	{
+		assert(!m_functionCallParamList.empty());
+		auto printStatement = std::make_unique<BuiltinCallStatementAST>(BuiltinCallStatementAST::Scan);
 
 		for (auto& expr : m_functionCallParamList.back())
 		{
@@ -452,6 +466,7 @@ std::unique_ptr<ProgramAST> LLParser::Parse(const std::string& text)
 		{ "OnCompositeStatementParsed", std::bind(&ASTBuilder::OnCompositeStatementParsed, &astBuilder) },
 		{ "OnCompositeStatementPartParsed", std::bind(&ASTBuilder::OnCompositeStatementPartParsed, &astBuilder) },
 		{ "OnPrintStatementParsed", std::bind(&ASTBuilder::OnPrintStatementParsed, &astBuilder) },
+		{ "OnScanStatementParsed", std::bind(&ASTBuilder::OnScanStatementParsed, &astBuilder) },
 		{ "OnIntegerTypeParsed", std::bind(&ASTBuilder::OnTypeParsed, &astBuilder, ExpressionType::Int) },
 		{ "OnFloatTypeParsed", std::bind(&ASTBuilder::OnTypeParsed, &astBuilder, ExpressionType::Float) },
 		{ "OnBoolTypeParsed", std::bind(&ASTBuilder::OnTypeParsed, &astBuilder, ExpressionType::Bool) },

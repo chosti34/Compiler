@@ -14,6 +14,7 @@ const std::unordered_map<std::string, TokenType> KEYWORDS = {
 	{ "Array",  TokenType::Array },
 	{ "if",     TokenType::If },
 	{ "print",  TokenType::Print },
+	{ "scan",   TokenType::Scan },
 	{ "else",   TokenType::Else },
 	{ "while",  TokenType::While },
 	{ "var",    TokenType::Var },

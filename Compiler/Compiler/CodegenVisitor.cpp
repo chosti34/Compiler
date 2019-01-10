@@ -902,12 +902,27 @@ void StatementCodegen::Visit(const CompositeStatementAST& node)
 	}
 }
 
-void StatementCodegen::Visit(const PrintAST& node)
+void StatementCodegen::Visit(const BuiltinCallStatementAST& node)
+{
+	switch (node.GetBuiltin())
+	{
+	case BuiltinCallStatementAST::Print:
+		CodegenAsPrint(node);
+		break;
+	case BuiltinCallStatementAST::Scan:
+		CodegenAsScan(node);
+		break;
+	default:
+		assert(false);
+		throw std::logic_error("can't codegen undefined builtin call");
+	}
+}
+
+void StatementCodegen::CodegenAsPrint(const BuiltinCallStatementAST& node)
 {
 	CodegenUtils& utils = m_context.GetUtils();
-
 	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
-	llvm::IRBuilder<> & builder = utils.GetBuilder();
+	llvm::IRBuilder<>& builder = utils.GetBuilder();
 
 	std::vector<llvm::Value*> expressions(node.GetParamsCount());
 	for (size_t i = 0; i < expressions.size(); ++i)
@@ -925,6 +940,45 @@ void StatementCodegen::Visit(const PrintAST& node)
 	}
 
 	builder.CreateCall(m_context.GetPrintf(), expressions, "printtmp");
+}
+
+void StatementCodegen::CodegenAsScan(const BuiltinCallStatementAST& node)
+{
+	CodegenUtils& utils = m_context.GetUtils();
+	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
+	llvm::IRBuilder<>& builder = utils.GetBuilder();
+
+	if (node.GetParamsCount() < 2)
+	{
+		throw std::runtime_error("scan statement expects at least 2 parameters, " + std::to_string(node.GetParamsCount()) + " given");
+	}
+
+	std::vector<llvm::Value*> expressions(node.GetParamsCount());
+	expressions[0] = m_expressionCodegen.Visit(node.GetExpression(0));
+	if (ToExpressionType(expressions[0]->getType()) != ExpressionType::String)
+	{
+		throw std::runtime_error("scan statement requires string as first argument");
+	}
+
+	for (size_t i = 1; i < expressions.size(); ++i)
+	{
+		const IdentifierAST* identifier = dynamic_cast<const IdentifierAST*>(&node.GetExpression(i));
+		if (!identifier)
+		{
+			throw std::runtime_error("you can only pass identifiers to scan");
+		}
+
+		if (auto variable = m_context.GetVariable(identifier->GetName()))
+		{
+			expressions[i] = variable;
+		}
+		else
+		{
+			throw std::runtime_error("variable '" + identifier->GetName() + "' is not defined");
+		}
+	}
+
+	builder.CreateCall(m_context.GetScanf(), expressions, "scantmp");
 }
 
 void StatementCodegen::Visit(const FunctionCallStatementAST& node)

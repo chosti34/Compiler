@@ -19,7 +19,6 @@ const auto TOKEN_STRING_BIMAP = make_bimap<TokenType, std::string>({
 	{ TokenType::Bool,   "Bool" },
 	{ TokenType::Array,  "Array" },
 	{ TokenType::If,     "If" },
-	{ TokenType::Print,  "Print" },
 	{ TokenType::Else,   "Else" },
 	{ TokenType::While,  "While" },
 	{ TokenType::Var,    "Var" },
@@ -27,6 +26,8 @@ const auto TOKEN_STRING_BIMAP = make_bimap<TokenType, std::string>({
 	{ TokenType::True,   "True" },
 	{ TokenType::False,  "False" },
 	{ TokenType::String, "String" },
+	{ TokenType::Print,  "Print" },
+	{ TokenType::Scan,   "Scan" },
 
 	{ TokenType::Identifier,      "Identifier" },
 	{ TokenType::IntegerConstant, "IntegerConstant" },
