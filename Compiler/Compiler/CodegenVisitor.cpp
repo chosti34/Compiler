@@ -154,7 +154,7 @@ llvm::Value* CastValue(
 	llvm::Value* value,
 	ExpressionType type,
 	llvm::LLVMContext& llvmContext,
-	llvm::IRBuilder<> & builder)
+	llvm::IRBuilder<>& builder)
 {
 	switch (type)
 	{
@@ -577,8 +577,19 @@ void ExpressionCodegen::Visit(const LiteralConstantAST& node)
 	}
 	else if (constant.type() == typeid(std::vector<std::shared_ptr<IExpressionAST>>))
 	{
-		const std::vector<std::shared_ptr<IExpressionAST>>& expressions = boost::get<std::vector<std::shared_ptr<IExpressionAST>>>(constant);
-		throw std::runtime_error("can't emit array literal");
+		const auto& expressions = boost::get<std::vector<std::shared_ptr<IExpressionAST>>>(constant);
+		if (expressions.empty())
+		{
+			throw std::runtime_error("can't create empty array");
+		}
+
+		llvm::Value* firstValueOfArray = Visit(*expressions.front());
+		llvm::ArrayType* arrayType = llvm::ArrayType::get(firstValueOfArray->getType(), expressions.size());
+
+		llvm::AllocaInst* arrayPtr = builder.CreateAlloca(arrayType,
+			llvm::ConstantInt::get(llvm::Type::getInt32Ty(llvmContext), uint64_t(64)), "arr_alloc");
+
+		m_stack.push_back(builder.CreateBitCast(arrayPtr, firstValueOfArray->getType()->getPointerTo(), "array_to_ptr"));
 	}
 	else
 	{
@@ -854,8 +865,7 @@ void StatementCodegen::Visit(const ReturnStatementAST& node)
 void StatementCodegen::Visit(const IfStatementAST& node)
 {
 	CodegenUtils& utils = m_context.GetUtils();
-
-	llvm::IRBuilder<> & builder = utils.GetBuilder();
+	llvm::IRBuilder<>& builder = utils.GetBuilder();
 	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
 
 	llvm::Function* func = builder.GetInsertBlock()->getParent();
