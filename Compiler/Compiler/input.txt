@@ -1,3 +1,31 @@
+func sum(array: Array<Int>, size: Int) -> Int:
+{
+	if (size == 0)
+	{
+		return -1;
+	}
+
+	var sum: Int = array[0];
+	var index: Int = 1;
+
+	while (index < size)
+	{
+		sum = sum + array[index];
+		index = index + 1;
+	}
+
+	return sum;
+}
+
 func main(argc: Int, argv: Array<String>):
 {
+	var array: Array<Bool> = [True, False, True];
+	array[0] = "asd";
+	
+	var index: Int = 0;
+	while (index < 3)
+	{
+		print("%d\n", array[index]);
+		index = index + 1;
+	}
 }
