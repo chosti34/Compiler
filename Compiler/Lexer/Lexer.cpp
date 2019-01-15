@@ -31,220 +31,314 @@ Lexer::Lexer(const std::string& text)
 
 Token Lexer::GetNextToken()
 {
-	while (m_pos < m_text.length())
+	while (m_ch)
 	{
-		char ch = m_text[m_pos];
-		if (std::isspace(ch))
+		if (std::isspace(*m_ch))
 		{
 			SkipWhitespaces();
 			continue;
 		}
-		if (std::isdigit(ch))
+		if (std::isdigit(*m_ch))
 		{
-			std::string value(1, m_text[m_pos++]);
-			while (m_pos < m_text.length() && std::isdigit(m_text[m_pos]))
-			{
-				value += m_text[m_pos++];
-			}
-
-			if (m_pos < m_text.length() && m_text[m_pos] == '.')
-			{
-				value += m_text[m_pos++];
-				while (m_pos < m_text.length() && std::isdigit(m_text[m_pos]))
-				{
-					value += m_text[m_pos++];
-				}
-				return Token{ TokenType::FloatConstant, value };
-			}
-
-			return Token{ TokenType::IntegerConstant, value };
+			return OnDigit();
 		}
-		if (std::isalpha(ch) || ch == '_')
+		if (std::isalpha(*m_ch) || m_ch == '_')
 		{
-			std::string value(1, m_text[m_pos++]);
-			while (m_pos < m_text.length() && (std::isalnum(m_text[m_pos]) || m_text[m_pos] == '_'))
-			{
-				value += m_text[m_pos++];
-			}
-
-			auto found = std::find_if(KEYWORDS.begin(), KEYWORDS.end(), [&value](const auto& pair) {
-				return value == pair.first;
-			});
-
-			if (found != KEYWORDS.end())
-			{
-				return { found->second };
-			}
-			return Token{ TokenType::Identifier, value };
+			return OnAlphaOrUnderscore();
 		}
-		if (std::ispunct(ch))
+		if (std::ispunct(*m_ch))
 		{
-			if (ch == ';')
+			if (m_text.compare(m_pos, 2, "//") == 0)
 			{
-				++m_pos;
-				return Token{ TokenType::Semicolon };
+				SkipUntil('\n');
+				Advance();
+				continue;
 			}
-			if (ch == ':')
-			{
-				++m_pos;
-				return Token{ TokenType::Colon };
-			}
-			if (ch == '=')
-			{
-				++m_pos;
-				if (m_pos < m_text.length() && m_text[m_pos] == '=')
-				{
-					++m_pos;
-					return Token{ TokenType::Equals };
-				}
-				return Token{ TokenType::Assign };
-			}
-			if (ch == ',')
-			{
-				++m_pos;
-				return Token{ TokenType::Comma };
-			}
-			if (ch == '(')
-			{
-				++m_pos;
-				return Token{ TokenType::LeftParenthesis };
-			}
-			if (ch == ')')
-			{
-				++m_pos;
-				return Token{ TokenType::RightParenthesis };
-			}
-			if (ch == '{')
-			{
-				++m_pos;
-				return Token{ TokenType::LeftCurlyBrace };
-			}
-			if (ch == '}')
-			{
-				++m_pos;
-				return Token{ TokenType::RightCurlyBrace };
-			}
-			if (m_text.compare(m_pos, 2, "<=") == 0)
-			{
-				m_pos += 2;
-				return Token{ TokenType::LessOrEquals };
-			}
-			if (ch == '<')
-			{
-				++m_pos;
-				return Token{ TokenType::LeftAngleBracket };
-			}
-			if (m_text.compare(m_pos, 2, ">=") == 0)
-			{
-				m_pos += 2;
-				return Token{ TokenType::MoreOrEquals };
-			}
-			if (ch == '>')
-			{
-				++m_pos;
-				return Token{ TokenType::RightAngleBracket };
-			}
-			if (ch == '[')
-			{
-				++m_pos;
-				return { TokenType::LeftSquareBracket };
-			}
-			if (ch == ']')
-			{
-				++m_pos;
-				return { TokenType::RightSquareBracket };
-			}
-			if (ch == '-')
-			{
-				++m_pos;
-				if (m_pos < m_text.length() && m_text[m_pos] == '>')
-				{
-					++m_pos;
-					return Token{ TokenType::Arrow };
-				}
-				return Token{ TokenType::Minus };
-			}
-			if (ch == '+')
-			{
-				++m_pos;
-				return Token{ TokenType::Plus };
-			}
-			if (ch == '*')
-			{
-				++m_pos;
-				return Token{ TokenType::Mul };
-			}
-			if (ch == '/')
-			{
-				++m_pos;
-				return Token{ TokenType::Div };
-			}
-			if (ch == '%')
-			{
-				++m_pos;
-				return Token{ TokenType::Mod };
-			}
-			if (m_text.compare(m_pos, 2, "!=") == 0)
-			{
-				m_pos += 2;
-				return Token{ TokenType::NotEquals };
-			}
-			if (ch == '!')
-			{
-				++m_pos;
-				return Token{ TokenType::Negation };
-			}
-			if (m_text.compare(m_pos, 2, "||") == 0)
-			{
-				m_pos += 2;
-				return Token{ TokenType::Or };
-			}
-			if (m_text.compare(m_pos, 2, "&&") == 0)
-			{
-				m_pos += 2;
-				return Token{ TokenType::And };
-			}
-			if (ch == '"')
-			{
-				std::string str;
-				bool escaped = false;
-				size_t offsetCopy = m_pos + 1;
-
-				while (offsetCopy < m_text.length())
-				{
-					if (m_text[offsetCopy] == '"' && !escaped)
-					{
-						++offsetCopy;
-						break;
-					}
-					escaped = !escaped && m_text[offsetCopy] == '\\';
-					str += m_text[offsetCopy++];
-				}
-
-				if (offsetCopy < m_text.length())
-				{
-					m_pos = offsetCopy;
-					boost::replace_all(str, "\\n"s, "\n"s);
-					boost::replace_all(str, "\\t"s, "\t"s);
-					return Token{ TokenType::StringConstant, str };
-				}
-			}
+			return OnPunct();
 		}
-		throw std::runtime_error("lexer can't parse token starting from character at pos " + std::to_string(m_pos) + ": '" + m_text[m_pos] + "'");
+
+		const auto fmt = boost::format("can't parse char '%1%' on line %2%, column %3%")
+			% (std::isprint(*m_ch) ? std::to_string(*m_ch) : "#" + std::to_string(int(*m_ch)))
+			% m_line
+			% m_column;
+		throw std::runtime_error(fmt.str());
 	}
-	return Token{ TokenType::EndOfFile };
+	return { TokenType::EndOfFile, boost::none, m_pos, m_line, m_column };
 }
 
 void Lexer::SetText(const std::string& text)
 {
 	m_text = text;
 	m_pos = 0;
+	m_column = 0;
+	m_line = 0;
+	UpdateCh();
 }
 
 void Lexer::SkipWhitespaces()
 {
-	while (m_pos < m_text.length() && std::isspace(m_text[m_pos]))
+	while (m_ch && std::isspace(*m_ch))
 	{
-		++m_pos;
+		Advance();
 	}
+}
+
+void Lexer::SkipUntil(char ch)
+{
+	while (m_ch && m_ch != ch)
+	{
+		Advance();
+	}
+}
+
+Token Lexer::OnDigit()
+{
+	assert(m_ch && std::isdigit(*m_ch));
+
+	std::string value(1, *m_ch);
+	Advance();
+
+	while (m_ch && std::isdigit(*m_ch))
+	{
+		value += *m_ch;
+		Advance();
+	}
+
+	if (m_ch != '.')
+	{
+		return { TokenType::IntegerConstant, value, m_pos, m_line, m_column };
+	}
+
+	value += *m_ch;
+	Advance();
+
+	while (m_ch && std::isdigit(*m_ch))
+	{
+		value += *m_ch;
+		Advance();
+	}
+	return { TokenType::FloatConstant, value, m_pos, m_line, m_column };
+}
+
+Token Lexer::OnAlphaOrUnderscore()
+{
+	assert(m_ch && (std::isalpha(*m_ch) || m_ch == '_'));
+
+	std::string value(1, *m_ch);
+	Advance();
+
+	while (m_ch && (std::isalnum(*m_ch) || m_ch == '_'))
+	{
+		value += *m_ch;
+		Advance();
+	}
+
+	auto found = std::find_if(KEYWORDS.begin(), KEYWORDS.end(), [&value](const auto& pair) {
+		const std::string& keyword = pair.first;
+		return value == keyword;
+	});
+
+	if (found != KEYWORDS.end())
+	{
+		const TokenType& keyword = found->second;
+		return { keyword, boost::none, m_pos, m_line, m_column };
+	}
+	return { TokenType::Identifier, value, m_pos, m_line, m_column };
+}
+
+Token Lexer::OnPunct()
+{
+	assert(m_ch && std::ispunct(*m_ch));
+
+	if (m_text.compare(m_pos, 2, "==") == 0)
+	{
+		Advance();
+		Advance();
+		return { TokenType::Equals, boost::none, m_pos, m_line, m_column };
+	}
+	if (m_text.compare(m_pos, 2, "<=") == 0)
+	{
+		Advance();
+		Advance();
+		return { TokenType::LessOrEquals, boost::none, m_pos, m_line, m_column };
+	}
+	if (m_text.compare(m_pos, 2, ">=") == 0)
+	{
+		Advance();
+		Advance();
+		return { TokenType::MoreOrEquals, boost::none, m_pos, m_line, m_column };
+	}
+	if (m_text.compare(m_pos, 2, "!=") == 0)
+	{
+		Advance();
+		Advance();
+		return { TokenType::NotEquals, boost::none, m_pos, m_line, m_column };
+	}
+	if (m_text.compare(m_pos, 2, "->") == 0)
+	{
+		Advance();
+		Advance();
+		return { TokenType::Arrow, boost::none, m_pos, m_line, m_column };
+	}
+	if (m_text.compare(m_pos, 2, "||") == 0)
+	{
+		Advance();
+		Advance();
+		return { TokenType::Or, boost::none, m_pos, m_line, m_column };
+	}
+	if (m_text.compare(m_pos, 2, "&&") == 0)
+	{
+		Advance();
+		Advance();
+		return { TokenType::And, boost::none, m_pos, m_line, m_column };
+	}
+
+	if (m_ch == ';')
+	{
+		Advance();
+		return { TokenType::Semicolon, boost::none, m_pos, m_line, m_column };
+	}
+	if (m_ch == ':')
+	{
+		Advance();
+		return { TokenType::Colon, boost::none, m_pos, m_line, m_column };
+	}
+	if (m_ch == '=')
+	{
+		Advance();
+		return { TokenType::Assign, boost::none, m_pos, m_line, m_column };
+	}
+	if (m_ch == ',')
+	{
+		Advance();
+		return { TokenType::Comma, boost::none, m_pos, m_line, m_column };
+	}
+	if (m_ch == '(')
+	{
+		Advance();
+		return { TokenType::LeftParenthesis, boost::none, m_pos, m_line, m_column };
+	}
+	if (m_ch == ')')
+	{
+		Advance();
+		return { TokenType::RightParenthesis, boost::none, m_pos, m_line, m_column };
+	}
+	if (m_ch == '{')
+	{
+		Advance();
+		return { TokenType::LeftCurlyBrace, boost::none, m_pos, m_line, m_column };
+	}
+	if (m_ch == '}')
+	{
+		Advance();
+		return { TokenType::RightCurlyBrace, boost::none, m_pos, m_line, m_column };
+	}
+	if (m_ch == '<')
+	{
+		Advance();
+		return { TokenType::LeftAngleBracket, boost::none, m_pos, m_line, m_column };
+	}
+	if (m_ch == '>')
+	{
+		Advance();
+		return { TokenType::RightAngleBracket, boost::none, m_pos, m_line, m_column };
+	}
+	if (m_ch == '[')
+	{
+		Advance();
+		return { TokenType::LeftSquareBracket, boost::none, m_pos, m_line, m_column };
+	}
+	if (m_ch == ']')
+	{
+		Advance();
+		return { TokenType::RightSquareBracket, boost::none, m_pos, m_line, m_column };
+	}
+	if (m_ch == '-')
+	{
+		Advance();
+		return { TokenType::Minus, boost::none, m_pos, m_line, m_column };
+	}
+	if (m_ch == '+')
+	{
+		Advance();
+		return { TokenType::Plus, boost::none, m_pos, m_line, m_column };
+	}
+	if (m_ch == '*')
+	{
+		Advance();
+		return { TokenType::Mul, boost::none, m_pos, m_line, m_column };
+	}
+	if (m_ch == '/')
+	{
+		Advance();
+		return { TokenType::Div, boost::none, m_pos, m_line, m_column };
+	}
+	if (m_ch == '%')
+	{
+		Advance();
+		return { TokenType::Mod, boost::none, m_pos, m_line, m_column };
+	}
+	if (m_ch == '!')
+	{
+		Advance();
+		return { TokenType::Negation, boost::none, m_pos, m_line, m_column };
+	}
+	if (m_ch == '"')
+	{
+		const size_t line = m_line;
+		const size_t column = m_column;
+
+		Advance();
+		std::string value;
+		bool escaped = false;
+
+		while (m_ch && m_ch != '\n')
+		{
+			if (m_ch == '"' && !escaped)
+			{
+				Advance();
+				boost::replace_all(value, "\\n"s, "\n"s);
+				boost::replace_all(value, "\\t"s, "\t"s);
+				return { TokenType::StringConstant, value, m_pos, m_line, m_column };
+			}
+			escaped = !escaped && m_ch == '\\';
+			value += *m_ch;
+			Advance();
+		}
+
+		auto fmt = boost::format("string doesn't have closing quotes on line %1%, column %2%")
+			% std::to_string(line)
+			% std::to_string(column);
+		throw std::runtime_error(fmt.str());
+	}
+
+	auto fmt = boost::format("can't parse punct '%1%' on line %2%, column %3%")
+		% *m_ch
+		% m_line
+		% m_column;
+	throw std::runtime_error(fmt.str());
+}
+
+void Lexer::Advance()
+{
+	if (!m_ch)
+	{
+		throw std::logic_error("lexer can't advance because end of input has been reached");
+	}
+
+	if (m_ch == '\n')
+	{
+		++m_line;
+		m_column = 0;
+	}
+
+	++m_pos;
+	++m_column;
+
+	UpdateCh();
+}
+
+void Lexer::UpdateCh()
+{
+	m_ch = (m_pos < m_text.length()) ? boost::make_optional(m_text[m_pos]) : boost::none;
 }

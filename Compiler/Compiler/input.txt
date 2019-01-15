@@ -21,6 +21,8 @@ func main(argc: Int, argv: Array<String>):
 {
 	var array: Array<Bool> = [True, False, True];
 	array[0] = "asd";
+
+	var s: String = "assasd;
 	
 	var index: Int = 0;
 	while (index < 3)
