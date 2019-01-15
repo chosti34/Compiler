@@ -23,7 +23,7 @@ void WriteGrammar(const Grammar& grammar, std::ostream& out)
 
 			if (symbol.GetAttribute() != boost::none)
 			{
-				out << " {" << *symbol.GetAttribute() << "}";
+				// out << " {" << *symbol.GetAttribute() << "}";
 			}
 			if (col != (production->GetSymbolsCount() - 1))
 			{
@@ -31,8 +31,9 @@ void WriteGrammar(const Grammar& grammar, std::ostream& out)
 			}
 		}
 
-		stream_utils::PrintIterable(
-			out, GatherBeginningSymbolsOfProduction(grammar, int(row)), ", ", " / {", "}");
+		/*stream_utils::PrintIterable(
+			out, GatherBeginningSymbolsOfProduction(grammar, int(row)), ", ", " / {", "}");*/
+		out << "\n";
 	}
 }
 

@@ -1,33 +1,16 @@
-func sum(array: Array<Int>, size: Int) -> Int:
+func fib(n: Int) -> Int:
 {
-	if (size == 0)
-	{
-		return -1;
-	}
-
-	var sum: Int = array[0];
-	var index: Int = 1;
-
-	while (index < size)
-	{
-		sum = sum + array[index];
-		index = index + 1;
-	}
-
-	return sum;
+	if (n == 1 || n == 2) return 1;
+	return fib(n - 2) + fib(n - 1);
 }
 
 func main(argc: Int, argv: Array<String>):
 {
-	var array: Array<Bool> = [True, False, True];
-	array[0] = "asd";
-
-	var s: String = "assasd;
-	
-	var index: Int = 0;
-	while (index < 3)
+	var n: Int;
+	while (True)
 	{
-		print("%d\n", array[index]);
-		index = index + 1;
+		print("Enter integer number: ");
+		scan("%d", n);
+		print("fib(%d) = %d\n", n, fib(n));
 	}
 }

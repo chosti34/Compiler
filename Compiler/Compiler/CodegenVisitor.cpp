@@ -685,7 +685,7 @@ void ExpressionCodegen::Visit(const ArrayElementAccessAST& node)
 	llvm::AllocaInst* arrayPtr = m_context.GetVariable(node.GetName());
 	if (!arrayPtr)
 	{
-		throw std::runtime_error("variable '" + node.GetName() + "' is not defined");
+		throw std::runtime_error("array '" + node.GetName() + "' is not defined");
 	}
 
 	if (!arrayPtr->getType()->getPointerElementType()->isPointerTy())
@@ -725,11 +725,19 @@ void ExpressionCodegen::Visit(const ArrayElementAccessAST& node)
 			elementPtr->getType()->getPointerElementType()->getPointerElementType()->getIntegerBitWidth() == 8)
 		{
 			value = builder.CreateLoad(llvm::Type::getInt8PtrTy(llvmContext), elementPtr, "load_arr_str_element");
+			if (node.GetIndexCount() == 2)
+			{
+				llvm::Value* secondIndex = ConvertToIntegerValue(Visit(node.GetIndex(1)), llvmContext, builder);
+				elementPtr = builder.CreateGEP(value, secondIndex, "get_element_ptr");
+				value = builder.CreateLoad(elementPtr, "load_2d_char");
+			}
 		}
 		break;
 	default:
 		throw std::runtime_error("unknown array type");
 	}
+
+	// TODO: если есть второй индекс, то нужно взять его!!!
 
 	// Since our language doesn't support char data type (int8_t), we need to cast character to integer
 	if (value->getType()->getTypeID() == llvm::Type::IntegerTyID && value->getType()->getIntegerBitWidth() == 8)
@@ -867,6 +875,14 @@ void StatementCodegen::Visit(const ArrayElementAssignAST& node)
 	// Генерируем выражение для присваивания
 	llvm::Value* valueToAssign = m_expressionCodegen.Visit(node.GetExpression());
 
+	if (node.GetIndexCount() == 1 && ToExpressionType(valueToAssign->getType()) != ToExpressionType(variable->getType()->getPointerElementType()->getPointerElementType()))
+	{
+		auto fmt = boost::format("can't assign value of type %1% to array element of type %2%")
+			% ToString(ToExpressionType(valueToAssign->getType()))
+			% ToString(ToExpressionType(variable->getType()->getPointerElementType()->getPointerElementType()));
+		throw std::runtime_error(fmt.str());
+	}
+
 	// Since we have no support for int8_t, in case of string element assign, we need to cast integer
 	if (variable->getType()->getPointerElementType()->getTypeID() == llvm::Type::IntegerTyID &&
 		variable->getType()->getPointerElementType()->getIntegerBitWidth() == 8 &&
@@ -875,16 +891,17 @@ void StatementCodegen::Visit(const ArrayElementAssignAST& node)
 		valueToAssign = builder.CreateIntCast(valueToAssign, llvm::Type::getInt8Ty(llvmContext), false, "int_to_char");
 	}
 
-	if (ToExpressionType(valueToAssign->getType()) != ToExpressionType(variable->getType()->getPointerElementType()->getPointerElementType()))
-	{
-		auto fmt = boost::format("can't assign value of type %1% to array element of type %2%")
-			% ToString(ToExpressionType(valueToAssign->getType()))
-			% ToString(ToExpressionType(variable->getType()->getPointerElementType()->getPointerElementType()));
-		throw std::runtime_error(fmt.str());
-	}
-
 	// Получаем указатель на элемент, значение которого будем менять
 	llvm::Value* elementPtr = builder.CreateGEP(builder.CreateLoad(variable, "load_ptr"), index, "get_element_ptr");
+	if (elementPtr->getType()->getPointerElementType()->isPointerTy() &&
+		elementPtr->getType()->getPointerElementType()->getPointerElementType()->getIntegerBitWidth() == 8 &&
+		node.GetIndexCount() == 2)
+	{
+		llvm::Value* secondIndex = ConvertToIntegerValue(m_expressionCodegen.Visit(node.GetIndex(1)), llvmContext, builder);
+		elementPtr = builder.CreateGEP(builder.CreateLoad(elementPtr, "load_2d_assign"), secondIndex, "character");
+		valueToAssign = builder.CreateIntCast(valueToAssign, llvm::Type::getInt8Ty(llvmContext), false, "int_to_char");
+	}
+
 	llvm::StoreInst* storeInst = builder.CreateStore(valueToAssign, elementPtr);
 	(void)storeInst;
 }
@@ -1166,6 +1183,7 @@ void Codegen::GenerateFunc(const FunctionAST& func)
 	llvm::FunctionType* funcType = llvm::FunctionType::get(returnType, argumentTypes, false);
 	llvm::Function* llvmFunc = llvm::Function::Create(
 		funcType, llvm::Function::ExternalLinkage, name, &llvmModule);
+	m_context.AddFunction(func.GetIdentifier().GetName(), llvmFunc);
 
 	// Задаем имена аргументов функции, добавляем переменные в контекст
 	ContextScopeHelper scopedContext(m_context);
@@ -1228,6 +1246,4 @@ void Codegen::GenerateFunc(const FunctionAST& func)
 		llvmFunc->eraseFromParent();
 		throw std::runtime_error(out.str());
 	}
-
-	m_context.AddFunction(func.GetIdentifier().GetName(), llvmFunc);
 }

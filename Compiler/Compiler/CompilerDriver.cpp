@@ -8,6 +8,7 @@
 #include "../Parser/LLParser.h"
 #include "../Parser/LLParserTable.h"
 #include "../Utils/file_utils.h"
+#include "Misc.h"
 
 namespace
 {
@@ -86,9 +87,9 @@ std::unique_ptr<LLParser> CreateParser()
 		// Встроенные в язык функции
 		.AddProduction("<Print>            -> Print LeftParenthesis {PrepareFnCallParamsParsing} <FunctionCallParamList> RightParenthesis Semicolon {OnPrintStatementParsed}")
 		.AddProduction("<Scan>             -> Scan LeftParenthesis {PrepareFnCallParamsParsing} <FunctionCallParamList> RightParenthesis Semicolon {OnScanStatementParsed}")
-		// Инструкция, начинающаяся с идентификатора (присваивание, либо вызов функции)
+		// Инструкция, начинающаяся с идентификатора (присваивание переменной, либо вызов функции, либо присваивание значения элементу массива)
 		.AddProduction("<StmtStartsWithId> -> <Identifier> <AfterIdStmt>")
-		.AddProduction("<AfterIdStmt>      -> LeftSquareBracket <Expression> RightSquareBracket Assign <Expression> Semicolon {OnArrayElementAssignStatement}")
+		.AddProduction("<AfterIdStmt>      -> LeftSquareBracket <Expression> RightSquareBracket {ArrayElementAccess} <AdditionalSquareBrackets> Assign <Expression> Semicolon {OnArrayElementAssignStatement}")
 		.AddProduction("<AfterIdStmt>      -> Assign <Expression> Semicolon {OnAssignStatementParsed}")
 		.AddProduction("<AfterIdStmt>      -> LeftParenthesis {PrepareFnCallParamsParsing} <FunctionCallParamList> RightParenthesis Semicolon {OnFunctionCallStatementParsed}")
 		// Выражения
@@ -132,8 +133,11 @@ std::unique_ptr<LLParser> CreateParser()
 		.AddProduction("<AtomExpr>         -> StringConstant {OnStringConstantParsed}")
 		.AddProduction("<AtomExpr>         -> LeftSquareBracket {PrepareArrayLiteralElementsParsing} <ArrayExpressionList> RightSquareBracket {OnArrayLiteralConstantParsed}")
 		.AddProduction("<AfterIdExpr>      -> LeftParenthesis {PrepareFnCallParamsParsing} <FunctionCallParamList> RightParenthesis {OnFunctionCallExprParsed}")
-		.AddProduction("<AfterIdExpr>      -> LeftSquareBracket <Expression> RightSquareBracket {ArrayElementAccess}")
+		.AddProduction("<AfterIdExpr>      -> LeftSquareBracket <Expression> RightSquareBracket {ArrayElementAccess} <AdditionalSquareBrackets>")
 		.AddProduction("<AfterIdExpr>      -> #Eps#")
+		.AddProduction("<AdditionalSquareBrackets> -> <AdditionalSquareBracket> <AdditionalSquareBrackets>")
+		.AddProduction("<AdditionalSquareBrackets> -> #Eps#")
+		.AddProduction("<AdditionalSquareBracket>  -> LeftSquareBracket <Expression> RightSquareBracket {OnAccessAdditionalSquareBracketParse}")
 		// Вспомогательные правила
 		//  Список параметров для вызова функций
 		.AddProduction("<FunctionCallParamList>       -> <FunctionCallParamListMember> <FunctionCallParamListTail>")
@@ -165,7 +169,7 @@ CompilerDriver::CompilerDriver(std::ostream& log)
 {
 }
 
-void CompilerDriver::Compile(const std::string & text)
+void CompilerDriver::Compile(const std::string& text)
 {
 	auto parser = CreateParser();
 	auto ast = parser->Parse(text);

@@ -12,7 +12,9 @@ public:
 	explicit LLParser(
 		std::unique_ptr<ILexer> && lexer,
 		std::unique_ptr<LLParserTable> && table,
-		std::ostream& output);
+		std::ostream& output
+	);
+
 	std::unique_ptr<ProgramAST> Parse(const std::string& text) override;
 
 private:

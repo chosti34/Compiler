@@ -172,19 +172,13 @@ public:
 
 	void OnArrayElementAssignStatement()
 	{
-		assert(m_expressions.size() >= 3);
+		assert(m_expressions.size() >= 2);
 
 		auto expression = Pop(m_expressions);
-		auto index = Pop(m_expressions);
-		auto identifier = DowncastUniquePtr<IdentifierAST>(Pop(m_expressions));
+		auto access = DowncastUniquePtr<ArrayElementAccessAST>(Pop(m_expressions));
 
-		m_statements.push_back(
-			std::make_unique<ArrayElementAssignAST>(
-				identifier->GetName(),
-				std::move(index),
-				std::move(expression)
-			)
-		);
+		assert(access);
+		m_statements.push_back(std::make_unique<ArrayElementAssignAST>(std::move(access), std::move(expression)));
 	}
 
 	void PrepareFnCallParamsParsing()
@@ -361,6 +355,19 @@ public:
 		m_expressions.push_back(std::make_unique<ArrayElementAccessAST>(identifier->GetName(), std::move(index)));
 	}
 
+	void OnAccessAdditionalSquareBracketParse()
+	{
+		assert(m_expressions.size() >= 2);
+
+		auto expression = Pop(m_expressions);
+		auto access = DowncastUniquePtr<ArrayElementAccessAST>(Pop(m_expressions));
+
+		assert(access);
+		access->AddIndex(std::move(expression));
+
+		m_expressions.push_back(std::move(access));
+	}
+
 	void OnUnaryMinusParsed()
 	{
 		assert(!m_expressions.empty());
@@ -447,17 +454,13 @@ private:
 	// Стек для хранения AST функций
 	std::vector<std::unique_ptr<FunctionAST>> m_functions;
 };
-
-void LogSyntaxError(std::ostream& output, const Token& token)
-{
-	output << "Syntax error: unexpected token '" << TokenTypeToString(token.type) << "'" << std::endl;
-}
 }
 
 LLParser::LLParser(
 	std::unique_ptr<ILexer> && lexer,
 	std::unique_ptr<LLParserTable> && table,
-	std::ostream& output)
+	std::ostream& output
+)
 	: m_lexer(std::move(lexer))
 	, m_table(std::move(table))
 	, m_output(output)
@@ -521,6 +524,7 @@ std::unique_ptr<ProgramAST> LLParser::Parse(const std::string& text)
 		{ "OnFalseConstantParsed", std::bind(&ASTBuilder::OnFalseConstantParsed, &astBuilder) },
 		{ "OnStringConstantParsed", std::bind(&ASTBuilder::OnStringConstantParsed, &astBuilder) },
 		{ "ArrayElementAccess", std::bind(&ASTBuilder::ArrayElementAccess, &astBuilder) },
+		{ "OnAccessAdditionalSquareBracketParse", std::bind(&ASTBuilder::OnAccessAdditionalSquareBracketParse, &astBuilder) },
 		{ "OnUnaryMinusParsed", std::bind(&ASTBuilder::OnUnaryMinusParsed, &astBuilder) },
 		{ "OnUnaryPlusParsed", std::bind(&ASTBuilder::OnUnaryPlusParsed, &astBuilder) },
 		{ "OnUnaryNegationParsed", std::bind(&ASTBuilder::OnUnaryNegationParsed, &astBuilder) },
@@ -556,8 +560,12 @@ std::unique_ptr<ProgramAST> LLParser::Parse(const std::string& text)
 			}
 			else
 			{
-				LogSyntaxError(m_output, token);
-				return nullptr;
+				const auto fmt = boost::format("unexpected token '%1%' found at line %2%, column %3%. Maybe you wanted to use '%4%' token?")
+					% TokenTypeToString(token.type)
+					% token.line
+					% token.column
+					% *state->beginnings.begin();
+				throw std::runtime_error(fmt.str());
 			}
 		}
 

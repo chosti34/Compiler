@@ -51,8 +51,9 @@ void LiteralConstantAST::Accept(IExpressionVisitor& visitor)const
 // Array element access
 ArrayElementAccessAST::ArrayElementAccessAST(const std::string& name, std::unique_ptr<IExpressionAST> && index)
 	: m_name(name)
-	, m_index(std::move(index))
+	, m_indices()
 {
+	m_indices.push_back(std::move(index));
 }
 
 const std::string& ArrayElementAccessAST::GetName()const
@@ -60,9 +61,23 @@ const std::string& ArrayElementAccessAST::GetName()const
 	return m_name;
 }
 
-const IExpressionAST& ArrayElementAccessAST::GetIndex()const
+size_t ArrayElementAccessAST::GetIndexCount()const
 {
-	return *m_index;
+	return m_indices.size();
+}
+
+const IExpressionAST& ArrayElementAccessAST::GetIndex(size_t index /* = 0 */)const
+{
+	if (index >= m_indices.size())
+	{
+		throw std::out_of_range("index must be less than indices count in array element access");
+	}
+	return *m_indices[index];
+}
+
+void ArrayElementAccessAST::AddIndex(std::unique_ptr<IExpressionAST> && index)
+{
+	m_indices.push_back(std::move(index));
 }
 
 void ArrayElementAccessAST::Accept(IExpressionVisitor& visitor)const
@@ -200,24 +215,27 @@ void AssignStatementAST::Accept(IStatementVisitor& visitor)const
 }
 
 ArrayElementAssignAST::ArrayElementAssignAST(
-	const std::string& arrayId,
-	std::unique_ptr<IExpressionAST>&& index,
-	std::unique_ptr<IExpressionAST>&& expression
+	std::unique_ptr<ArrayElementAccessAST> && access,
+	std::unique_ptr<IExpressionAST> && expression
 )
-	: m_arrayId(arrayId)
-	, m_index(std::move(index))
+	: m_access(std::move(access))
 	, m_expression(std::move(expression))
 {
 }
 
-const std::string& ArrayElementAssignAST::GetName()const
+size_t ArrayElementAssignAST::GetIndexCount()const
 {
-	return m_arrayId;
+	return m_access->GetIndexCount();
 }
 
-const IExpressionAST& ArrayElementAssignAST::GetIndex()const
+const std::string& ArrayElementAssignAST::GetName()const
 {
-	return *m_index;
+	return m_access->GetName();
+}
+
+const IExpressionAST& ArrayElementAssignAST::GetIndex(size_t index /* = 0 */)const
+{
+	return m_access->GetIndex(index);
 }
 
 const IExpressionAST& ArrayElementAssignAST::GetExpression()const
