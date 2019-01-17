@@ -3,61 +3,86 @@
 
 namespace
 {
-ExpressionType GetExpressionTypeOfIntegerLLVMType(llvm::Type* type)
+// Function forward declaration
+ExpressionType ToExpressionType(llvm::Type* type);
+
+// My compiler supports 32 bit integers and booleans
+ExpressionType ToExpressionTypeFromInt(llvm::Type* type)
 {
-	assert(type->isIntegerTy());
-	switch (type->getIntegerBitWidth())
+	if (type->getIntegerBitWidth() == 32)
 	{
-	case 32:
-		return ExpressionType::Int;
-	case 1:
-		return ExpressionType::Bool;
-	default:
-		throw std::invalid_argument("unsupported integer bit width");
+		return { ExpressionType::Int, 0 };
 	}
+	if (type->getIntegerBitWidth() == 1)
+	{
+		return { ExpressionType::Bool, 0 };
+	}
+	throw std::logic_error("llvm::Type have unsupported integer bit width");
 }
 
+// Expression type can be string or array, depending on passed llvm::Type
+ExpressionType ToExpressionTypeFromPtr(llvm::Type* type)
+{
+	assert(type->isPointerTy());
+	llvm::Type* ptrElementType = type->getPointerElementType();
+
+	if (ptrElementType->getTypeID() == llvm::Type::IntegerTyID && ptrElementType->getIntegerBitWidth() == 8)
+	{
+		return { ExpressionType::String, 0 };
+	}
+	if (ptrElementType->getTypeID() == llvm::Type::IntegerTyID && ptrElementType->getIntegerBitWidth() == 32)
+	{
+		return { ExpressionType::Int, 1 };
+	}
+	if (ptrElementType->getTypeID() == llvm::Type::IntegerTyID && ptrElementType->getIntegerBitWidth() == 1)
+	{
+		return { ExpressionType::Bool, 1 };
+	}
+	if (ptrElementType->getTypeID() == llvm::Type::DoubleTyID)
+	{
+		return { ExpressionType::Float, 1 };
+	}
+
+	// Processing as multidimensional array
+	if (ptrElementType->isPointerTy())
+	{
+		const ExpressionType typeOfPtrElement = ToExpressionTypeFromPtr(ptrElementType);
+		return { typeOfPtrElement.value, typeOfPtrElement.nesting + 1 };
+	}
+
+	assert(false);
+	throw std::logic_error("can't find proper array ExpressionType for llvm::Type* pointer type");
+}
+
+// Function performs cast from llvm::Type to ExpressionType
 ExpressionType ToExpressionType(llvm::Type* type)
 {
 	if (type->isIntegerTy())
 	{
-		return GetExpressionTypeOfIntegerLLVMType(type);
+		return ToExpressionTypeFromInt(type);
 	}
 	if (type->isDoubleTy())
 	{
-		return ExpressionType::Float;
+		return { ExpressionType::Float, 0 };
 	}
 	if (type->isPointerTy())
 	{
-		llvm::Type* ptrElementType = type->getPointerElementType();
-		if (ptrElementType->getTypeID() == llvm::Type::IntegerTyID && ptrElementType->getIntegerBitWidth() == 8)
-		{
-			return ExpressionType::String;
-		}
-		if (ptrElementType->getTypeID() == llvm::Type::IntegerTyID && ptrElementType->getIntegerBitWidth() == 32)
-		{
-			return ExpressionType::ArrayInt;
-		}
-		if (ptrElementType->getTypeID() == llvm::Type::DoubleTyID)
-		{
-			return ExpressionType::ArrayFloat;
-		}
-		if (ptrElementType->getTypeID() == llvm::Type::IntegerTyID && ptrElementType->getIntegerBitWidth() == 1)
-		{
-			return ExpressionType::ArrayBool;
-		}
-		if (ptrElementType->isPointerTy() && ptrElementType->getPointerElementType()->getTypeID() == llvm::Type::IntegerTyID &&
-			ptrElementType->getPointerElementType()->getIntegerBitWidth() == 8)
-		{
-			return ExpressionType::ArrayString;
-		}
+		return ToExpressionTypeFromPtr(type);
 	}
-	throw std::invalid_argument("unsupported llvm type");
+	throw std::logic_error("can't convert llvm::Type to ExpressionType");
 }
 
+// Function performs cast from ExpressionType to llvm::Type
 llvm::Type* ToLLVMType(ExpressionType type, llvm::LLVMContext& context)
 {
-	switch (type)
+	if (type.nesting != 0)
+	{
+		ExpressionType typeOfStored = { type.value, type.nesting - 1 };
+		llvm::Type* typeOfStoredLLVM = ToLLVMType(typeOfStored, context);
+		return typeOfStoredLLVM->getPointerTo();
+	}
+
+	switch (type.value)
 	{
 	case ExpressionType::Int:
 		return llvm::Type::getInt32Ty(context);
@@ -67,17 +92,9 @@ llvm::Type* ToLLVMType(ExpressionType type, llvm::LLVMContext& context)
 		return llvm::Type::getInt1Ty(context);
 	case ExpressionType::String:
 		return llvm::Type::getInt8PtrTy(context);
-	case ExpressionType::ArrayInt:
-		return llvm::Type::getInt32PtrTy(context);
-	case ExpressionType::ArrayFloat:
-		return llvm::Type::getFloatPtrTy(context);
-	case ExpressionType::ArrayBool:
-		return llvm::Type::getInt1PtrTy(context);
-	case ExpressionType::ArrayString:
-		return llvm::Type::getInt8PtrTy(context)->getPointerTo();
-	default:
-		throw std::logic_error("ToLLVMType(ExpressionType, LLVMContext&) - undefined expression type");
 	}
+
+	throw std::logic_error("can't convert ExpressionType to llvm::Type");
 }
 
 llvm::Value* ConvertToIntegerValue(
@@ -85,7 +102,10 @@ llvm::Value* ConvertToIntegerValue(
 	llvm::LLVMContext& llvmContext,
 	llvm::IRBuilder<>& builder)
 {
-	switch (ToExpressionType(value->getType()))
+	const ExpressionType type = ToExpressionType(value->getType());
+
+	// Strings and arrays can't be casted to integer
+	switch (type.value)
 	{
 	case ExpressionType::Int:
 		return value;
@@ -93,12 +113,9 @@ llvm::Value* ConvertToIntegerValue(
 		return builder.CreateFPToUI(value, llvm::Type::getInt32Ty(llvmContext), "icasttmp");
 	case ExpressionType::Bool:
 		return builder.CreateIntCast(value, llvm::Type::getInt32Ty(llvmContext), false, "icasttmp");
-	case ExpressionType::String:
-		throw std::runtime_error("can't cast string to integer");
+	default:
+		throw std::invalid_argument("can't cast array to integer");
 	}
-
-	assert(false);
-	throw std::logic_error("ConvertToIntValue() - value type is unknown");
 }
 
 llvm::Value* ConvertToFloatValue(
@@ -108,19 +125,17 @@ llvm::Value* ConvertToFloatValue(
 {
 	const ExpressionType type = ToExpressionType(value->getType());
 
-	switch (type)
+	// Strings and arrays can't be casted to float
+	switch (type.value)
 	{
 	case ExpressionType::Int:
 	case ExpressionType::Bool:
 		return builder.CreateUIToFP(value, llvm::Type::getDoubleTy(llvmContext), "fcasttmp");
 	case ExpressionType::Float:
 		return value;
-	case ExpressionType::String:
-		throw std::runtime_error("can't cast string to float");
+	default:
+		throw std::invalid_argument("can't cast array to integer");
 	}
-
-	assert(false);
-	throw std::logic_error("ConvertToIntValue() - value type is unknown");
 }
 
 llvm::Value* ConvertToBooleanValue(
@@ -128,9 +143,10 @@ llvm::Value* ConvertToBooleanValue(
 	llvm::LLVMContext& llvmContext,
 	llvm::IRBuilder<>& builder)
 {
-	const ExpressionType expressionType = ToExpressionType(value->getType());
+	const ExpressionType type = ToExpressionType(value->getType());
 
-	switch (expressionType)
+	// Strings and arrays can't be casted to bool
+	switch (type.value)
 	{
 	case ExpressionType::Int:
 		return builder.CreateNot(builder.CreateICmpEQ(
@@ -140,14 +156,13 @@ llvm::Value* ConvertToBooleanValue(
 			value, llvm::ConstantFP::get(llvm::Type::getDoubleTy(llvmContext), 0.0), "fcmptmp"), "nottmp");
 	case ExpressionType::Bool:
 		return value;
-	case ExpressionType::String:
-		throw std::runtime_error("can't cast string to bool");
+	default:
+		throw std::invalid_argument("can't cast array to bool");
 	}
-
-	assert(false);
-	throw std::logic_error("ConvertToBooleanValue() - undefined ast expression type");
 }
 
+//? TODO: убрать выбросы исключений из вызываемых функций, чтобы
+//?  функция возвращала только nullptr при неудаче
 // Возвращает nullptr, либо бросает исключение, если нельзя
 //  сгенерировать код преобразования значения в другой тип
 llvm::Value* CastValue(
@@ -156,7 +171,7 @@ llvm::Value* CastValue(
 	llvm::LLVMContext& llvmContext,
 	llvm::IRBuilder<>& builder)
 {
-	switch (type)
+	switch (type.value)
 	{
 	case ExpressionType::Int:
 		return ConvertToIntegerValue(value, llvmContext, builder);
@@ -175,8 +190,11 @@ llvm::Value* CreateIntegerBinaryExpression(
 	llvm::LLVMContext& llvmContext,
 	llvm::IRBuilder<>& builder)
 {
-	assert(ToExpressionType(left->getType()) == ToExpressionType(right->getType()));
-	assert(ToExpressionType(left->getType()) == ExpressionType::Int);
+#ifdef _DEBUG
+	const ExpressionType ltype = ToExpressionType(left->getType());
+	const ExpressionType rtype = ToExpressionType(right->getType());
+	assert(ltype.value == ExpressionType::Int && rtype.value == ExpressionType::Int);
+#endif
 
 	switch (operation)
 	{
@@ -213,7 +231,7 @@ llvm::Value* CreateIntegerBinaryExpression(
 	}
 
 	assert(false);
-	throw std::logic_error("CreateIntBinaryExpression() - undefined binary expression ast operator");
+	throw std::logic_error("undefined BinaryExpressionAST::Operator in CreateIntBinaryExpression");
 }
 
 llvm::Value* CreateFloatBinaryExpression(
@@ -223,8 +241,11 @@ llvm::Value* CreateFloatBinaryExpression(
 	llvm::LLVMContext& llvmContext,
 	llvm::IRBuilder<> & builder)
 {
-	assert(ToExpressionType(left->getType()) == ToExpressionType(right->getType()));
-	assert(ToExpressionType(left->getType()) == ExpressionType::Float);
+#ifdef _DEBUG
+	const ExpressionType ltype = ToExpressionType(left->getType());
+	const ExpressionType rtype = ToExpressionType(right->getType());
+	assert(ltype.value == ExpressionType::Float && rtype.value == ExpressionType::Float);
+#endif
 
 	switch (operation)
 	{
@@ -261,19 +282,21 @@ llvm::Value* CreateFloatBinaryExpression(
 	}
 
 	assert(false);
-	throw std::logic_error("CreateFloatBinaryExpression() - undefined binary expression ast operator");
+	throw std::logic_error("undefined BinaryExpressionAST::Operator in CreateFloatBinaryExpression");
 }
 
 llvm::Value* CreateBooleanBinaryExpression(
 	llvm::Value* left,
 	llvm::Value* right,
 	BinaryExpressionAST::Operator operation,
-	llvm::LLVMContext& llvmContext,
+	llvm::LLVMContext&,
 	llvm::IRBuilder<> & builder)
 {
-	assert(ToExpressionType(left->getType()) == ToExpressionType(right->getType()));
-	assert(ToExpressionType(left->getType()) == ExpressionType::Bool);
-	(void)llvmContext;
+#ifdef _DEBUG
+	const ExpressionType ltype = ToExpressionType(left->getType());
+	const ExpressionType rtype = ToExpressionType(right->getType());
+	assert(ltype.value == ExpressionType::Bool && rtype.value == ExpressionType::Bool);
+#endif
 
 	switch (operation)
 	{
@@ -298,17 +321,18 @@ llvm::Value* CreateBooleanBinaryExpression(
 	case BinaryExpressionAST::Mul:
 	case BinaryExpressionAST::Div:
 	case BinaryExpressionAST::Mod:
-		throw std::runtime_error("can't perform codegen for operator '" + ToString(operation) + "' on booleans");
+		throw std::runtime_error("can't perform codegen for operator '" + ToString(operation) + "' on two booleans");
 	}
 
 	assert(false);
-	throw std::logic_error("CreateBooleanBinaryExpression() - undefined binary expression ast operator");
+	throw std::logic_error("undefined BinaryExpressionAST::Operator in CreateBooleanBinaryExpression");
 }
 
-llvm::Value* CreateNegativeValue(llvm::Value* value, llvm::IRBuilder<> & builder)
+// Codegen arithmetic value negation
+llvm::Value* CodegenNegativeValue(llvm::Value* value, llvm::IRBuilder<>& builder)
 {
 	const ExpressionType type = ToExpressionType(value->getType());
-	switch (ToExpressionType(value->getType()))
+	switch (type.value)
 	{
 	case ExpressionType::Int:
 		return builder.CreateNeg(value, "negtmp");
@@ -316,20 +340,33 @@ llvm::Value* CreateNegativeValue(llvm::Value* value, llvm::IRBuilder<> & builder
 		return builder.CreateFNeg(value, "fnegtmp");
 	case ExpressionType::Bool:
 		return builder.CreateNeg(value, "bnegtmp");
-	case ExpressionType::String:
 	default:
-		throw std::runtime_error("can't create negative value of " + ToString(type));
+		throw std::runtime_error("can't codegen negative value of " + ToString(type) + " type");
 	}
 }
 
-llvm::Value* CreateValueNegation(llvm::Value* value, llvm::LLVMContext& llvmContext, llvm::IRBuilder<> & builder)
+// Codegen boolean value negation
+llvm::Value* CreateValueNegation(
+	llvm::Value* value,
+	llvm::LLVMContext& llvmContext,
+	llvm::IRBuilder<>& builder)
 {
 	return builder.CreateNot(ConvertToBooleanValue(value, llvmContext, builder));
 }
 
-llvm::Value* CreateDefaultValue(ExpressionType type, llvm::LLVMContext& llvmContext, llvm::IRBuilder<> & builder)
+llvm::Value* CreateDefaultValue(
+	ExpressionType type,
+	llvm::LLVMContext& llvmContext,
+	llvm::IRBuilder<>& builder)
 {
-	switch (type)
+	if (type.nesting != 0)
+	{
+		const ExpressionType subtype = { type.value, type.nesting - 1 };
+		llvm::Value* subvalue = CreateDefaultValue(subtype, llvmContext, builder);
+		return llvm::Constant::getNullValue(subvalue->getType()->getPointerTo());
+	}
+
+	switch (type.value)
 	{
 	case ExpressionType::Int:
 		return llvm::ConstantInt::get(llvm::Type::getInt32Ty(llvmContext), llvm::APInt(32, uint64_t(0), true));
@@ -352,17 +389,9 @@ llvm::Value* CreateDefaultValue(ExpressionType type, llvm::LLVMContext& llvmCont
 
 		return builder.CreateBitCast(allocaInst, llvm::Type::getInt8PtrTy(llvmContext), "str_to_i8_ptr");
 	}
-	case ExpressionType::ArrayInt:
-		return llvm::Constant::getNullValue(llvm::Type::getInt32PtrTy(llvmContext));
-	case ExpressionType::ArrayFloat:
-		return llvm::Constant::getNullValue(llvm::Type::getFloatPtrTy(llvmContext));
-	case ExpressionType::ArrayBool:
-		return llvm::Constant::getNullValue(llvm::Type::getInt1PtrTy(llvmContext));
-	case ExpressionType::ArrayString:
-		return llvm::Constant::getNullValue(llvm::Type::getInt8PtrTy(llvmContext)->getPointerTo());
 	default:
 		assert(false);
-		throw std::logic_error("can't emit code for undefined ast expression type");
+		throw std::logic_error("can't codegen default value for undefined ExpressionType");
 	}
 }
 
@@ -492,7 +521,7 @@ void ExpressionCodegen::Visit(const BinaryExpressionAST& node)
 			throw std::runtime_error(fmt.str());
 		}
 
-		switch (*castType)
+		switch (castType->value)
 		{
 		case ExpressionType::Int:
 			left = ConvertToIntegerValue(left, llvmContext, builder);
@@ -517,7 +546,7 @@ void ExpressionCodegen::Visit(const BinaryExpressionAST& node)
 
 	assert(ToExpressionType(left->getType()) == ToExpressionType(right->getType()));
 
-	switch (ToExpressionType(left->getType()))
+	switch (ToExpressionType(left->getType()).value)
 	{
 	case ExpressionType::Int:
 		m_stack.push_back(CreateIntegerBinaryExpression(left, right, node.GetOperator(), llvmContext, builder));
@@ -638,7 +667,7 @@ void ExpressionCodegen::Visit(const UnaryAST& node)
 		m_stack.push_back(value);
 		break;
 	case UnaryAST::Minus:
-		m_stack.push_back(CreateNegativeValue(value, builder));
+		m_stack.push_back(CodegenNegativeValue(value, builder));
 		break;
 	case UnaryAST::Negation:
 		m_stack.push_back(CreateValueNegation(value, llvmContext, builder));
@@ -693,57 +722,37 @@ void ExpressionCodegen::Visit(const ArrayElementAccessAST& node)
 		throw std::runtime_error("variable '" + node.GetName() + "' can't be accessed via index");
 	}
 
-	llvm::Value* index = ConvertToIntegerValue(Visit(node.GetIndex()), llvmContext, builder);
-	llvm::Value* elementPtr = builder.CreateGEP(builder.CreateLoad(arrayPtr, "load_ptr"), index, "get_element_ptr");
+	// Will contain pointer to element that user trying to access
+	llvm::Value* elementPtr = builder.CreateLoad(arrayPtr, "load_array_ptr_from_variable");
+	ExpressionType typeOfArray = ToExpressionType(elementPtr->getType());
 
-	llvm::Value* value = nullptr;
-	switch (elementPtr->getType()->getPointerElementType()->getTypeID())
+	if (node.GetIndexCount() > typeOfArray.nesting)
 	{
-	case llvm::Type::IntegerTyID:
-		if (elementPtr->getType()->getPointerElementType()->getIntegerBitWidth() == 32)
-		{
-			value = builder.CreateLoad(llvm::Type::getInt32Ty(llvmContext), elementPtr, "load_arr_int_element");
-			break;
-		}
-		else if (elementPtr->getType()->getPointerElementType()->getIntegerBitWidth() == 8)
-		{
-			value = builder.CreateLoad(llvm::Type::getInt8Ty(llvmContext), elementPtr, "load_arr_char_element");
-			break;
-		}
-		else if (elementPtr->getType()->getPointerElementType()->getIntegerBitWidth() == 1)
-		{
-			value = builder.CreateLoad(llvm::Type::getInt1Ty(llvmContext), elementPtr, "load_arr_bool_element");
-			break;
-		}
-		assert(false);
-		break;
-	case llvm::Type::DoubleTyID:
-		value = builder.CreateLoad(llvm::Type::getDoubleTy(llvmContext), elementPtr, "load_arr_float_element");
-		break;
-	case llvm::Type::PointerTyID:
-		if (elementPtr->getType()->getPointerElementType()->getPointerElementType()->getTypeID() == llvm::Type::IntegerTyID &&
-			elementPtr->getType()->getPointerElementType()->getPointerElementType()->getIntegerBitWidth() == 8)
-		{
-			value = builder.CreateLoad(llvm::Type::getInt8PtrTy(llvmContext), elementPtr, "load_arr_str_element");
-			if (node.GetIndexCount() == 2)
-			{
-				llvm::Value* secondIndex = ConvertToIntegerValue(Visit(node.GetIndex(1)), llvmContext, builder);
-				elementPtr = builder.CreateGEP(value, secondIndex, "get_element_ptr");
-				value = builder.CreateLoad(elementPtr, "load_2d_char");
-			}
-		}
-		break;
-	default:
-		throw std::runtime_error("unknown array type");
+		auto fmt = boost::format("array %1% have only %2% dimension(s), but trying to access element by index #%3%")
+			% node.GetName()
+			% typeOfArray.nesting
+			% node.GetIndexCount();
+		throw std::runtime_error(fmt.str());
 	}
 
-	// TODO: если есть второй индекс, то нужно взять его!!!
+	for (size_t i = 0; i < node.GetIndexCount(); ++i)
+	{
+		llvm::Value* index = ConvertToIntegerValue(
+			Visit(node.GetIndex(i)), llvmContext, builder
+		);
+
+		elementPtr = builder.CreateLoad(builder.CreateGEP(elementPtr, index, "get_element_ptr"), "load_element");
+	}
+
+	llvm::Value* value = elementPtr;
 
 	// Since our language doesn't support char data type (int8_t), we need to cast character to integer
 	if (value->getType()->getTypeID() == llvm::Type::IntegerTyID && value->getType()->getIntegerBitWidth() == 8)
 	{
 		value = builder.CreateIntCast(value, llvm::Type::getInt32Ty(llvmContext), false, "icasttmp");
 	}
+
+	assert(value);
 	m_stack.push_back(value);
 }
 
@@ -1082,13 +1091,13 @@ void StatementCodegen::CodegenAsPrint(const BuiltinCallStatementAST& node)
 	for (size_t i = 0; i < expressions.size(); ++i)
 	{
 		expressions[i] = m_expressionCodegen.Visit(node.GetExpression(i));
-		if (ToExpressionType(expressions[i]->getType()) == ExpressionType::Bool)
+		if (ToExpressionType(expressions[i]->getType()) == ExpressionType{ ExpressionType::Bool, 0 })
 		{
 			expressions[i] = ConvertToIntegerValue(expressions[i], llvmContext, builder);
 		}
 	}
 
-	if (expressions.empty() || ToExpressionType(expressions.front()->getType()) != ExpressionType::String)
+	if (expressions.empty() || ToExpressionType(expressions.front()->getType()) != ExpressionType{ ExpressionType::String, 0 })
 	{
 		throw std::runtime_error("print statement requires string as first argument");
 	}
@@ -1108,7 +1117,7 @@ void StatementCodegen::CodegenAsScan(const BuiltinCallStatementAST& node)
 
 	std::vector<llvm::Value*> expressions(node.GetParamsCount());
 	expressions[0] = m_expressionCodegen.Visit(node.GetExpression(0));
-	if (ToExpressionType(expressions[0]->getType()) != ExpressionType::String)
+	if (ToExpressionType(expressions[0]->getType()) != ExpressionType{ ExpressionType::String, 0 })
 	{
 		throw std::runtime_error("scan statement requires string as first argument");
 	}

@@ -99,6 +99,12 @@ public:
 		m_types.push_back(type);
 	}
 
+	void OnArrayTypeParsed()
+	{
+		assert(!m_types.empty());
+		++m_types.back().nesting;
+	}
+
 	void OnIfStatementParsed()
 	{
 		assert(!m_expressions.empty());
@@ -496,14 +502,11 @@ std::unique_ptr<ProgramAST> LLParser::Parse(const std::string& text)
 		{ "OnCompositeStatementPartParsed", std::bind(&ASTBuilder::OnCompositeStatementPartParsed, &astBuilder) },
 		{ "OnPrintStatementParsed", std::bind(&ASTBuilder::OnPrintStatementParsed, &astBuilder) },
 		{ "OnScanStatementParsed", std::bind(&ASTBuilder::OnScanStatementParsed, &astBuilder) },
-		{ "OnIntegerTypeParsed", std::bind(&ASTBuilder::OnTypeParsed, &astBuilder, ExpressionType::Int) },
-		{ "OnFloatTypeParsed", std::bind(&ASTBuilder::OnTypeParsed, &astBuilder, ExpressionType::Float) },
-		{ "OnBoolTypeParsed", std::bind(&ASTBuilder::OnTypeParsed, &astBuilder, ExpressionType::Bool) },
-		{ "OnStringTypeParsed", std::bind(&ASTBuilder::OnTypeParsed, &astBuilder, ExpressionType::String) },
-		{ "OnArrayIntTypeParsed", std::bind(&ASTBuilder::OnTypeParsed, &astBuilder, ExpressionType::ArrayInt) },
-		{ "OnArrayFloatTypeParsed", std::bind(&ASTBuilder::OnTypeParsed, &astBuilder, ExpressionType::ArrayFloat) },
-		{ "OnArrayBoolTypeParsed", std::bind(&ASTBuilder::OnTypeParsed, &astBuilder, ExpressionType::ArrayBool) },
-		{ "OnArrayStringTypeParsed", std::bind(&ASTBuilder::OnTypeParsed, &astBuilder, ExpressionType::ArrayString) },
+		{ "OnIntegerTypeParsed", std::bind(&ASTBuilder::OnTypeParsed, &astBuilder, ExpressionType{ ExpressionType::Int, 0 }) },
+		{ "OnFloatTypeParsed", std::bind(&ASTBuilder::OnTypeParsed, &astBuilder, ExpressionType{ ExpressionType::Float, 0 } ) },
+		{ "OnBoolTypeParsed", std::bind(&ASTBuilder::OnTypeParsed, &astBuilder, ExpressionType{ ExpressionType::Bool, 0 }) },
+		{ "OnStringTypeParsed", std::bind(&ASTBuilder::OnTypeParsed, &astBuilder, ExpressionType{ ExpressionType::String, 0 }) },
+		{ "OnArrayTypeParsed", std::bind(&ASTBuilder::OnArrayTypeParsed, &astBuilder) },
 		{ "OnBinaryOrParsed", std::bind(&ASTBuilder::OnBinaryOperatorParsed, &astBuilder, BinaryExpressionAST::Or) },
 		{ "OnBinaryAndParsed", std::bind(&ASTBuilder::OnBinaryOperatorParsed, &astBuilder, BinaryExpressionAST::And) },
 		{ "OnBinaryEqualsParsed", std::bind(&ASTBuilder::OnBinaryOperatorParsed, &astBuilder, BinaryExpressionAST::Equals) },

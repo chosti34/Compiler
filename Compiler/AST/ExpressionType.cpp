@@ -3,66 +3,89 @@
 
 namespace
 {
-const std::unordered_map<ExpressionType, std::unordered_set<ExpressionType>> gcAvailableCasts = {
+const std::unordered_map<ExpressionType::Value, std::unordered_set<ExpressionType::Value>> gcAvailableCasts = {
 	{ ExpressionType::Int, { ExpressionType::Float, ExpressionType::Bool } },
 	{ ExpressionType::Float, { ExpressionType::Int, ExpressionType::Bool } },
 	{ ExpressionType::Bool, { ExpressionType::Int, ExpressionType::Float } }
 };
 
-const std::map<std::pair<ExpressionType, ExpressionType>, ExpressionType> gcBinaryCasts = {
-	// Integer left
+const std::map<std::pair<ExpressionType::Value, ExpressionType::Value>, ExpressionType::Value> gcBinaryCasts = {
 	{ { ExpressionType::Int, ExpressionType::Float }, ExpressionType::Float },
 	{ { ExpressionType::Int, ExpressionType::Bool }, ExpressionType::Int },
-	// Float left
 	{ { ExpressionType::Float, ExpressionType::Int }, ExpressionType::Float },
 	{ { ExpressionType::Float, ExpressionType::Bool }, ExpressionType::Float },
-	// Bool left
 	{ { ExpressionType::Bool, ExpressionType::Int }, ExpressionType::Int },
 	{ { ExpressionType::Bool, ExpressionType::Float }, ExpressionType::Float }
 };
 }
 
-bool Convertible(ExpressionType from, ExpressionType to)
+bool operator ==(const ExpressionType& left, const ExpressionType& right)
 {
+	return left.value == right.value && left.nesting == right.nesting;
+}
+
+bool operator !=(const ExpressionType& left, const ExpressionType& right)
+{
+	return !(left == right);
+}
+
+bool Convertible(const ExpressionType& from, const ExpressionType& to)
+{
+	if (from.nesting != 0 || to.nesting != 0)
+	{
+		throw std::runtime_error("array conversion is not supported");
+	}
+
 	if (from == to)
 	{
 		throw std::runtime_error("trying to convert from '" + ToString(from) +  "' to itself");
 	}
 
-	auto found = gcAvailableCasts.find(from);
+	auto found = gcAvailableCasts.find(from.value);
 	if (found == gcAvailableCasts.end())
 	{
 		return false;
 	}
 
-	const std::unordered_set<ExpressionType> & availableCasts = found->second;
-	return availableCasts.find(to) != availableCasts.end();
+	const std::unordered_set<ExpressionType::Value>& availableCasts = found->second;
+	return availableCasts.find(to.value) != availableCasts.end();
 }
 
-bool ConvertibleToBool(ExpressionType type)
+bool ConvertibleToBool(const ExpressionType& type)
 {
-	return Convertible(type, ExpressionType::Bool);
+	return Convertible(type, { ExpressionType::Bool, 0 });
 }
 
-boost::optional<ExpressionType> GetPreferredType(
-	ExpressionType left, ExpressionType right)
+boost::optional<ExpressionType> GetPreferredType(const ExpressionType& left, const ExpressionType& right)
 {
+	if (left.nesting != 0 || right.nesting != 0)
+	{
+		return boost::none;
+	}
+
 	if (left == right)
 	{
 		return left;
 	}
 
-	auto found = gcBinaryCasts.find(std::make_pair(left, right));
+	auto found = gcBinaryCasts.find(std::make_pair(left.value, right.value));
 	if (found == gcBinaryCasts.end())
 	{
 		return boost::none;
 	}
-	return found->second;
+	return ExpressionType{ found->second, 0 };
 }
 
-std::string ToString(ExpressionType type)
+std::string ToString(const ExpressionType& type)
 {
-	switch (type)
+	// Type can represent array
+	if (type.nesting != 0)
+	{
+		const ExpressionType stored = { type.value, type.nesting - 1 };
+		return "Array<" + ToString(stored) + ">";
+	}
+
+	switch (type.value)
 	{
 	case ExpressionType::Int:
 		return "Int";
@@ -72,14 +95,6 @@ std::string ToString(ExpressionType type)
 		return "Bool";
 	case ExpressionType::String:
 		return "String";
-	case ExpressionType::ArrayInt:
-		return "Array<Int>";
-	case ExpressionType::ArrayFloat:
-		return "Array<Float>";
-	case ExpressionType::ArrayBool:
-		return "Array<Bool>";
-	case ExpressionType::ArrayString:
-		return "Array<String>";
 	default:
 		throw std::logic_error("can't get string representation of undefined expression type");
 	}
