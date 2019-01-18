@@ -239,7 +239,7 @@ llvm::Value* CreateFloatBinaryExpression(
 	llvm::Value* right,
 	BinaryExpressionAST::Operator operation,
 	llvm::LLVMContext& llvmContext,
-	llvm::IRBuilder<> & builder)
+	llvm::IRBuilder<>& builder)
 {
 #ifdef _DEBUG
 	const ExpressionType ltype = ToExpressionType(left->getType());
@@ -655,11 +655,10 @@ void ExpressionCodegen::Visit(const LiteralConstantAST& node)
 void ExpressionCodegen::Visit(const UnaryAST& node)
 {
 	CodegenUtils& utils = m_context.GetUtils();
-	llvm::IRBuilder<> & builder = utils.GetBuilder();
+	llvm::IRBuilder<>& builder = utils.GetBuilder();
 	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
 
 	llvm::Value* value = Visit(node.GetExpr());
-	const ExpressionType type = ToExpressionType(value->getType());
 
 	switch (node.GetOperator())
 	{
@@ -867,58 +866,60 @@ void StatementCodegen::Visit(const ArrayElementAssignAST& node)
 	llvm::IRBuilder<>& builder = utils.GetBuilder();
 	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
 
-	llvm::AllocaInst* variable = m_context.GetVariable(node.GetName());
-	if (!variable)
+	llvm::AllocaInst* arrayPtr = m_context.GetVariable(node.GetName());
+	if (!arrayPtr)
 	{
 		throw std::runtime_error("variable '" + node.GetName() + "' is not defined");
 	}
 
-	if (!variable->getType()->getPointerElementType()->isPointerTy())
+	if (!arrayPtr->getType()->getPointerElementType()->isPointerTy())
 	{
 		throw std::runtime_error("variable '" + node.GetName() + "' is not array and can't be accessed via index");
 	}
 
-	// √енерируем индекс массива
-	llvm::Value* index = ConvertToIntegerValue(m_expressionCodegen.Visit(node.GetIndex()), llvmContext, builder);
+	llvm::Value* elementPtr = builder.CreateLoad(arrayPtr, "load_array");
+	const ExpressionType typeOfArray = ToExpressionType(elementPtr->getType());
 
-	// √енерируем выражение дл€ присваивани€
-	llvm::Value* valueToAssign = m_expressionCodegen.Visit(node.GetExpression());
-
-	if (node.GetIndexCount() == 1 && ToExpressionType(valueToAssign->getType()) != ToExpressionType(variable->getType()->getPointerElementType()->getPointerElementType()))
+	if (node.GetIndexCount() > typeOfArray.nesting)
 	{
-		auto fmt = boost::format("can't assign value of type %1% to array element of type %2%")
-			% ToString(ToExpressionType(valueToAssign->getType()))
-			% ToString(ToExpressionType(variable->getType()->getPointerElementType()->getPointerElementType()));
+		const auto fmt = boost::format("array %1% have only %2% dimension(s), but trying to assign element with index #%3%")
+			% node.GetName()
+			% typeOfArray.nesting
+			% node.GetIndexCount();
 		throw std::runtime_error(fmt.str());
 	}
 
+	for (size_t i = 0; i < node.GetIndexCount(); ++i)
+	{
+		llvm::Value* index = ConvertToIntegerValue(m_expressionCodegen.Visit(node.GetIndex(i)), llvmContext, builder);
+		elementPtr = builder.CreateGEP(elementPtr, index, "get_element_ptr");
+
+		// "–азыменовываем" указатель тогда, когда полученный тип указывает на другой указатель
+		if (elementPtr->getType()->getPointerElementType()->isPointerTy())
+		{
+			elementPtr = builder.CreateLoad(elementPtr, "load_element_ptr");
+		}
+	}
+
+	llvm::Value* expression = m_expressionCodegen.Visit(node.GetExpression());
+
 	// Since we have no support for int8_t, in case of string element assign, we need to cast integer
-	if (variable->getType()->getPointerElementType()->getTypeID() == llvm::Type::IntegerTyID &&
-		variable->getType()->getPointerElementType()->getIntegerBitWidth() == 8 &&
-		valueToAssign->getType()->getTypeID() == llvm::Type::IntegerTyID)
+	assert(elementPtr->getType()->isPointerTy());
+	if (elementPtr->getType()->getPointerElementType()->getTypeID() == llvm::Type::IntegerTyID && elementPtr->getType()->getPointerElementType()->getIntegerBitWidth() == 8 &&
+		expression->getType()->getTypeID() == llvm::Type::IntegerTyID && expression->getType()->getIntegerBitWidth() == 32)
 	{
-		valueToAssign = builder.CreateIntCast(valueToAssign, llvm::Type::getInt8Ty(llvmContext), false, "int_to_char");
+		expression = builder.CreateIntCast(expression, llvm::Type::getInt8Ty(llvmContext), false, "int32_to_int8");
 	}
 
-	// ѕолучаем указатель на элемент, значение которого будем мен€ть
-	llvm::Value* elementPtr = builder.CreateGEP(builder.CreateLoad(variable, "load_ptr"), index, "get_element_ptr");
-	if (elementPtr->getType()->getPointerElementType()->isPointerTy() &&
-		elementPtr->getType()->getPointerElementType()->getPointerElementType()->getIntegerBitWidth() == 8 &&
-		node.GetIndexCount() == 2)
-	{
-		llvm::Value* secondIndex = ConvertToIntegerValue(m_expressionCodegen.Visit(node.GetIndex(1)), llvmContext, builder);
-		elementPtr = builder.CreateGEP(builder.CreateLoad(elementPtr, "load_2d_assign"), secondIndex, "character");
-		valueToAssign = builder.CreateIntCast(valueToAssign, llvm::Type::getInt8Ty(llvmContext), false, "int_to_char");
-	}
-
-	llvm::StoreInst* storeInst = builder.CreateStore(valueToAssign, elementPtr);
+	// TODO: заменить этот assert на if
+	// assert(expression->getType()->getTypeID() == elementPtr->getType()->getPointerElementType()->getTypeID());
+	llvm::StoreInst* storeInst = builder.CreateStore(expression, elementPtr);
 	(void)storeInst;
 }
 
 void StatementCodegen::Visit(const ReturnStatementAST& node)
 {
 	CodegenUtils& utils = m_context.GetUtils();
-
 	llvm::IRBuilder<>& builder = utils.GetBuilder();
 	llvm::LLVMContext& llvmContext = utils.GetLLVMContext();
 
