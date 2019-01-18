@@ -725,7 +725,7 @@ void ExpressionCodegen::Visit(const ArrayElementAccessAST& node)
 	llvm::Value* elementPtr = builder.CreateLoad(arrayPtr, "load_array_ptr_from_variable");
 	ExpressionType typeOfArray = ToExpressionType(elementPtr->getType());
 
-	if (node.GetIndexCount() > typeOfArray.nesting)
+	if (node.GetIndexCount() > typeOfArray.nesting + (typeOfArray.value == ExpressionType::String ? 1 : 0))
 	{
 		auto fmt = boost::format("array %1% have only %2% dimension(s), but trying to access element by index #%3%")
 			% node.GetName()
@@ -877,10 +877,10 @@ void StatementCodegen::Visit(const ArrayElementAssignAST& node)
 		throw std::runtime_error("variable '" + node.GetName() + "' is not array and can't be accessed via index");
 	}
 
-	llvm::Value* elementPtr = builder.CreateLoad(arrayPtr, "load_array");
-	const ExpressionType typeOfArray = ToExpressionType(elementPtr->getType());
+	llvm::Value* element = builder.CreateLoad(arrayPtr, "load_array");
+	const ExpressionType typeOfArray = ToExpressionType(element->getType());
 
-	if (node.GetIndexCount() > typeOfArray.nesting)
+	if (node.GetIndexCount() > typeOfArray.nesting + (typeOfArray.value == ExpressionType::String ? 1 : 0))
 	{
 		const auto fmt = boost::format("array %1% have only %2% dimension(s), but trying to assign element with index #%3%")
 			% node.GetName()
@@ -889,31 +889,29 @@ void StatementCodegen::Visit(const ArrayElementAssignAST& node)
 		throw std::runtime_error(fmt.str());
 	}
 
+	llvm::Value* gep = nullptr;
+
 	for (size_t i = 0; i < node.GetIndexCount(); ++i)
 	{
 		llvm::Value* index = ConvertToIntegerValue(m_expressionCodegen.Visit(node.GetIndex(i)), llvmContext, builder);
-		elementPtr = builder.CreateGEP(elementPtr, index, "get_element_ptr");
-
-		// "Разыменовываем" указатель тогда, когда полученный тип указывает на другой указатель
-		if (elementPtr->getType()->getPointerElementType()->isPointerTy())
-		{
-			elementPtr = builder.CreateLoad(elementPtr, "load_element_ptr");
-		}
+		gep = builder.CreateGEP(element, index, "get_element_ptr");
+		element = builder.CreateLoad(gep);
 	}
 
 	llvm::Value* expression = m_expressionCodegen.Visit(node.GetExpression());
 
 	// Since we have no support for int8_t, in case of string element assign, we need to cast integer
-	assert(elementPtr->getType()->isPointerTy());
-	if (elementPtr->getType()->getPointerElementType()->getTypeID() == llvm::Type::IntegerTyID && elementPtr->getType()->getPointerElementType()->getIntegerBitWidth() == 8 &&
+	assert(gep->getType()->isPointerTy());
+	if (gep->getType()->getPointerElementType()->getTypeID() == llvm::Type::IntegerTyID &&
+		gep->getType()->getPointerElementType()->getIntegerBitWidth() == 8 &&
 		expression->getType()->getTypeID() == llvm::Type::IntegerTyID && expression->getType()->getIntegerBitWidth() == 32)
 	{
 		expression = builder.CreateIntCast(expression, llvm::Type::getInt8Ty(llvmContext), false, "int32_to_int8");
 	}
 
 	// TODO: заменить этот assert на if
-	// assert(expression->getType()->getTypeID() == elementPtr->getType()->getPointerElementType()->getTypeID());
-	llvm::StoreInst* storeInst = builder.CreateStore(expression, elementPtr);
+	assert(expression->getType()->getTypeID() == gep->getType()->getPointerElementType()->getTypeID());
+	llvm::StoreInst* storeInst = builder.CreateStore(expression, gep);
 	(void)storeInst;
 }
 

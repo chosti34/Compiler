@@ -16,12 +16,15 @@ func PrintArray2D(arr: Array<Array<String>>, size1: Int, size2: Int):
 
 func main(argc: Int, argv: Array<String>):
 {
-	var arr: Array<Array<String>> = [["123", "345", "456"], ["s"]];
-	
-	arr[0][1] = "asd";
-	
-	print("%s\n", arr[0][0]);
-	print("%s\n", arr[0][1]);
-	print("%s\n", arr[0][2]);
-	print("%s\n", arr[1][0]);
+	var arr: Array<Array<String>> = [
+		["123", "345", "456"],
+		["s"]
+	];
+
+	var subarr: Array<String> = arr[0];
+
+	arr[1] = subarr;
+
+	print("%s", arr[1][0]);
+	print("%c", arr[1][0][2]);
 }
