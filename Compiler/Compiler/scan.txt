@@ -11,7 +11,7 @@ func GetSquareRootNewtonMethod(x: Float) -> Float:
 {
 	var guess: Float = x / 2;
 	var next: Float = (guess + x / guess) / 2;
-	while (!(abs(next - guess) < 0.01))
+	while (abs(next - guess) >= 0.01)
 	{
 		guess = next;
 		next = (guess + x / guess) / 2;
@@ -19,11 +19,10 @@ func GetSquareRootNewtonMethod(x: Float) -> Float:
 	return next;
 }
 
-func main() -> Int:
+func main(argc: Int, argv: Array<String>):
 {
 	var value: Float = 21.0;
 	print("Enter float value: ");
 	scan("%lf", value);
 	print("sqrt(%f) = %f", value, GetSquareRootNewtonMethod(value));
-	return 0;
 }
