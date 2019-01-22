@@ -1,0 +1,50 @@
+func quick_sort(array: Array<Int>, left: Int, right: Int):
+{
+	var i: Int = left;
+	var j: Int = right;
+	var pivot: Int = array[(left + right) / 2];
+
+	while (i <= j)
+	{
+		while (array[i] < pivot)
+			i = i + 1;
+
+		while (array[j] > pivot)
+			j = j - 1;
+
+		if (i <= j)
+		{
+			var tmp: Int = array[i];
+			array[i] = array[j];
+			array[j] = tmp;
+
+			i = i + 1;
+			j = j - 1;
+		}
+	}
+
+	if (left < j)
+		quick_sort(array, left, j);
+
+	if (i < right)
+		quick_sort(array, i, right);
+}
+
+func print_arr(arr: Array<Int>, size: Int):
+{
+	var i: Int = 0;
+	while (i < size)
+	{
+		print("%d ", arr[i]);
+		i = i + 1;
+	}
+}
+
+func main(argc: Int, argv: Array<String>):
+{
+	var arr: Array<Int> = [5, 4, -1, 0, -100, 0, 10, -2, 30, 40, 50, -12345];
+	var size: Int = 12;
+
+	quick_sort(arr, 0, size - 1);
+	print_arr(arr, size);
+}

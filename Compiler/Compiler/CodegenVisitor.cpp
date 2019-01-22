@@ -910,7 +910,16 @@ void StatementCodegen::Visit(const ArrayElementAssignAST& node)
 	}
 
 	// TODO: заменить этот assert на if
-	assert(expression->getType()->getTypeID() == gep->getType()->getPointerElementType()->getTypeID());
+	// assert(expression->getType()->getTypeID() == gep->getType()->getPointerElementType()->getTypeID());
+
+	if (expression->getType()->getTypeID() != gep->getType()->getPointerElementType()->getTypeID())
+	{
+		auto fmt = boost::format("trying to assign expression of type %1% to array element of type %2%")
+			% ToString(ToExpressionType(expression->getType()))
+			% ToString(ToExpressionType(gep->getType()->getPointerElementType()));
+		throw std::runtime_error(fmt.str());
+	}
+
 	llvm::StoreInst* storeInst = builder.CreateStore(expression, gep);
 	(void)storeInst;
 }
@@ -1219,21 +1228,21 @@ void Codegen::GenerateFunc(const FunctionAST& func)
 	statementCodegen.Visit(func.GetStatement());
 
 	// Добавляем return void
-	if (llvm::BasicBlock* lastContinueBranch = statementCodegen.GetLastBasicBlockBranch())
+	assert(!llvmFunc->getBasicBlockList().empty());
+	llvm::BasicBlock* last =
+		(statementCodegen.GetLastBasicBlockBranch()) ? statementCodegen.GetLastBasicBlockBranch()
+		: &llvmFunc->getBasicBlockList().back();
+
+	assert(last);
+	if (llvmFunc->getReturnType()->getTypeID() == llvm::Type::VoidTyID && !last->getTerminator())
 	{
-		if (llvmFunc->getReturnType()->getTypeID() == llvm::Type::VoidTyID && !lastContinueBranch->getTerminator())
-		{
-			builder.SetInsertPoint(lastContinueBranch);
-			builder.CreateRet(nullptr);
-		}
+		builder.SetInsertPoint(last);
+		builder.CreateRet(nullptr);
 	}
-	else
+	else if (bool(func.GetReturnType()) && !last->getTerminator())
 	{
-		if (llvmFunc->getReturnType()->getTypeID() == llvm::Type::VoidTyID && !llvmFunc->getBasicBlockList().back().getTerminator())
-		{
-			builder.SetInsertPoint(&llvmFunc->getBasicBlockList().back());
-			builder.CreateRet(nullptr);
-		}
+		builder.SetInsertPoint(last);
+		builder.CreateRet(CreateDefaultValue(*func.GetReturnType(), llvmContext, builder));
 	}
 
 	for (llvm::BasicBlock& basicBlock : llvmFunc->getBasicBlockList())

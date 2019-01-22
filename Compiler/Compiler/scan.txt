@@ -27,7 +27,3 @@ func main() -> Int:
 	print("sqrt(%f) = %f", value, GetSquareRootNewtonMethod(value));
 	return 0;
 }
-
-
-
-

@@ -172,7 +172,7 @@ void CompilerDriver::Compile(const std::string& text)
 
 	if (!ast)
 	{
-		throw std::runtime_error("ast can't be generated...");
+		throw std::runtime_error("can't build ast");
 	}
 
 	Codegen generator(m_context);
